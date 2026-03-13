@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/context/session-context.schema.json",
+  "title": "SOLIDWORKS AI session context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session",
+    "environment",
+    "document",
+    "selection",
+    "feature_tree",
+    "configurations",
+    "dimensions",
+    "mates",
+    "reference_graph",
+    "properties",
+    "diagnostics",
+    "policy"
+  ],
+  "properties": {
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "timestamp_utc", "approval_state"],
+      "properties": {
+        "request_id": { "type": "string", "minLength": 1 },
+        "timestamp_utc": { "type": "string", "format": "date-time" },
+        "approval_state": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "preview_ready",
+            "awaiting_confirmation",
+            "approved",
+            "executing",
+            "verifying",
+            "completed",
+            "rolled_back",
+            "failed"
+          ]
+        },
+        "user_mode": {
+          "type": "string",
+          "enum": ["interactive", "guided", "automation"],
+          "default": "interactive"
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["solidworks_version", "addin_version", "machine_name"],
+      "properties": {
+        "solidworks_version": { "type": "string", "minLength": 1 },
+        "addin_version": { "type": "string", "minLength": 1 },
+        "machine_name": { "type": "string", "minLength": 1 },
+        "document_manager_available": { "type": "boolean", "default": false },
+        "diagnostics_mode": { "type": "boolean", "default": false }
+      }
+    },
+    "document": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["none", "part", "assembly", "drawing"]
+        },
+        "title": { "type": "string" },
+        "path": { "type": "string" },
+        "active_configuration": { "type": "string" },
+        "units": { "type": "string" },
+        "is_dirty": { "type": "boolean" },
+        "is_read_only": { "type": "boolean" }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "items"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "name"],
+            "properties": {
+              "kind": { "type": "string", "minLength": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "owner": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "feature_tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor", "radius", "features"],
+      "properties": {
+        "anchor": { "type": ["string", "null"] },
+        "radius": { "type": "integer", "minimum": 0 },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "kind"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "kind": { "type": "string", "minLength": 1 },
+              "state": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "configurations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_name", "count", "items"],
+      "properties": {
+        "active_name": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "is_active"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "is_active": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "items"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "full_name", "value", "unit_source"],
+            "properties": {
+              "name": { "type": "string" },
+              "full_name": { "type": "string" },
+              "value": { "type": "number" },
+              "unit_source": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "mates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "items"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "kind", "entity_count", "components"],
+            "properties": {
+              "name": { "type": "string" },
+              "kind": { "type": "string" },
+              "entity_count": { "type": "integer", "minimum": 0 },
+              "components": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "reference_graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct_count", "transitive_count", "broken_reference_count", "direct_items", "transitive_items"],
+      "properties": {
+        "direct_count": { "type": "integer", "minimum": 0 },
+        "transitive_count": { "type": "integer", "minimum": 0 },
+        "broken_reference_count": { "type": "integer", "minimum": 0 },
+        "direct_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "path", "is_read_only", "exists_on_disk", "is_broken"],
+            "properties": {
+              "name": { "type": "string" },
+              "path": { "type": "string" },
+              "imported_path": { "type": ["string", "null"] },
+              "is_read_only": { "type": "boolean" },
+              "exists_on_disk": { "type": "boolean" },
+              "is_broken": { "type": "boolean" }
+            }
+          }
+        },
+        "transitive_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "path", "is_read_only", "exists_on_disk", "is_broken"],
+            "properties": {
+              "name": { "type": "string" },
+              "path": { "type": "string" },
+              "imported_path": { "type": ["string", "null"] },
+              "is_read_only": { "type": "boolean" },
+              "exists_on_disk": { "type": "boolean" },
+              "is_broken": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rebuild_state", "warnings"],
+      "properties": {
+        "rebuild_state": { "type": "string", "minLength": 1 },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "missing_references": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled_tools", "tool_unlock_tier"],
+      "properties": {
+        "enabled_tools": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "tool_unlock_tier": {
+          "type": "string",
+          "enum": ["baseline", "assisted", "reviewed", "trusted"]
+        },
+        "exploration_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}

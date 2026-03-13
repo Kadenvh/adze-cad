@@ -1,0 +1,201 @@
+[
+  {
+    "task_id": "penjamin-active-document",
+    "corpus_source_id": "penjamin_native_part",
+    "description": "Confirm the active document identity and top-level metadata for the validated local Part1 fixture.",
+    "document_type": "part",
+    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "question": "What document is currently open and what are its key metadata fields?",
+    "expected_tool": "get_active_document",
+    "expected_assertions": [
+      "title == Part1.SLDPRT",
+      "type == part",
+      "path == C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+      "active_configuration == Default",
+      "is_dirty == false"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "carrier-document-summary",
+    "corpus_source_id": "benchmarking_carrier_part",
+    "description": "Summarize the validated installed carrier part fixture from the SOLIDWORKS benchmarking samples.",
+    "document_type": "part",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\carrier.sldprt",
+    "question": "What are the key summary fields for the active carrier sample part?",
+    "expected_tool": "get_document_summary",
+    "expected_assertions": [
+      "title == carrier.sldprt",
+      "type == part",
+      "path ends with \\carrier.sldprt",
+      "selection_count == 0",
+      "active_configuration == Default"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "carrier-selection-context-empty",
+    "corpus_source_id": "benchmarking_carrier_part",
+    "description": "Verify the empty-selection baseline for the validated installed carrier part fixture.",
+    "document_type": "part",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\carrier.sldprt",
+    "question": "What is the current selection context immediately after opening the carrier sample part?",
+    "expected_tool": "get_selection_context",
+    "expected_assertions": [
+      "count == 0",
+      "items is empty"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "carrier-custom-properties",
+    "corpus_source_id": "benchmarking_carrier_part",
+    "description": "Verify the first real custom-property benchmark fixture on the validated installed carrier part.",
+    "document_type": "part",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\carrier.sldprt",
+    "question": "What document-level custom properties are present on the active carrier sample part?",
+    "expected_tool": "get_custom_properties",
+    "expected_assertions": [
+      "document_count == 2",
+      "configuration_count == 0",
+      "document_properties.UNIT_OF_MEASURE ends with none -"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "cavity-dimensions",
+    "corpus_source_id": "benchmarking_cavity_part",
+    "description": "Confirm that the host can extract a stable dimension preview from the curated installed cavity sample part.",
+    "document_type": "part",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\cavity.sldprt",
+    "question": "What key dimensions are available on the active cavity sample part?",
+    "expected_tool": "get_dimensions",
+    "expected_assertions": [
+      "scope == document",
+      "count == 78",
+      "returned_count == 50",
+      "items[0].name == D1@Carrier Progression Holes",
+      "items[0].value == 2.56",
+      "items contains Thickness@Extrude1"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "penjamin-feature-tree-slice",
+    "corpus_source_id": "penjamin_native_part",
+    "description": "Confirm that the host can extract a stable feature-tree preview from the validated local Part1 fixture.",
+    "document_type": "part",
+    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "question": "What feature-tree slice is available for the active Part1 document?",
+    "expected_tool": "get_feature_tree_slice",
+    "expected_assertions": [
+      "available_count >= 12",
+      "anchor == Comments",
+      "items[0].name == Comments",
+      "items contains Equations"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "penjamin-configurations",
+    "corpus_source_id": "penjamin_native_part",
+    "description": "Confirm that the host resolves configuration metadata for the validated local Part1 fixture.",
+    "document_type": "part",
+    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "question": "What configurations are available for the active Part1 document?",
+    "expected_tool": "get_configurations",
+    "expected_assertions": [
+      "active_name == Default",
+      "count == 1",
+      "items[0].name == Default",
+      "items[0].is_active == true"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "penjamin-rebuild-diagnostics",
+    "corpus_source_id": "penjamin_native_part",
+    "description": "Confirm that rebuild diagnostics can be extracted for the validated local Part1 fixture.",
+    "document_type": "part",
+    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "question": "What is the rebuild/diagnostic state of the active Part1 document?",
+    "expected_tool": "get_rebuild_diagnostics",
+    "expected_assertions": [
+      "rebuild_state == current",
+      "warnings is empty",
+      "missing_references is empty"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "generate-assembly-active-document",
+    "corpus_source_id": "generate_assembly_sample",
+    "description": "Confirm the active-document identity for the curated installed GenerateAssembly assembly fixture.",
+    "document_type": "assembly",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\data\\GenerateAssembly\\Assembly.SLDASM",
+    "question": "What assembly document is open and what are its top-level metadata fields?",
+    "expected_tool": "get_active_document",
+    "expected_assertions": [
+      "title == Assembly.SLDASM",
+      "type == assembly",
+      "path ends with \\Assembly.SLDASM",
+      "active_configuration == Default",
+      "is_dirty == false"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "generate-assembly-document-summary",
+    "corpus_source_id": "generate_assembly_sample",
+    "description": "Confirm summary metadata for the curated installed GenerateAssembly assembly fixture.",
+    "document_type": "assembly",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\data\\GenerateAssembly\\Assembly.SLDASM",
+    "question": "What are the key summary fields for the active GenerateAssembly sample assembly?",
+    "expected_tool": "get_document_summary",
+    "expected_assertions": [
+      "title == Assembly.SLDASM",
+      "type == assembly",
+      "path ends with \\Assembly.SLDASM",
+      "selection_count == 0",
+      "active_configuration == Default"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "bezel-moldbase-reference-graph",
+    "corpus_source_id": "benchmarking_bezel_mold_assembly",
+    "description": "Confirm that the host can extract a nontrivial assembly dependency graph from the curated mold benchmark assembly.",
+    "document_type": "assembly",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\Mold\\bezel moldbase.sldasm",
+    "question": "What files and subassemblies does the active bezel moldbase assembly reference?",
+    "expected_tool": "get_reference_graph",
+    "expected_assertions": [
+      "scope == transitive",
+      "direct_count == 5",
+      "transitive_count == 28",
+      "broken_reference_count == 0",
+      "returned_count == 28",
+      "items contains bezel",
+      "items contains bezel moldbase moving half"
+    ],
+    "status": "curated_verified"
+  },
+  {
+    "task_id": "bezel-moldbase-mates",
+    "corpus_source_id": "benchmarking_bezel_mold_assembly",
+    "description": "Confirm that the host can extract live mate metadata from the curated mold benchmark assembly.",
+    "document_type": "assembly",
+    "entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\Mold\\bezel moldbase.sldasm",
+    "question": "What mates and assembly constraints are present on the active bezel moldbase assembly?",
+    "expected_tool": "get_mates",
+    "expected_assertions": [
+      "scope == document",
+      "count == 21",
+      "returned_count == 21",
+      "items contains Coincident1",
+      "items contains Symmetric5",
+      "items contains Distance2"
+    ],
+    "status": "curated_verified"
+  }
+]

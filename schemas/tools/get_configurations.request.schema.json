@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/get_configurations.request.schema.json",
+  "title": "get_configurations request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "get_configurations" },
+    "action_class": { "const": "green" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_suppression_state": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

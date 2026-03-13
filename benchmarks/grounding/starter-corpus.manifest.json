@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "0.1.0",
+  "created_utc": "2026-03-11T00:00:00Z",
+  "description": "Starter grounding corpus manifest. Source CAD files remain on the local machine; this repo stores only metadata, validation notes, and curation status.",
+  "sources": [
+    {
+      "id": "penjamin_native_part",
+      "root_path": "C:\\SOLIDWORKS\\penjamin",
+      "default_entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+      "status": "curated_verified",
+      "source_class": "user_data",
+      "target_document_types": ["part"],
+      "validation_notes": [
+        "Validated through the live host spike and the end-to-end host validation script on 2026-03-11.",
+        "Use as the baseline native part fixture for active-document, summary, and empty-selection checks."
+      ],
+      "target_tasks": [
+        "get_active_document",
+        "get_document_summary",
+        "get_selection_context"
+      ]
+    },
+    {
+      "id": "benchmarking_carrier_part",
+      "root_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro",
+      "default_entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\carrier.sldprt",
+      "status": "curated_verified",
+      "source_class": "installed_sample",
+      "target_document_types": ["part"],
+      "validation_notes": [
+        "Validated against the live add-in through the typed COM open helper on 2026-03-11.",
+        "Read-only installed sample under Program Files; useful for verifying path handling outside C:\\SOLIDWORKS.",
+        "Confirmed on 2026-03-11 as the first custom-property benchmark fixture via document-level UNIT_OF_MEASURE metadata."
+      ],
+      "target_tasks": [
+        "get_active_document",
+        "get_document_summary",
+        "get_selection_context",
+        "get_custom_properties"
+      ]
+    },
+    {
+      "id": "benchmarking_cavity_part",
+      "root_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro",
+      "default_entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\cavity.sldprt",
+      "status": "curated_verified",
+      "source_class": "installed_sample",
+      "target_document_types": ["part"],
+      "validation_notes": [
+        "Validated against the live add-in on 2026-03-12 as the first nontrivial dimensions benchmark fixture.",
+        "Returns dimension_count=78 with a stable 50-item preview from feature-owned display dimensions."
+      ],
+      "target_tasks": [
+        "get_dimensions",
+        "get_rebuild_diagnostics"
+      ]
+    },
+    {
+      "id": "generate_assembly_sample",
+      "root_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\data\\GenerateAssembly",
+      "default_entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\data\\GenerateAssembly\\Assembly.SLDASM",
+      "status": "curated_verified",
+      "source_class": "installed_sample",
+      "target_document_types": ["assembly"],
+      "validation_notes": [
+        "Validated in the live host loop on 2026-03-11 with successful active-document and document-summary extraction.",
+        "Use as the first curated assembly fixture for installed-sample grounding checks."
+      ],
+      "target_tasks": [
+        "get_active_document",
+        "get_document_summary",
+        "get_configurations",
+        "get_rebuild_diagnostics"
+      ]
+    },
+    {
+      "id": "benchmarking_bezel_mold_assembly",
+      "root_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\Mold",
+      "default_entry_path": "C:\\Program Files\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldBenchmarking\\Macro\\Mold\\bezel moldbase.sldasm",
+      "status": "curated_verified",
+      "source_class": "installed_sample",
+      "target_document_types": ["assembly"],
+      "validation_notes": [
+        "Validated in the live host loop on 2026-03-12 as the first nontrivial reference-graph fixture.",
+        "Read-only installed mold benchmark sample with direct_count=5 and transitive_count=28 through get_reference_graph.",
+        "Use for dependency/reference evaluation instead of the GenerateAssembly sample, which returns an empty dependency set."
+      ],
+      "target_tasks": [
+        "get_mates",
+        "get_reference_graph",
+        "get_rebuild_diagnostics"
+      ]
+    }
+  ]
+}

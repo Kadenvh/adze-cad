@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/get_rebuild_diagnostics.request.schema.json",
+  "title": "get_rebuild_diagnostics request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "get_rebuild_diagnostics" },
+    "action_class": { "const": "green" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_warnings": {
+          "type": "boolean",
+          "default": true
+        },
+        "include_missing_references": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

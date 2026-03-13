@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/traces/trace-event.schema.json",
+  "title": "Trace event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "trace_id",
+    "timestamp_utc",
+    "intent",
+    "tool_sequence",
+    "result",
+    "approval_state"
+  ],
+  "properties": {
+    "trace_id": { "type": "string", "minLength": 1 },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "intent": { "type": "string", "minLength": 1 },
+    "approval_state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "preview_ready",
+        "awaiting_confirmation",
+        "approved",
+        "executing",
+        "verifying",
+        "completed",
+        "rolled_back",
+        "failed"
+      ]
+    },
+    "tool_sequence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["success", "partial", "failure"]
+        },
+        "summary": { "type": "string", "minLength": 1 },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "achievement_events": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "exploration_percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "tool_unlock_tier": {
+      "type": "string",
+      "enum": ["baseline", "assisted", "reviewed", "trusted"]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/get_feature_tree_slice.request.schema.json",
+  "title": "get_feature_tree_slice request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "get_feature_tree_slice" },
+    "action_class": { "const": "green" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "anchor_name": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 25,
+          "default": 8
+        }
+      }
+    }
+  }
+}

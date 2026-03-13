@@ -1,0 +1,58 @@
+# Build outputs
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+*.cache
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime artifacts
+%TMPREG%
+*.tmp
+
+# Logs
+*.log
+
+# Diagnostic logs and downloads
+documentation/plans/diagnostics/logs/
+documentation/plans/diagnostics/downloads/
+
+# Benchmark reports
+benchmarks/reports/*-report-*.json
+
+# Keep report directory README
+!benchmarks/reports/README.md
+
+# Local environment
+.env
+.env.*
+*.local
+credentials.*
+secrets.*
+
+# NuGet
+packages/
+
+# Claude Code local state
+.claude/settings.json
+.claude/settings.local.json
+.claude/hooks/hook-log.jsonl
+
+# Local workspace tooling
+.ava/
+.stfolder/

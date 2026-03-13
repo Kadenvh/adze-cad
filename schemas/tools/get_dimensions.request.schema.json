@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/get_dimensions.request.schema.json",
+  "title": "get_dimensions request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "get_dimensions" },
+    "action_class": { "const": "green" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["document", "selection", "feature"],
+          "default": "selection"
+        },
+        "include_driven": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/traces/progression-state.schema.json",
+  "title": "Progression state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "user_id",
+    "updated_utc",
+    "tool_unlock_tier",
+    "exploration_percent",
+    "unlocked_tools",
+    "achievements"
+  ],
+  "properties": {
+    "user_id": { "type": "string", "minLength": 1 },
+    "updated_utc": { "type": "string", "format": "date-time" },
+    "tool_unlock_tier": {
+      "type": "string",
+      "enum": ["baseline", "assisted", "reviewed", "trusted"]
+    },
+    "exploration_percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "unlocked_tools": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "achievements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["achievement_id", "title", "unlocked_utc"],
+        "properties": {
+          "achievement_id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "unlocked_utc": { "type": "string", "format": "date-time" },
+          "source_trace_id": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}
