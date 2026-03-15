@@ -55,6 +55,8 @@
     <Compile Include="Models\SessionContext.cs" />
     <Compile Include="Models\ToolContracts.cs" />
     <Compile Include="Models\TraceEvent.cs" />
+    <Compile Include="Abstractions\IWriteServices.cs" />
+    <Compile Include="Models\WriteContracts.cs" />
     <Compile Include="Tooling\ToolNames.cs" />
   </ItemGroup>
 

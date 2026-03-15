@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
 **Version:** 0.1.0  
-**Last Updated:** 2026-03-15  
-**Status:** Grounded assistant alpha with native host execution, provider-routed model-backed answer synthesis, and green scripted validation
+**Last Updated:** 2026-03-16
+**Status:** Agentic alpha with write tool infrastructure — 14 tools (10 read + 4 write), 341 tests, feature-gated write safety
 
 ## Product Thesis
 
@@ -37,6 +37,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-15 | Phase 2A hardening complete: launcher interruption hardening (multi-pattern detection, JSON preflight, retry, validation gate), beta install/uninstall/packaging, Task Pane messaging, visual acceptance confirmed |
 | 0.1.0 | 2026-03-15 | Full agentic vision validated: 4 discovery briefs + 7 research briefs + external agent review. END-GOAL-FINAL.md, IMPLEMENTATION-BLUEPRINT.md, and TASK-INDEX.md compiled. 8 architecture layers, 5 capability classes, 8 phase gates defined. |
 | 0.1.0 | 2026-03-15 | Agentic tool loop implemented (Phase 1A+1B+2): clarification UI, conversation state with truncation, OpenAIFormatAgentClient, AgentLoopRunner, AgentToolDispatcher, ToolDefinitionBuilder, host integration with cancel support. 275 tests (100 new). |
+| 0.1.0 | 2026-03-16 | Write tool safety infrastructure + first-wave write tools (Phase 3+4 core): IStateSnapshotService, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder, WriteExecutionCoordinator, SetCustomPropertyTool, SetDimensionValueTool, SuppressFeatureTool, UnsuppressFeatureTool. Feature-gated behind SOLIDWORKS_AI_FIRST_WAVE_WRITES. 341 tests (66 new). |
 
 ## Current Architecture
 

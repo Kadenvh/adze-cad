@@ -37,7 +37,17 @@ public static class AgentModelClientFactory
 
     public static bool IsAgentLoopEnabled()
     {
-        string? value = Environment.GetEnvironmentVariable("SOLIDWORKS_AI_AGENT_LOOP");
+        return IsFeatureEnabled("SOLIDWORKS_AI_AGENT_LOOP");
+    }
+
+    public static bool IsFirstWaveWritesEnabled()
+    {
+        return IsFeatureEnabled("SOLIDWORKS_AI_FIRST_WAVE_WRITES");
+    }
+
+    private static bool IsFeatureEnabled(string envVarName)
+    {
+        string? value = Environment.GetEnvironmentVariable(envVarName);
         if (string.IsNullOrWhiteSpace(value))
         {
             return false;

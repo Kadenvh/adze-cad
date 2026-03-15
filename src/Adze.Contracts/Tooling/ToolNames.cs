@@ -12,4 +12,10 @@ public static class ToolNames
     public const string GetMates = "get_mates";
     public const string GetRebuildDiagnostics = "get_rebuild_diagnostics";
     public const string GetReferenceGraph = "get_reference_graph";
+
+    // Write tools (Phase 4)
+    public const string SetCustomProperty = "set_custom_property";
+    public const string SetDimensionValue = "set_dimension_value";
+    public const string SuppressFeature = "suppress_feature";
+    public const string UnsuppressFeature = "unsuppress_feature";
 }

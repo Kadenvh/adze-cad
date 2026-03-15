@@ -79,7 +79,10 @@
     <Compile Include="Orchestration\ConversationTruncator.cs" />
     <Compile Include="Orchestration\GroundingSynthesisService.cs" />
     <Compile Include="Orchestration\HybridBrokerOrchestrator.cs" />
+    <Compile Include="Orchestration\DefaultVerificationPolicy.cs" />
     <Compile Include="Orchestration\KeywordBrokerOrchestrator.cs" />
+    <Compile Include="Orchestration\StateDiffService.cs" />
+    <Compile Include="Orchestration\WriteExecutionCoordinator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
 

@@ -87,6 +87,42 @@ public sealed class GetReferenceGraphParameters
     public bool IncludeExternalReferences { get; set; } = true;
 }
 
+// ── Write tool parameters (Phase 4) ──
+
+public sealed class SetCustomPropertyParameters
+{
+    public string PropertyName { get; set; } = string.Empty;
+
+    public string PropertyValue { get; set; } = string.Empty;
+
+    public string Scope { get; set; } = "document";
+
+    public string? ConfigurationName { get; set; }
+}
+
+public sealed class SetDimensionValueParameters
+{
+    public string DimensionFullName { get; set; } = string.Empty;
+
+    public double NewValue { get; set; }
+
+    public string? ConfigurationName { get; set; }
+}
+
+public sealed class SuppressFeatureParameters
+{
+    public string FeatureName { get; set; } = string.Empty;
+
+    public string? ConfigurationName { get; set; }
+}
+
+public sealed class UnsuppressFeatureParameters
+{
+    public string FeatureName { get; set; } = string.Empty;
+
+    public string? ConfigurationName { get; set; }
+}
+
 public static class ToolRequests
 {
     public static ToolRequest<EmptyParameters> ActiveDocument() => new()

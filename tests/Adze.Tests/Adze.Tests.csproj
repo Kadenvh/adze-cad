@@ -84,8 +84,11 @@
     <Compile Include="Broker\GroundingSynthesisServiceTests.cs" />
     <Compile Include="Broker\LiveProviderSmokeTests.cs" />
     <Compile Include="Broker\ModelUsageParsingTests.cs" />
+    <Compile Include="Broker\WriteExecutionCoordinatorTests.cs" />
+    <Compile Include="Broker\WriteInfrastructureTests.cs" />
     <Compile Include="Trace\ModelJsonMapperTests.cs" />
     <Compile Include="Tools\GroundingToolTests.cs" />
+    <Compile Include="Tools\WriteToolTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

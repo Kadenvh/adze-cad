@@ -2,20 +2,22 @@
 
 **Version:** 0.1.0
 **Created:** 2026-03-11
-**Last Updated:** 2026-03-15
-**Current Phase:** Phase 2 (Agentic Tool Loop) complete. Next: Phase 3 (Snapshot/Diff/Verification) and Phase 4 (First Write Tools).
-**Status:** Agentic tool loop is implemented and integrated. The assistant can now iteratively call tools, observe results, and generate grounded answers through a model-driven loop. 275 tests passing. Next: write tool safety infrastructure and first write tools.
+**Last Updated:** 2026-03-16
+**Current Phase:** Phases 3 and 4 (core) complete. Next: Phase 4 UI (confirmation panel, write history), Phase 5 (Learning), Phase 6 (Retrieval).
+**Status:** Write tool safety infrastructure (snapshot/diff/verification) and first-wave write tools (set_custom_property, set_dimension_value, suppress_feature, unsuppress_feature) are implemented with full preview/apply/verify lifecycle, coordinator, and agent dispatch integration. 341 tests passing. Next: confirmation UI in Task Pane, write history panel, then learning activation.
 
 ## Current Working Baseline
 
 - a buildable 6-project C# solution (5 production + 1 test)
 - a native SOLIDWORKS add-in host with Task Pane UI (visual acceptance confirmed)
-- 10 live read-only grounding tools
+- 10 live read-only grounding tools + 4 first-wave write tools
 - hybrid broker with OpenAI/Anthropic/OpenRouter provider routing and deterministic fallback
 - model-backed final answer synthesis with deterministic fallback
 - per-run and session-level token usage monitoring (API response → answer footer → Status tab)
-- 275 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- 341 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
 - **agentic tool loop** (Phase 2): `OpenAIFormatAgentClient`, `AgentLoopRunner`, `AgentToolDispatcher`, `ToolDefinitionBuilder`, `AgentModelClientFactory`. Feature-gated behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Existing single-turn path remains default fallback.
+- **write tool safety infrastructure** (Phase 3): `IStateSnapshotService`, `IStateDiffService`, `IVerificationPolicy`, `StateDiffService`, `DefaultVerificationPolicy`, `WriteTraceRecordBuilder`. All contracts and pure logic implementations with 30 tests.
+- **first-wave write tools** (Phase 4 core): `SetCustomPropertyTool`, `SetDimensionValueTool`, `SuppressFeatureTool`, `UnsuppressFeatureTool`. Full `IWriteTool<TParams>` implementations with preview/apply/verify/undo lifecycle. `WriteExecutionCoordinator` orchestrates the 8-step write lifecycle. Agent dispatch integration with feature gate `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true`. 36 tests.
 - pre-prompt clarification UI with Intent/Scope/Output/Diagnostics axes populated from live SessionContext
 - conversation state with sliding window truncation (`AgentConversationState`, `ConversationTruncator`)
 - cancel button support with `CancellationTokenSource` lifecycle
@@ -31,7 +33,7 @@
 | Check | Result |
 |------|--------|
 | `build-all.ps1 -StopSolidWorks` | PASS |
-| `run-tests.ps1` | PASS (`175/175`, 6 inconclusive smoke tests without env vars) |
+| `run-tests.ps1` | PASS (`341` total, 335 passed, 6 inconclusive smoke tests without env vars) |
 | `run-broker-evals.ps1` | PASS (`12/12`) |
 | `validate-host-spike.ps1` | PASS |
 | `run-grounding-benchmarks.ps1` | PASS (`12/12`) |
@@ -108,8 +110,11 @@
 - [x] **Phase 1B:** Add conversation state and follow-up turn support
 - [x] **Phase 2:** Implement agentic tool loop with native API tool calling (OpenAIFormatAgentClient, AgentLoopRunner, AgentToolDispatcher, ToolDefinitionBuilder, HostState integration, cancel support)
 - [ ] **Phase 2 live test:** Run agentic loop with real API key in SOLIDWORKS to verify end-to-end
-- [ ] **Phase 3:** Implement snapshot/diff verification layer (IStateSnapshotService, IStateDiffService, IVerificationPolicy)
-- [ ] **Phase 4:** Implement first-wave write tools with confirmation UI (set_custom_property, set_dimension_value, suppress_feature)
+- [x] **Phase 3:** Implement snapshot/diff verification layer (IStateSnapshotService, IStateDiffService, IVerificationPolicy, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder — 30 tests)
+- [x] **Phase 4 core:** Implement first-wave write tools (set_custom_property, set_dimension_value, suppress_feature, unsuppress_feature) with IWriteTool, WriteExecutionCoordinator, agent dispatch, feature gate — 36 tests
+- [ ] **Phase 4 UI:** Add WritePreview confirmation panel and write history/undo surface to TaskPaneControl
+- [ ] **Phase 5:** Learning activation (recipe capture, promotion, trust tiers)
+- [ ] **Phase 6:** Multi-session memory and closed-file retrieval
 - [ ] Decide whether answer evidence snippets belong in the Task Pane
 - [ ] Decide whether recipe suggestions should appear in the Task Pane
 
@@ -119,9 +124,10 @@ If a new agent or session picks this up:
 
 1. Read `CLAUDE.md` for critical rules and commands.
 2. Read `documentation/plans/END-GOAL-FINAL.md` for the complete agentic vision (700 lines).
-3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown.
+3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown (now with completion markers).
 4. Read `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` for C# interface contracts.
 5. The 7 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
-6. Phases 1A, 1B, and 2 are implemented. The agentic tool loop is live behind `SOLIDWORKS_AI_AGENT_LOOP=true`.
-7. Next: live test the agent loop in SOLIDWORKS, then build Phase 3 (snapshot/diff/verification) and Phase 4 (first write tools).
-8. The 7 research briefs in `documentation/plans/research-*.md` validated all platform-specific execution concerns.
+6. Phases 1A, 1B, 2, 3, and 4 (core) are implemented. 341 tests passing.
+7. The agentic tool loop is live behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Write tools are behind `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true`.
+8. Next priorities: (a) live test agent loop + write tools in SOLIDWORKS, (b) add confirmation UI panel to TaskPaneControl, (c) Phase 5 learning activation.
+9. Key new files this session: `Adze.Contracts/Models/WriteContracts.cs`, `Adze.Contracts/Abstractions/IWriteServices.cs`, `Adze.Broker/Orchestration/StateDiffService.cs`, `Adze.Broker/Orchestration/DefaultVerificationPolicy.cs`, `Adze.Broker/Orchestration/WriteExecutionCoordinator.cs`, `Adze.Tools/Write/*.cs`, `Adze.Trace/Tracing/WriteTraceRecordBuilder.cs`.

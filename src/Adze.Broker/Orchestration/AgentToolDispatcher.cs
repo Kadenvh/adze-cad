@@ -6,6 +6,7 @@ using Adze.Broker.Models;
 using Adze.Contracts.Models;
 using Adze.Contracts.Tooling;
 using Adze.Tools;
+using Adze.Tools.Write;
 
 namespace Adze.Broker.Orchestration;
 
@@ -103,9 +104,97 @@ public sealed class AgentToolDispatcher : IToolExecutor
             case ToolNames.GetReferenceGraph:
                 return _catalog.ReferenceGraph.Execute(session, DeserializeReferenceGraphParams(arguments));
 
+            // Write tools — return preview result (actual apply requires host confirmation)
+            case ToolNames.SetCustomProperty:
+                return DispatchWritePreview(new SetCustomPropertyTool(), DeserializeSetCustomPropertyParams(arguments), session);
+
+            case ToolNames.SetDimensionValue:
+                return DispatchWritePreview(new SetDimensionValueTool(), DeserializeSetDimensionValueParams(arguments), session);
+
+            case ToolNames.SuppressFeature:
+                return DispatchWritePreview(new SuppressFeatureTool(), DeserializeSuppressFeatureParams(arguments), session);
+
+            case ToolNames.UnsuppressFeature:
+                return DispatchWritePreview(new UnsuppressFeatureTool(), DeserializeUnsuppressFeatureParams(arguments), session);
+
             default:
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
         }
+    }
+
+    private ToolResult DispatchWritePreview<TParams>(Contracts.Abstractions.IWriteTool<TParams> tool, TParams parameters, SessionContext session)
+    {
+        WritePreview preview = tool.Preview(session, parameters);
+        var data = new Dictionary<string, object?>
+        {
+            ["preview"] = true,
+            ["requires_confirmation"] = true,
+            ["tool_name"] = preview.ToolName,
+            ["summary"] = preview.Summary,
+            ["undo_label"] = tool.BuildUndoLabel(parameters),
+            ["changes"] = preview.Changes.ConvertAll(c => new Dictionary<string, object?>
+            {
+                ["target"] = c.TargetLabel,
+                ["before"] = c.BeforeValue,
+                ["after"] = c.AfterValue
+            }),
+            ["warnings"] = preview.Warnings
+        };
+
+        return new ToolResult
+        {
+            ToolName = preview.ToolName,
+            Success = true,
+            Summary = preview.Summary,
+            Warnings = preview.Warnings,
+            Data = data
+        };
+    }
+
+    private static SetCustomPropertyParameters DeserializeSetCustomPropertyParams(Dictionary<string, object?> args)
+    {
+        var parameters = new SetCustomPropertyParameters();
+        if (TryGetString(args, "property_name", out string? name))
+            parameters.PropertyName = name!;
+        if (TryGetString(args, "property_value", out string? value))
+            parameters.PropertyValue = value!;
+        if (TryGetString(args, "scope", out string? scope))
+            parameters.Scope = scope!;
+        if (TryGetString(args, "configuration_name", out string? configName))
+            parameters.ConfigurationName = configName;
+        return parameters;
+    }
+
+    private static SetDimensionValueParameters DeserializeSetDimensionValueParams(Dictionary<string, object?> args)
+    {
+        var parameters = new SetDimensionValueParameters();
+        if (TryGetString(args, "dimension_full_name", out string? fullName))
+            parameters.DimensionFullName = fullName!;
+        if (TryGetDouble(args, "new_value", out double newValue))
+            parameters.NewValue = newValue;
+        if (TryGetString(args, "configuration_name", out string? configName))
+            parameters.ConfigurationName = configName;
+        return parameters;
+    }
+
+    private static SuppressFeatureParameters DeserializeSuppressFeatureParams(Dictionary<string, object?> args)
+    {
+        var parameters = new SuppressFeatureParameters();
+        if (TryGetString(args, "feature_name", out string? name))
+            parameters.FeatureName = name!;
+        if (TryGetString(args, "configuration_name", out string? configName))
+            parameters.ConfigurationName = configName;
+        return parameters;
+    }
+
+    private static UnsuppressFeatureParameters DeserializeUnsuppressFeatureParams(Dictionary<string, object?> args)
+    {
+        var parameters = new UnsuppressFeatureParameters();
+        if (TryGetString(args, "feature_name", out string? name))
+            parameters.FeatureName = name!;
+        if (TryGetString(args, "configuration_name", out string? configName))
+            parameters.ConfigurationName = configName;
+        return parameters;
     }
 
     private static GetDocumentSummaryParameters DeserializeDocumentSummaryParams(Dictionary<string, object?> args)
@@ -240,6 +329,39 @@ public sealed class AgentToolDispatcher : IToolExecutor
         }
 
         if (int.TryParse(raw.ToString(), out int parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetDouble(Dictionary<string, object?> args, string key, out double value)
+    {
+        value = 0.0;
+        if (!args.TryGetValue(key, out object? raw) || raw == null)
+            return false;
+
+        if (raw is double d)
+        {
+            value = d;
+            return true;
+        }
+
+        if (raw is int i)
+        {
+            value = i;
+            return true;
+        }
+
+        if (raw is decimal dec)
+        {
+            value = (double)dec;
+            return true;
+        }
+
+        if (double.TryParse(raw.ToString(), out double parsed))
         {
             value = parsed;
             return true;

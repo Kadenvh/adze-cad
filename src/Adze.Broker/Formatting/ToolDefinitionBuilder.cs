@@ -69,6 +69,47 @@ public static class ToolDefinitionBuilder
         };
     }
 
+    public static List<AgentToolDefinition> BuildWriteToolDefinitions()
+    {
+        return new List<AgentToolDefinition>
+        {
+            Build(ToolNames.SetCustomProperty,
+                "Sets a custom property value on the active document or a specific configuration. Does not require rebuild.",
+                ObjectSchema(
+                    Required("property_name", "string", "The name of the custom property to set."),
+                    Required("property_value", "string", "The value to set the property to."),
+                    Optional("scope", "string", "Scope: 'document' (default) or 'configuration'."),
+                    Optional("configuration_name", "string", "Configuration name (required when scope is 'configuration')."))),
+
+            Build(ToolNames.SetDimensionValue,
+                "Sets a dimension value in the active document. Requires rebuild after change.",
+                ObjectSchema(
+                    Required("dimension_full_name", "string", "The full name of the dimension (e.g. 'D1@Sketch1')."),
+                    Required("new_value", "number", "The new value to set (in document units)."),
+                    Optional("configuration_name", "string", "Configuration to apply the change to."))),
+
+            Build(ToolNames.SuppressFeature,
+                "Suppresses a feature in the active document. Requires rebuild. May cascade to dependent features.",
+                ObjectSchema(
+                    Required("feature_name", "string", "The name of the feature to suppress."),
+                    Optional("configuration_name", "string", "Configuration to apply the suppression to."))),
+
+            Build(ToolNames.UnsuppressFeature,
+                "Unsuppresses (resolves) a previously suppressed feature. Requires rebuild.",
+                ObjectSchema(
+                    Required("feature_name", "string", "The name of the feature to unsuppress."),
+                    Optional("configuration_name", "string", "Configuration to apply the unsuppression to.")))
+        };
+    }
+
+    public static List<AgentToolDefinition> BuildAllToolDefinitions()
+    {
+        var all = new List<AgentToolDefinition>();
+        all.AddRange(BuildReadToolDefinitions());
+        all.AddRange(BuildWriteToolDefinitions());
+        return all;
+    }
+
     private static AgentToolDefinition Build(string name, string description, Dictionary<string, object?> parameterSchema)
     {
         return new AgentToolDefinition
@@ -92,13 +133,25 @@ public static class ToolDefinitionBuilder
     private static Dictionary<string, object?> ObjectSchema(params Dictionary<string, object?>[] properties)
     {
         var props = new Dictionary<string, object?>();
+        var required = new List<string>();
         foreach (var prop in properties)
         {
             if (prop.TryGetValue("_name", out object? nameValue) && nameValue is string name)
             {
                 var copy = new Dictionary<string, object?>(prop);
                 copy.Remove("_name");
+                bool isRequired = false;
+                if (copy.TryGetValue("_required", out object? reqValue) && reqValue is bool reqBool)
+                {
+                    isRequired = reqBool;
+                    copy.Remove("_required");
+                }
+
                 props[name] = copy;
+                if (isRequired)
+                {
+                    required.Add(name);
+                }
             }
         }
 
@@ -106,7 +159,18 @@ public static class ToolDefinitionBuilder
         {
             ["type"] = "object",
             ["properties"] = props,
-            ["required"] = new List<string>()
+            ["required"] = required
+        };
+    }
+
+    private static Dictionary<string, object?> Required(string name, string type, string description)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["_name"] = name,
+            ["_required"] = true,
+            ["type"] = type,
+            ["description"] = description
         };
     }
 

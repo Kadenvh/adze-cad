@@ -209,7 +209,9 @@ internal static class HostState
     private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient)
     {
         AgentModelSettings agentSettings = AgentModelSettings.LoadFromEnvironment();
-        List<AgentToolDefinition> toolDefinitions = ToolDefinitionBuilder.BuildReadToolDefinitions();
+        List<AgentToolDefinition> toolDefinitions = AgentModelClientFactory.IsFirstWaveWritesEnabled()
+            ? ToolDefinitionBuilder.BuildAllToolDefinitions()
+            : ToolDefinitionBuilder.BuildReadToolDefinitions();
         var toolDispatcher = new AgentToolDispatcher();
         var loopRunner = new AgentLoopRunner();
 
