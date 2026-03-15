@@ -1,189 +1,121 @@
 # Adze - Implementation Plan
 
-**Version:** 0.1.0  
-**Created:** 2026-03-11  
-**Last Updated:** 2026-03-15  
-**Current Phase:** Phase 2A - Hardening To First Usable Build  
-**Status:** Grounded assistant alpha is real and validated; the active work is now quality hardening, launcher/install reliability, UI acceptance, and safe-write contract design
+**Version:** 0.1.0
+**Created:** 2026-03-11
+**Last Updated:** 2026-03-15
+**Current Phase:** Phase 2A complete. Entering agentic implementation (Phases 1A-2 from END-GOAL-FINAL).
+**Status:** Hardening is done. Full agentic vision validated through 4 discovery briefs + 7 research briefs. Implementation blueprint and task breakdown ready. Next: build the clarification UI and agent loop.
 
 ## Current Working Baseline
 
-The repo is no longer a speculative scaffold. It currently contains:
-
 - a buildable 6-project C# solution (5 production + 1 test)
-- a raw native SOLIDWORKS add-in host that registers, loads, and creates a Task Pane
-- 10 live read-only grounding tools wired into the host, broker, and validation scripts
-- a hybrid broker that can use OpenAI or Anthropic for structured turn planning with deterministic fallback
-- model-backed final answer synthesis over executed tool results, also with deterministic fallback
-- trace, snapshot, recipe-candidate, achievement, exploration, and unlock persistence
-- an answer-first Task Pane layout with separate `Plan`, `Status`, and `Tools` surfaces
-- background provider execution after host-thread context capture so slow network calls do not freeze the Task Pane
-- COM traversal cleanup and logged graceful degradation in the session-context builder
-- 175 compiled NUnit unit tests covering broker orchestration, model response parsing, configuration, prompt composition, all 10 grounding tools, trace serialization, deterministic answer building, tool results formatting, synthesis service orchestration, and usage parsing
-- 6 live provider smoke tests (Category: LiveProvider) exercising real API calls for broker planning, synthesis, and orchestration
-- per-run and session-level token usage tracking from API responses through to the Status tab and answer footer
+- a native SOLIDWORKS add-in host with Task Pane UI (visual acceptance confirmed)
+- 10 live read-only grounding tools
+- hybrid broker with OpenAI/Anthropic/OpenRouter provider routing and deterministic fallback
+- model-backed final answer synthesis with deterministic fallback
+- per-run and session-level token usage monitoring (API response → answer footer → Status tab)
+- 175 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- launcher interruption detection with multi-pattern blocker scanning, JSON preflight report, retry with timeout, and validation preflight gate
+- beta install/uninstall/packaging workflow (`install/install-adze.ps1`, `uninstall-adze.ps1`, `package-release.ps1`)
+- Task Pane run state label shows meaningful status for blocked/disconnected states and token counts
+- trace/progression/recipe/achievement persistence
 - machine-readable broker and benchmark reports
-- a one-command support bundle workflow for diagnostics
+- one-command support bundle workflow
 
 ## Validated Baseline - 2026-03-15
 
 | Check | Result |
 |------|--------|
-| `validate-json-schemas.ps1` | PASS |
 | `build-all.ps1 -StopSolidWorks` | PASS |
 | `run-tests.ps1` | PASS (`175/175`, 6 inconclusive smoke tests without env vars) |
 | `run-broker-evals.ps1` | PASS (`12/12`) |
 | `validate-host-spike.ps1` | PASS |
 | `run-grounding-benchmarks.ps1` | PASS (`12/12`) |
-| Provider selection matrix | PASS |
-| `collect-support-bundle.ps1` | PASS |
-| HKLM residue for active add-in GUID | Not present |
 | `run-provider-smoke.ps1` via OpenRouter | PASS (`6/6`) with usage tracking verified |
-| Human visual acceptance of latest Task Pane overhaul | Pending desktop confirmation |
+| Human visual acceptance of Task Pane | PASS (confirmed 2026-03-15) |
+| Beta install/uninstall scripts | Created and reviewed |
 
 ## Active Workstreams
 
-### 1. Grounded Answer Quality And Reliability
+### 1. Agentic Implementation (PRIMARY)
 
-**State:** Active  
-**Why it matters:** The system now produces model-backed grounded answers, but the eval surface still focuses more on tool selection than on answer quality.
+**State:** Planning complete, implementation ready
+**Why it matters:** The grounded alpha is proven. The next product leap is making the assistant feel agentic — clarification before acting, iterative tool use, and eventually governed writes.
 
-**Next steps:**
-- decide whether the assistant should surface evidence snippets or citations from tool results
-- expand from the current single-turn loop toward richer multi-step execution without breaking the COM boundary
-- consider accumulating broker planning usage alongside synthesis usage in session counters
+**Authoritative plan:** `documentation/plans/END-GOAL-FINAL.md` (700 lines — vision, architecture layers, capability classes, phase order, success criteria)
+**Task breakdown:** `documentation/tasks/TASK-INDEX.md` (60+ tasks across 8 phases)
+**Tactical contracts:** `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` (C# interface specs inline)
 
-### 2. Session And Install Hardening
+**Immediate next steps (Phase 1A + 1B, can run in parallel):**
+- Add pre-prompt clarification controls to Task Pane (Intent/Scope/Output/Diagnostics)
+- Add conversation state (AgentConversationState, truncation, follow-up turns)
+- Then Phase 2: agentic tool loop with native API tool calling
 
-**State:** Active  
-**Why it matters:** The most common live failures are no longer code build failures; they are launcher/login/update interruptions and the lack of a tester-friendly install/update path.
+### 2. Evidence and Research Base
 
-**Next steps:**
-- harden launcher preflight and blocked-state messaging
-- add install/update assets under `install/`
-- document the clean beta setup path
-- keep support-bundle collection aligned with real support needs
+**State:** Complete
+**Artifacts in `documentation/plans/`:**
+- 4 discovery briefs (API tool use, SOLIDWORKS write API, agent loop architecture, clarification UI)
+- 7 research briefs (write safety/rollback, threading, tool-calling abstraction, local model feasibility, OpenClaw feasibility, closed-file retrieval, streaming UX)
 
-### 3. Assistant Workspace Polish
-
-**State:** Active  
-**Why it matters:** The Task Pane now behaves like an assistant workspace, but it still needs more product polish before it feels like the intended end-user experience.
-
-**Next steps:**
-- improve empty-state copy and no-document recovery copy further
-- decide whether to surface evidence snippets in the answer panel
-- decide whether recipe suggestions should appear directly in the UI
-- improve run-state presentation while preserving the current split between host-thread context capture and background model execution
-- capture a direct visual acceptance pass for rendering, resize behavior, and status-tab scroll preservation inside SOLIDWORKS
-
-### 4. Safe Write-Tool Boundary
-
-**State:** Pending definition  
-**Why it matters:** The product intent eventually includes action-taking behavior, but safe writes are still intentionally blocked until the contract is explicit and testable.
-
-**Next steps:**
-- choose the first reversible write-capable tool
-- define preview/apply/verify/rollback contracts
-- extend trace and benchmark expectations to support write paths
+**Key validated findings:**
+- OpenRouter unifies both providers under one tool-calling format
+- `set_custom_property` is the safest first write tool (no rebuild, clean API)
+- Undo grouping via `StartRecordingUndoObject` / `FinishRecordingUndoObject`
+- No mid-loop COM refresh needed for Phase 1 (eliminates deadlock risk)
+- OLE Structured Storage enables zero-dependency closed-file indexing at ~1-5ms/file
+- OpenClaw evaluated and declined for runtime integration (dev-workflow tool only)
+- Local models work for synthesis but unreliable for tool calling below 32B params
 
 ## Current Risks And Constraints
 
-- No local `dotnet` SDK is installed. The repo still assumes a Visual Studio/MSBuild-first workflow. NUnit tests run via the NUnit3 console runner and NuGet packages restored with `nuget.exe` under `tools/`.
-- Launcher-managed prerequisite windows can block live host validation even when the add-in code is healthy.
-- The eval surface now covers tool selection, answer building, tool results formatting, synthesis orchestration, usage parsing, and live provider smoke testing via OpenRouter.
-- The latest Task Pane overhaul is build-validated and host-validated, but its current visual acceptance still needs a direct desktop check inside SOLIDWORKS.
-- Packaging/install/update is still not implemented as a tester-friendly workflow.
-- The runtime remains intentionally read-only. Any attempt to rush write tools before the safety contract exists would lower quality.
+- No local `dotnet` SDK. Visual Studio/MSBuild-first workflow.
+- Launcher-managed prerequisite windows can block live validation (now detected and reported via JSON preflight).
+- Runtime remains intentionally read-only until write contracts pass Gate D.
+- No real provider API key in default shell environment (OpenRouter key used for smoke tests this session).
 
 ## Recently Completed Milestones
 
-- Security cleanup and repo rename from `SolidWorksAi` to `Adze`
-- User-scope development registration and removal of routine `RunAs` dependence
-- Ten read-only grounding tools across part and assembly inspection
-- Structured broker turn with blockers, recovery suggestions, and prioritized recommendations
-- Provider-routed model-backed planning and final answer synthesis with deterministic fallback
-- Answer-first Task Pane workspace with `Plan`, `Status`, and `Tools` tabs, active-tab refresh, and preserved status scrolling
-- Background model execution after UI-thread context capture
-- COM child-object release and diagnostic logging across session-context traversal
-- Machine-readable benchmark/eval reports
-- One-command support bundle generation under `%LOCALAPPDATA%\Adze\SupportBundles`
-- Compiled NUnit 3 unit test suite (166 tests) covering broker, tools, trace serialization, configuration, prompt composition, deterministic answer building, tool results formatting, and synthesis service orchestration — all passing in under 1 second
-- Moved pure-logic synthesis types (GroundingAnswerBuilder, GroundingToolResultsBuilder, GroundingSynthesisService) from Host to Broker to enable unit testing without SOLIDWORKS COM dependencies
-- Portable setup scripts using `$PSScriptRoot`-relative paths instead of hardcoded repo locations
-- Live provider smoke tests (6 tests) validated against OpenRouter with `openai/gpt-4o`, covering broker planning, synthesis, tool relevance, answer grounding, and end-to-end orchestration
-- Full token usage monitoring pipeline: `ModelUsage` contract, response parsing in both OpenAI and Anthropic clients, session-level accumulation in the host, answer footer token breakdown, Status tab cumulative display
-- Usage parsing unit tests (9 tests) covering OpenAI, Anthropic, OpenRouter formats, edge cases, and accumulation operator
+- Live provider smoke tests (6 tests via OpenRouter) with usage tracking verified
+- Full token usage monitoring pipeline (ModelUsage contract → API parsing → session accumulation → Status tab → answer footer)
+- Launcher interruption hardening (multi-pattern detection, CATSTART scanning, JSON preflight, retry loop, validation preflight gate with exit code 3)
+- Beta install/uninstall/packaging (install-adze.ps1, uninstall-adze.ps1, package-release.ps1)
+- Task Pane messaging improvement (meaningful run state for blocked/disconnected states, token counts)
+- Visual acceptance pass confirmed (Task Pane praised as "really good" and "AMAZING")
+- Full agentic vision validated through 4 discovery + 7 research briefs
+- END-GOAL-FINAL.md compiled with external agent review
+- IMPLEMENTATION-BLUEPRINT.md with C# interface contracts
+- TASK-INDEX.md with 60+ tasks across 8 phases
+- 41 DAL facts covering all architecture decisions, risks, phase gates, and invariants
+- Documentation cleanup: 4 stale plans archived, plans README updated, BUILD_SPEC updated
 
 ## Immediate Task Checklist
 
-- [x] Add synthesis answer-quality eval cases (36 unit tests covering answer builder, tool results builder, and synthesis service)
-- [x] Add explicit synthesis timeout/failure eval cases (synthesis service tests cover null client, model failure, empty/whitespace response, failure reason normalization)
-- [x] Run a live provider-backed smoke test with a real API key (6 tests pass via OpenRouter)
+- [x] Add synthesis answer-quality eval cases
+- [x] Run a live provider-backed smoke test with a real API key
 - [x] Add token usage monitoring across broker clients, host, and Status tab
-- [ ] Capture a human visual acceptance pass of the latest Task Pane overhaul
-- [ ] Harden launcher/update/login interruption handling
-- [ ] Add beta-friendly install/update assets under `install/`
+- [x] Capture a human visual acceptance pass of the Task Pane
+- [x] Harden launcher/update/login interruption handling
+- [x] Add beta-friendly install/update assets under `install/`
+- [x] Complete agentic vision discovery and research (11 briefs)
+- [x] Compile END-GOAL-FINAL.md with external agent validation
+- [x] Create comprehensive task breakdown (TASK-INDEX.md)
+- [ ] **Phase 1A:** Add pre-prompt clarification UI to Task Pane
+- [ ] **Phase 1B:** Add conversation state and follow-up turn support
+- [ ] **Phase 2:** Implement agentic tool loop with native API tool calling
+- [ ] **Phase 3:** Implement snapshot/diff verification layer
+- [ ] **Phase 4:** Implement first-wave write tools with confirmation UI
 - [ ] Decide whether answer evidence snippets belong in the Task Pane
 - [ ] Decide whether recipe suggestions should appear in the Task Pane
-- [ ] Define the first safe write-tool contract
-- [ ] Start the first retrieval/indexing slice without weakening the live grounding boundary
-
-## Operational Commands
-
-See root `CLAUDE.md` for all build, test, and validation commands.
-
-## Debugging And Support Notes
-
-### PowerShell Windows Closing Immediately
-
-Current diagnosis:
-- not reproduced through direct terminal invocation
-- not a simple execution-policy block
-- more likely related to detached launch context, launcher state, or task-specific elevation needs
-
-If it reappears:
-- reproduce the exact launch path
-- capture stdout/stderr/exit code to a log
-- compare behavior under `pwsh` and `powershell.exe`
-
-### Launcher Gate
-
-Known blocking windows:
-1. `Login | 3DEXPERIENCE ID | Dassault Systèmes`
-2. `3DEXPERIENCE Update`
-
-Practical rule:
-- if either window is present, clear it before assuming the add-in failed
-
-### Registration Scope
-
-Current state:
-- development registration lives under `HKCU`
-- the previously noted HKLM residue for the active add-in GUID is no longer present on this machine
-
-### Support Bundle Workflow
-
-Current script:
-- `scripts/setup/collect-support-bundle.ps1`
-
-Current bundle contents:
-- host logs
-- snapshots
-- state
-- traces
-- recipe candidates
-- latest benchmark/eval reports
-- machine summary
-- launcher preflight output
 
 ## Handoff Notes
 
 If a new agent or session picks this up:
 
-1. Start with `documentation/README.md`.
-2. Read `PROJECT_ROADMAP.md` for the why.
-3. Read `BUILD_SPEC.md` for the boundaries and commands.
-4. Use this file for current state and next work.
-5. Treat launcher state as a machine/runtime variable, not an automatic code regression.
-
-The most important current fact is that the grounded assistant loop is real. The highest-value remaining work is no longer "make it exist"; it is "make it reliable, evaluable, and beta-usable."
+1. Read `CLAUDE.md` for critical rules and commands.
+2. Read `documentation/plans/END-GOAL-FINAL.md` for the complete agentic vision (700 lines).
+3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown.
+4. Read `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` for C# interface contracts.
+5. The 7 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
+6. The grounded alpha is proven and hardened. The next work is implementation, not more planning.
+7. Phase 1A and 1B can start immediately and run in parallel.

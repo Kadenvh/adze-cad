@@ -34,6 +34,8 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-15 | Compiled NUnit 3 unit test suite: 130 tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization |
 | 0.1.0 | 2026-03-15 | Synthesis answer-quality and failure coverage: moved pure-logic types from Host to Broker, added 36 tests for answer building, tool results formatting, and synthesis orchestration (166 total) |
 | 0.1.0 | 2026-03-15 | Live provider validation and usage monitoring: 6 smoke tests via OpenRouter, full token tracking pipeline from API response to Status tab, 9 usage parsing tests (175 unit + 6 live) |
+| 0.1.0 | 2026-03-15 | Phase 2A hardening complete: launcher interruption hardening (multi-pattern detection, JSON preflight, retry, validation gate), beta install/uninstall/packaging, Task Pane messaging, visual acceptance confirmed |
+| 0.1.0 | 2026-03-15 | Full agentic vision validated: 4 discovery briefs + 7 research briefs + external agent review. END-GOAL-FINAL.md, IMPLEMENTATION-BLUEPRINT.md, and TASK-INDEX.md compiled. 8 architecture layers, 5 capability classes, 8 phase gates defined. |
 
 ## Current Architecture
 
@@ -133,8 +135,10 @@ User request
 ### Track 1 - Grounded Assistant Hardening
 
 Goal:
-- move from single-turn grounding to richer multi-step execution without breaking the COM boundary
-- decide whether to surface evidence snippets or citations in the answer panel
+- implement pre-prompt clarification UI with live SessionContext data (Phase 1A)
+- implement conversation state and follow-up turn support (Phase 1B)
+- implement agentic tool loop with native API tool calling (Phase 2)
+- implement first-wave write tools with preview/apply/verify/rollback (Phase 4)
 
 ### Track 2 - First Usable Beta Path
 
