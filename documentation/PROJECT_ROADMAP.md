@@ -33,6 +33,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-13 | Expanded alpha hardening: OpenAI plus Anthropic provider routing, assistant-workspace UI overhaul, background provider execution, and COM cleanup/logging across session-context traversal |
 | 0.1.0 | 2026-03-15 | Compiled NUnit 3 unit test suite: 130 tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization |
 | 0.1.0 | 2026-03-15 | Synthesis answer-quality and failure coverage: moved pure-logic types from Host to Broker, added 36 tests for answer building, tool results formatting, and synthesis orchestration (166 total) |
+| 0.1.0 | 2026-03-15 | Live provider validation and usage monitoring: 6 smoke tests via OpenRouter, full token tracking pipeline from API response to Status tab, 9 usage parsing tests (175 unit + 6 live) |
 
 ## Current Architecture
 
@@ -46,7 +47,8 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | Broker layer | Hybrid deterministic + OpenAI/Anthropic planning | Produces structured turn state, tool recommendations, blockers, and recovery guidance |
 | Answer layer | Provider-routed synthesis over executed tool results with deterministic fallback | Produces a grounded natural-language answer without giving the model direct CAD access |
 | Trace/progression layer | Snapshots, traces, recipe candidates, achievements, exploration, unlock tiers | Governs reuse and progression without autonomous capability expansion |
-| Unit test layer | 166 NUnit 3 compiled tests across broker, tools, and trace | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
+| Unit test layer | 175 NUnit 3 compiled tests across broker, tools, trace, and usage parsing | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
+| Live provider test layer | 6 NUnit 3 smoke tests against real provider APIs | Validates end-to-end model path with usage tracking under real network conditions |
 | Validation/ops layer | PowerShell validation scripts, JSON reports, support bundle collection | Makes the system diagnosable and regression-testable in the real Windows/SOLIDWORKS environment |
 
 ### Runtime Loop
@@ -131,9 +133,8 @@ User request
 ### Track 1 - Grounded Assistant Hardening
 
 Goal:
-- add answer-quality evals for model-backed synthesis
-- add timeout/failure coverage for the synthesis path
 - move from single-turn grounding to richer multi-step execution without breaking the COM boundary
+- decide whether to surface evidence snippets or citations in the answer panel
 
 ### Track 2 - First Usable Beta Path
 

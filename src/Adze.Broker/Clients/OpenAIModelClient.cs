@@ -22,6 +22,8 @@ public sealed class OpenAIModelClient : IModelClient
         public string RawResponseText { get; set; } = string.Empty;
 
         public string FailureReason { get; set; } = string.Empty;
+
+        public ModelUsage Usage { get; set; } = new();
     }
 
     private readonly BrokerModelSettings _settings;
@@ -56,7 +58,8 @@ public sealed class OpenAIModelClient : IModelClient
                 Provider = _settings.Provider,
                 Model = _settings.Model,
                 RawResponseText = completion.RawResponseText,
-                FailureReason = completion.FailureReason
+                FailureReason = completion.FailureReason,
+                Usage = completion.Usage
             };
         }
 
@@ -67,7 +70,8 @@ public sealed class OpenAIModelClient : IModelClient
                 Provider = _settings.Provider,
                 Model = _settings.Model,
                 RawResponseText = completion.AssistantText,
-                FailureReason = payloadFailure
+                FailureReason = payloadFailure,
+                Usage = completion.Usage
             };
         }
 
@@ -78,7 +82,8 @@ public sealed class OpenAIModelClient : IModelClient
                 Provider = _settings.Provider,
                 Model = _settings.Model,
                 RawResponseText = completion.AssistantText,
-                FailureReason = brokerFailure
+                FailureReason = brokerFailure,
+                Usage = completion.Usage
             };
         }
 
@@ -90,7 +95,8 @@ public sealed class OpenAIModelClient : IModelClient
             RawResponseText = completion.AssistantText,
             Response = parsedResponse,
             Summary = parsedResponse?.Summary ?? string.Empty,
-            RequestedTools = parsedResponse?.RecommendedTools.ConvertAll(item => item.ToolName) ?? new List<string>()
+            RequestedTools = parsedResponse?.RecommendedTools.ConvertAll(item => item.ToolName) ?? new List<string>(),
+            Usage = completion.Usage
         };
     }
 
@@ -119,7 +125,8 @@ public sealed class OpenAIModelClient : IModelClient
                 Provider = _settings.Provider,
                 Model = _settings.Model,
                 RawResponseText = completion.RawResponseText,
-                FailureReason = completion.FailureReason
+                FailureReason = completion.FailureReason,
+                Usage = completion.Usage
             };
         }
 
@@ -129,7 +136,8 @@ public sealed class OpenAIModelClient : IModelClient
             Provider = _settings.Provider,
             Model = _settings.Model,
             RawResponseText = completion.RawResponseText,
-            ResponseText = completion.AssistantText.Trim()
+            ResponseText = completion.AssistantText.Trim(),
+            Usage = completion.Usage
         };
     }
 
@@ -182,12 +190,15 @@ public sealed class OpenAIModelClient : IModelClient
             using var reader = new StreamReader(responseStream ?? Stream.Null, Encoding.UTF8);
             string responseText = reader.ReadToEnd();
 
+            ModelUsage usage = ModelResponseParser.ParseUsage(responseText);
+
             if (!TryParseAssistantText(responseText, out string assistantText, out string parseFailure))
             {
                 return new TextCompletionResult
                 {
                     RawResponseText = responseText,
-                    FailureReason = parseFailure
+                    FailureReason = parseFailure,
+                    Usage = usage
                 };
             }
 
@@ -195,7 +206,8 @@ public sealed class OpenAIModelClient : IModelClient
             {
                 Success = true,
                 RawResponseText = responseText,
-                AssistantText = assistantText
+                AssistantText = assistantText,
+                Usage = usage
             };
         }
         catch (WebException ex)

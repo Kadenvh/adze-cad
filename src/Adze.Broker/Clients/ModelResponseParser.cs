@@ -158,6 +158,51 @@ internal static class ModelResponseParser
         return int.TryParse(Convert.ToString(value), out int parsed) ? parsed : 0;
     }
 
+    public static ModelUsage ParseUsage(string rawResponseText)
+    {
+        var usage = new ModelUsage();
+        try
+        {
+            object? payload = CreateSerializer().DeserializeObject(rawResponseText);
+            if (payload is not IDictionary<string, object> responseDictionary)
+            {
+                return usage;
+            }
+
+            if (!responseDictionary.TryGetValue("usage", out object? usageValue) ||
+                usageValue is not IDictionary<string, object> usageDictionary)
+            {
+                return usage;
+            }
+
+            // OpenAI / OpenRouter format
+            usage.PromptTokens = ReadInteger(usageDictionary, "prompt_tokens");
+            usage.CompletionTokens = ReadInteger(usageDictionary, "completion_tokens");
+            usage.TotalTokens = ReadInteger(usageDictionary, "total_tokens");
+
+            // Anthropic format (input_tokens / output_tokens)
+            if (usage.PromptTokens == 0)
+            {
+                usage.PromptTokens = ReadInteger(usageDictionary, "input_tokens");
+            }
+
+            if (usage.CompletionTokens == 0)
+            {
+                usage.CompletionTokens = ReadInteger(usageDictionary, "output_tokens");
+            }
+
+            if (usage.TotalTokens == 0 && (usage.PromptTokens > 0 || usage.CompletionTokens > 0))
+            {
+                usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens;
+            }
+        }
+        catch
+        {
+        }
+
+        return usage;
+    }
+
     private static double ReadDouble(IDictionary<string, object> dictionary, string key)
     {
         if (!dictionary.TryGetValue(key, out object? value))

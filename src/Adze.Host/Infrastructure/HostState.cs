@@ -8,6 +8,7 @@ using Adze.Broker.Configuration;
 using Adze.Broker.Formatting;
 using Adze.Broker.Models;
 using Adze.Broker.Orchestration;
+using ModelUsage = Adze.Broker.Models.ModelUsage;
 using Adze.Contracts.Models;
 using Adze.Host.Services;
 using Adze.Trace.Progression;
@@ -41,6 +42,8 @@ internal sealed class AssistantRunSnapshot
     public string AnswerSource { get; set; } = "deterministic_fallback";
 
     public string AnswerModelId { get; set; } = string.Empty;
+
+    public ModelUsage RunUsage { get; set; } = new();
 }
 
 internal static class HostState
@@ -48,12 +51,27 @@ internal static class HostState
     private static readonly object Sync = new();
     private static readonly string UserId = System.Environment.UserName;
     private static ISldWorks? _application;
+    private static int _sessionRunCount;
+    private static ModelUsage _sessionUsage = new();
 
     public static void SetApplication(ISldWorks? application)
     {
         lock (Sync)
         {
             _application = application;
+        }
+    }
+
+    public static (int RunCount, ModelUsage Usage) GetSessionUsage()
+    {
+        lock (Sync)
+        {
+            return (_sessionRunCount, new ModelUsage
+            {
+                PromptTokens = _sessionUsage.PromptTokens,
+                CompletionTokens = _sessionUsage.CompletionTokens,
+                TotalTokens = _sessionUsage.TotalTokens
+            });
         }
     }
 
@@ -183,11 +201,24 @@ internal static class HostState
             answerSourceText += " (" + synthesis.ModelId + ")";
         }
 
+        ModelUsage runUsage = synthesis.Usage ?? new ModelUsage();
+        lock (Sync)
+        {
+            _sessionRunCount++;
+            _sessionUsage = _sessionUsage + runUsage;
+        }
+
+        string usageText = runUsage.TotalTokens > 0
+            ? "    Tokens: " + runUsage.TotalTokens + " (prompt=" + runUsage.PromptTokens + " completion=" + runUsage.CompletionTokens + ")"
+            : string.Empty;
+
         FileLogger.Info(
             "Assistant run completed. trace=" +
             recorded.TraceEvent.TraceId +
             " answer_source=" +
             answerSourceText +
+            " tokens=" +
+            runUsage.TotalTokens +
             System.Environment.NewLine +
             answerText +
             System.Environment.NewLine +
@@ -199,13 +230,15 @@ internal static class HostState
             AnswerFooterText =
                 "Answer source: " +
                 answerSourceText +
+                usageText +
                 "    Trace ID: " +
                 recorded.TraceEvent.TraceId,
             PlanText = planText,
             ToolsText = toolsText,
             TraceId = recorded.TraceEvent.TraceId,
             AnswerSource = synthesis.Source,
-            AnswerModelId = synthesis.ModelId
+            AnswerModelId = synthesis.ModelId,
+            RunUsage = runUsage
         };
     }
 

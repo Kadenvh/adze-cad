@@ -19,7 +19,9 @@ The repo is no longer a speculative scaffold. It currently contains:
 - an answer-first Task Pane layout with separate `Plan`, `Status`, and `Tools` surfaces
 - background provider execution after host-thread context capture so slow network calls do not freeze the Task Pane
 - COM traversal cleanup and logged graceful degradation in the session-context builder
-- 166 compiled NUnit unit tests covering broker orchestration, model response parsing, configuration, prompt composition, all 10 grounding tools, trace serialization, deterministic answer building, tool results formatting, and synthesis service orchestration
+- 175 compiled NUnit unit tests covering broker orchestration, model response parsing, configuration, prompt composition, all 10 grounding tools, trace serialization, deterministic answer building, tool results formatting, synthesis service orchestration, and usage parsing
+- 6 live provider smoke tests (Category: LiveProvider) exercising real API calls for broker planning, synthesis, and orchestration
+- per-run and session-level token usage tracking from API responses through to the Status tab and answer footer
 - machine-readable broker and benchmark reports
 - a one-command support bundle workflow for diagnostics
 
@@ -29,14 +31,14 @@ The repo is no longer a speculative scaffold. It currently contains:
 |------|--------|
 | `validate-json-schemas.ps1` | PASS |
 | `build-all.ps1 -StopSolidWorks` | PASS |
-| `run-tests.ps1` | PASS (`166/166`) |
+| `run-tests.ps1` | PASS (`175/175`, 6 inconclusive smoke tests without env vars) |
 | `run-broker-evals.ps1` | PASS (`12/12`) |
 | `validate-host-spike.ps1` | PASS |
 | `run-grounding-benchmarks.ps1` | PASS (`12/12`) |
 | Provider selection matrix | PASS |
 | `collect-support-bundle.ps1` | PASS |
 | HKLM residue for active add-in GUID | Not present |
-| Live external provider smoke with real API key | Pending local key availability |
+| `run-provider-smoke.ps1` via OpenRouter | PASS (`6/6`) with usage tracking verified |
 | Human visual acceptance of latest Task Pane overhaul | Pending desktop confirmation |
 
 ## Active Workstreams
@@ -47,9 +49,9 @@ The repo is no longer a speculative scaffold. It currently contains:
 **Why it matters:** The system now produces model-backed grounded answers, but the eval surface still focuses more on tool selection than on answer quality.
 
 **Next steps:**
-- run a real OpenAI or Anthropic smoke test with a local API key and record the observed answer source in logs
 - decide whether the assistant should surface evidence snippets or citations from tool results
 - expand from the current single-turn loop toward richer multi-step execution without breaking the COM boundary
+- consider accumulating broker planning usage alongside synthesis usage in session counters
 
 ### 2. Session And Install Hardening
 
@@ -88,8 +90,7 @@ The repo is no longer a speculative scaffold. It currently contains:
 
 - No local `dotnet` SDK is installed. The repo still assumes a Visual Studio/MSBuild-first workflow. NUnit tests run via the NUnit3 console runner and NuGet packages restored with `nuget.exe` under `tools/`.
 - Launcher-managed prerequisite windows can block live host validation even when the add-in code is healthy.
-- The eval surface now covers tool selection, answer building, tool results formatting, and synthesis orchestration. Live provider answer quality still needs a real API key smoke test.
-- No real provider API key is available in the current shell environment, so external provider smoke validation is still pending.
+- The eval surface now covers tool selection, answer building, tool results formatting, synthesis orchestration, usage parsing, and live provider smoke testing via OpenRouter.
 - The latest Task Pane overhaul is build-validated and host-validated, but its current visual acceptance still needs a direct desktop check inside SOLIDWORKS.
 - Packaging/install/update is still not implemented as a tester-friendly workflow.
 - The runtime remains intentionally read-only. Any attempt to rush write tools before the safety contract exists would lower quality.
@@ -109,12 +110,16 @@ The repo is no longer a speculative scaffold. It currently contains:
 - Compiled NUnit 3 unit test suite (166 tests) covering broker, tools, trace serialization, configuration, prompt composition, deterministic answer building, tool results formatting, and synthesis service orchestration — all passing in under 1 second
 - Moved pure-logic synthesis types (GroundingAnswerBuilder, GroundingToolResultsBuilder, GroundingSynthesisService) from Host to Broker to enable unit testing without SOLIDWORKS COM dependencies
 - Portable setup scripts using `$PSScriptRoot`-relative paths instead of hardcoded repo locations
+- Live provider smoke tests (6 tests) validated against OpenRouter with `openai/gpt-4o`, covering broker planning, synthesis, tool relevance, answer grounding, and end-to-end orchestration
+- Full token usage monitoring pipeline: `ModelUsage` contract, response parsing in both OpenAI and Anthropic clients, session-level accumulation in the host, answer footer token breakdown, Status tab cumulative display
+- Usage parsing unit tests (9 tests) covering OpenAI, Anthropic, OpenRouter formats, edge cases, and accumulation operator
 
 ## Immediate Task Checklist
 
 - [x] Add synthesis answer-quality eval cases (36 unit tests covering answer builder, tool results builder, and synthesis service)
 - [x] Add explicit synthesis timeout/failure eval cases (synthesis service tests cover null client, model failure, empty/whitespace response, failure reason normalization)
-- [ ] Run a live provider-backed smoke test with a real API key
+- [x] Run a live provider-backed smoke test with a real API key (6 tests pass via OpenRouter)
+- [x] Add token usage monitoring across broker clients, host, and Status tab
 - [ ] Capture a human visual acceptance pass of the latest Task Pane overhaul
 - [ ] Harden launcher/update/login interruption handling
 - [ ] Add beta-friendly install/update assets under `install/`

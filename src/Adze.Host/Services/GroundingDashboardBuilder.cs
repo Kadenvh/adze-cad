@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using Adze.Broker.Models;
 using Adze.Contracts.Models;
+using Adze.Host.Infrastructure;
 using Adze.Tools;
 
 namespace Adze.Host.Services;
@@ -46,6 +48,15 @@ internal static class GroundingDashboardBuilder
         sb.AppendLine("Exploration percent: " + context.Policy.ExplorationPercent.ToString("0.0"));
         sb.AppendLine("Achievements unlocked: " + progressionState.Achievements.Count);
         sb.AppendLine("Review-ready recipes: " + reviewReadyCandidateCount);
+        (int runCount, ModelUsage sessionUsage) = HostState.GetSessionUsage();
+        sb.AppendLine("Session runs: " + runCount);
+        if (sessionUsage.TotalTokens > 0)
+        {
+            sb.AppendLine("Session tokens: " + sessionUsage.TotalTokens +
+                " (prompt=" + sessionUsage.PromptTokens +
+                " completion=" + sessionUsage.CompletionTokens + ")");
+        }
+
         sb.AppendLine("Session guidance: " + BuildSessionGuidance(isConnected, context));
 
         AchievementState? latestAchievement = progressionState.Achievements.Count == 0

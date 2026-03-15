@@ -23,13 +23,15 @@ The first usable build is not a production release. It is the first build where 
 - provider-routed model-backed final answer synthesis with deterministic fallback
 - traces, recipes, achievements, exploration, and unlock tiers
 - green scripted validation on the curated corpus
-- 166 compiled NUnit unit tests covering broker, tools, and trace layers
+- 175 compiled NUnit unit tests covering broker, tools, trace, and usage parsing layers
+- 6 live provider smoke tests validated via OpenRouter
+- per-run and session-level token usage monitoring in the answer footer and Status tab
 - assistant-first Task Pane workspace with `Plan`, `Status`, and `Tools` tabs
 - one-command support bundle collection
 
 ## What Still Prevents "First Usable Build"
 
-- answer-quality eval coverage is still thin compared to tool-selection coverage
+- answer-quality eval coverage has improved but still needs more diverse scenarios
 - launcher/login/update interruption handling still leaks operational complexity to the user
 - install/update packaging is still a developer workflow
 - the Task Pane still needs a bit more assistant-product polish
@@ -44,14 +46,14 @@ The first usable build is not a production release. It is the first build where 
 - provider-routed model-backed final answer synthesis exists
 - deterministic fallback exists for both planning and final answer rendering
 - provider-selection checks already prove the OpenAI/Anthropic routing branch works as designed
+- live provider smoke tests pass via OpenRouter with usage tracking verified
+- token usage monitoring pipeline is complete from API response to Task Pane display
 
 ### Remaining
 
-- add answer-quality eval tasks for synthesis output
-- add explicit synthesis timeout/failure coverage
-- run a live external-provider smoke test with a real API key
 - decide whether answers should expose evidence snippets or citations from tool results
 - tighten any prompt behavior that feels too generic or too verbose in live use
+- expand live smoke test scenarios beyond the current 6-test suite
 
 ### Exit Criteria
 
@@ -130,7 +132,7 @@ Minimum validation gate:
 
 1. `validate-json-schemas.ps1`
 2. `build-all.ps1 -StopSolidWorks`
-3. `run-tests.ps1` (166 compiled unit tests)
+3. `run-tests.ps1` (175 compiled unit tests + 6 live provider smoke tests)
 4. `validate-host-spike.ps1`
 5. `run-grounding-benchmarks.ps1`
 6. `run-broker-evals.ps1`
@@ -140,7 +142,7 @@ Minimum validation gate:
 
 ## Recommended Execution Order From Here
 
-1. Add answer-quality and failure-mode evals for the synthesis path.
-2. Harden launcher/login/update interruption handling.
-3. Add install/update assets under `install/`.
-4. Continue Task Pane polish around evidence display and future confirmations.
+1. Harden launcher/login/update interruption handling.
+2. Add install/update assets under `install/`.
+3. Continue Task Pane polish around evidence display and future confirmations.
+4. Expand live provider smoke test scenarios for richer answer-quality coverage.

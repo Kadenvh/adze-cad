@@ -2,6 +2,25 @@ using System.Collections.Generic;
 
 namespace Adze.Broker.Models;
 
+public sealed class ModelUsage
+{
+    public int PromptTokens { get; set; }
+
+    public int CompletionTokens { get; set; }
+
+    public int TotalTokens { get; set; }
+
+    public static ModelUsage operator +(ModelUsage a, ModelUsage b)
+    {
+        return new ModelUsage
+        {
+            PromptTokens = (a?.PromptTokens ?? 0) + (b?.PromptTokens ?? 0),
+            CompletionTokens = (a?.CompletionTokens ?? 0) + (b?.CompletionTokens ?? 0),
+            TotalTokens = (a?.TotalTokens ?? 0) + (b?.TotalTokens ?? 0)
+        };
+    }
+}
+
 public sealed class BrokerPrompt
 {
     public string SystemPrompt { get; set; } = string.Empty;
@@ -73,6 +92,8 @@ public sealed class ModelTurnResult
     public string Summary { get; set; } = string.Empty;
 
     public List<string> RequestedTools { get; set; } = new();
+
+    public ModelUsage Usage { get; set; } = new();
 }
 
 public sealed class AssistantSynthesisResult
@@ -88,4 +109,6 @@ public sealed class AssistantSynthesisResult
     public string FailureReason { get; set; } = string.Empty;
 
     public string ResponseText { get; set; } = string.Empty;
+
+    public ModelUsage Usage { get; set; } = new();
 }

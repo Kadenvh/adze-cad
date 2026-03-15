@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Adze.Broker.Abstractions;
 using Adze.Broker.Clients;
 using Adze.Broker.Formatting;
@@ -14,6 +15,8 @@ public sealed class GroundingSynthesisOutcome
     public string ModelId { get; set; } = string.Empty;
 
     public string FailureReason { get; set; } = string.Empty;
+
+    public ModelUsage Usage { get; set; } = new();
 }
 
 public static class GroundingSynthesisService
@@ -44,23 +47,26 @@ public static class GroundingSynthesisService
                 fallbackAnswer,
                 string.IsNullOrWhiteSpace(synthesis.FailureReason)
                     ? "Model synthesis returned no usable answer."
-                    : synthesis.FailureReason);
+                    : synthesis.FailureReason,
+                synthesis.Usage);
         }
 
         return new GroundingSynthesisOutcome
         {
             AnswerText = synthesis.ResponseText.Trim(),
             Source = ModelClientFactory.BuildModelSourceLabel(synthesis.Provider),
-            ModelId = synthesis.Model
+            ModelId = synthesis.Model,
+            Usage = synthesis.Usage ?? new ModelUsage()
         };
     }
 
-    private static GroundingSynthesisOutcome CreateFallback(string answerText, string failureReason = "")
+    private static GroundingSynthesisOutcome CreateFallback(string answerText, string failureReason = "", ModelUsage? usage = null)
     {
         return new GroundingSynthesisOutcome
         {
             AnswerText = answerText,
-            FailureReason = NormalizeFailureReason(failureReason)
+            FailureReason = NormalizeFailureReason(failureReason),
+            Usage = usage ?? new ModelUsage()
         };
     }
 

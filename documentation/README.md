@@ -18,7 +18,7 @@ As of 2026-03-15, the repo has a real working implementation, not just planning 
 - an assistant-first Task Pane workspace with `Plan`, `Status`, and `Tools` tabs
 - background model execution after UI-thread context capture so slow network calls do not freeze the pane
 - trace, recipe-candidate, achievement, exploration, and unlock persistence
-- 130 compiled NUnit unit tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization
+- 175 compiled NUnit unit tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, trace serialization, usage parsing, and live provider smoke tests
 - green scripted validation for build, schemas, unit tests, broker evals, host validation, and grounding benchmarks
 - one-command support bundle collection for logs, traces, snapshots, reports, and launcher preflight output
 - explicit COM cleanup and logged graceful degradation across the session-context builder
