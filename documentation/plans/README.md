@@ -22,6 +22,8 @@ Files here are research, discovery, and planning artifacts. When they conflict w
 | `discovery-solidworks-write-api.md` | SOLIDWORKS COM write API research with method signatures | Validated 2026-03-15 |
 | `discovery-agent-loop-architecture.md` | Threading model, conversation state, and agent loop design | Validated 2026-03-15 |
 | `discovery-clarification-ui.md` | Pre-prompt clarification UI design for Task Pane | Validated 2026-03-15 |
+| `research-closed-file-retrieval.md` | Closed-file metadata retrieval: OLE properties, Document Manager API, indexing architecture | Research complete 2026-03-15 |
+| `research-write-safety-rollback.md` | Write operation rollback guarantees, undo mechanics, failure modes, and wave safety classification | Research complete 2026-03-15 |
 | `diagnostics/` | Environment diagnostics and planning-era setup scripts | Historical |
 
 ## Archived
