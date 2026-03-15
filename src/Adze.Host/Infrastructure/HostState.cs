@@ -43,6 +43,8 @@ internal sealed class AssistantRunSnapshot
 
     public string AnswerModelId { get; set; } = string.Empty;
 
+    public string TurnStatus { get; set; } = "ready";
+
     public ModelUsage RunUsage { get; set; } = new();
 }
 
@@ -238,6 +240,7 @@ internal static class HostState
             TraceId = recorded.TraceEvent.TraceId,
             AnswerSource = synthesis.Source,
             AnswerModelId = synthesis.ModelId,
+            TurnStatus = report.Response.TurnStatus,
             RunUsage = runUsage
         };
     }

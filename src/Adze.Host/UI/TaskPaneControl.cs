@@ -728,10 +728,25 @@ public sealed class TaskPaneControl : UserControl
 
     private static string BuildRunStateText(AssistantRunSnapshot snapshot)
     {
+        if (string.Equals(snapshot.TurnStatus, "host_unavailable", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SOLIDWORKS is not connected. See the answer panel for recovery steps.";
+        }
+
+        if (string.Equals(snapshot.TurnStatus, "needs_document", StringComparison.OrdinalIgnoreCase))
+        {
+            return "No document is open. Open a part, assembly, or drawing and run again.";
+        }
+
         string source = snapshot.AnswerSource;
         if (!string.IsNullOrWhiteSpace(snapshot.AnswerModelId))
         {
             source += " (" + snapshot.AnswerModelId + ")";
+        }
+
+        if (snapshot.RunUsage.TotalTokens > 0)
+        {
+            return "Last run: " + source + "  |  " + snapshot.RunUsage.TotalTokens + " tokens";
         }
 
         return "Last run: " + source + ".";

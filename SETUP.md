@@ -11,9 +11,34 @@ This guide is for someone who has the Adze source code and wants to build, regis
 - PowerShell 7 or newer (`pwsh`) for build and schema-validation scripts.
 - Windows PowerShell 5.1 (`powershell.exe`) for host validation, reload, and benchmark scripts.
 
-## Build and Install
+## Beta Install (No Source Code Required)
 
-Build the full solution:
+If you received a packaged release zip (`adze-v*.zip`):
+
+1. Extract the zip to any folder.
+2. Open PowerShell and run:
+
+```powershell
+powershell.exe -NoProfile -File install-adze.ps1
+```
+
+This copies binaries to `%LOCALAPPDATA%\Adze\bin\`, registers the add-in per user (no admin required), and runs pre-flight checks.
+
+3. Launch SOLIDWORKS. The `Adze for SOLIDWORKS` tab should appear in the right sidebar.
+
+To update, extract the new zip over the old one and rerun `install-adze.ps1`.
+
+To uninstall:
+
+```powershell
+powershell.exe -NoProfile -File uninstall-adze.ps1
+```
+
+Add `-RemoveUserData` to also remove traces, logs, and progression state.
+
+## Developer Build and Install
+
+Build the full solution from source:
 
 ```powershell
 pwsh -NoProfile -File scripts\setup\build-all.ps1 -StopSolidWorks
@@ -26,6 +51,12 @@ powershell.exe -NoProfile -File scripts\setup\register-host-addin.ps1
 ```
 
 Launch SOLIDWORKS. The `Adze for SOLIDWORKS` tab should appear in the right sidebar.
+
+To package a release zip for distribution:
+
+```powershell
+pwsh -NoProfile -File install\package-release.ps1
+```
 
 If a `Login | 3DEXPERIENCE ID | Dassault Systèmes` window or a `3DEXPERIENCE Update` window appears, complete it first. Those launcher-managed windows can block SOLIDWORKS from loading far enough to start the add-in.
 
