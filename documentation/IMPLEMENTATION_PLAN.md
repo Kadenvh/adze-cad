@@ -3,8 +3,8 @@
 **Version:** 0.1.0
 **Created:** 2026-03-11
 **Last Updated:** 2026-03-15
-**Current Phase:** Phase 2A complete. Entering agentic implementation (Phases 1A-2 from END-GOAL-FINAL).
-**Status:** Hardening is done. Full agentic vision validated through 4 discovery briefs + 7 research briefs. Implementation blueprint and task breakdown ready. Next: build the clarification UI and agent loop.
+**Current Phase:** Phase 2 (Agentic Tool Loop) complete. Next: Phase 3 (Snapshot/Diff/Verification) and Phase 4 (First Write Tools).
+**Status:** Agentic tool loop is implemented and integrated. The assistant can now iteratively call tools, observe results, and generate grounded answers through a model-driven loop. 275 tests passing. Next: write tool safety infrastructure and first write tools.
 
 ## Current Working Baseline
 
@@ -14,7 +14,11 @@
 - hybrid broker with OpenAI/Anthropic/OpenRouter provider routing and deterministic fallback
 - model-backed final answer synthesis with deterministic fallback
 - per-run and session-level token usage monitoring (API response → answer footer → Status tab)
-- 175 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- 275 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- **agentic tool loop** (Phase 2): `OpenAIFormatAgentClient`, `AgentLoopRunner`, `AgentToolDispatcher`, `ToolDefinitionBuilder`, `AgentModelClientFactory`. Feature-gated behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Existing single-turn path remains default fallback.
+- pre-prompt clarification UI with Intent/Scope/Output/Diagnostics axes populated from live SessionContext
+- conversation state with sliding window truncation (`AgentConversationState`, `ConversationTruncator`)
+- cancel button support with `CancellationTokenSource` lifecycle
 - launcher interruption detection with multi-pattern blocker scanning, JSON preflight report, retry with timeout, and validation preflight gate
 - beta install/uninstall/packaging workflow (`install/install-adze.ps1`, `uninstall-adze.ps1`, `package-release.ps1`)
 - Task Pane run state label shows meaningful status for blocked/disconnected states and token counts
@@ -100,11 +104,12 @@
 - [x] Complete agentic vision discovery and research (11 briefs)
 - [x] Compile END-GOAL-FINAL.md with external agent validation
 - [x] Create comprehensive task breakdown (TASK-INDEX.md)
-- [ ] **Phase 1A:** Add pre-prompt clarification UI to Task Pane
-- [ ] **Phase 1B:** Add conversation state and follow-up turn support
-- [ ] **Phase 2:** Implement agentic tool loop with native API tool calling
-- [ ] **Phase 3:** Implement snapshot/diff verification layer
-- [ ] **Phase 4:** Implement first-wave write tools with confirmation UI
+- [x] **Phase 1A:** Add pre-prompt clarification UI to Task Pane
+- [x] **Phase 1B:** Add conversation state and follow-up turn support
+- [x] **Phase 2:** Implement agentic tool loop with native API tool calling (OpenAIFormatAgentClient, AgentLoopRunner, AgentToolDispatcher, ToolDefinitionBuilder, HostState integration, cancel support)
+- [ ] **Phase 2 live test:** Run agentic loop with real API key in SOLIDWORKS to verify end-to-end
+- [ ] **Phase 3:** Implement snapshot/diff verification layer (IStateSnapshotService, IStateDiffService, IVerificationPolicy)
+- [ ] **Phase 4:** Implement first-wave write tools with confirmation UI (set_custom_property, set_dimension_value, suppress_feature)
 - [ ] Decide whether answer evidence snippets belong in the Task Pane
 - [ ] Decide whether recipe suggestions should appear in the Task Pane
 
@@ -117,5 +122,6 @@ If a new agent or session picks this up:
 3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown.
 4. Read `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` for C# interface contracts.
 5. The 7 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
-6. The grounded alpha is proven and hardened. The next work is implementation, not more planning.
-7. Phase 1A and 1B can start immediately and run in parallel.
+6. Phases 1A, 1B, and 2 are implemented. The agentic tool loop is live behind `SOLIDWORKS_AI_AGENT_LOOP=true`.
+7. Next: live test the agent loop in SOLIDWORKS, then build Phase 3 (snapshot/diff/verification) and Phase 4 (first write tools).
+8. The 7 research briefs in `documentation/plans/research-*.md` validated all platform-specific execution concerns.

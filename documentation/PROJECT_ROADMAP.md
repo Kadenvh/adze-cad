@@ -36,6 +36,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-15 | Live provider validation and usage monitoring: 6 smoke tests via OpenRouter, full token tracking pipeline from API response to Status tab, 9 usage parsing tests (175 unit + 6 live) |
 | 0.1.0 | 2026-03-15 | Phase 2A hardening complete: launcher interruption hardening (multi-pattern detection, JSON preflight, retry, validation gate), beta install/uninstall/packaging, Task Pane messaging, visual acceptance confirmed |
 | 0.1.0 | 2026-03-15 | Full agentic vision validated: 4 discovery briefs + 7 research briefs + external agent review. END-GOAL-FINAL.md, IMPLEMENTATION-BLUEPRINT.md, and TASK-INDEX.md compiled. 8 architecture layers, 5 capability classes, 8 phase gates defined. |
+| 0.1.0 | 2026-03-15 | Agentic tool loop implemented (Phase 1A+1B+2): clarification UI, conversation state with truncation, OpenAIFormatAgentClient, AgentLoopRunner, AgentToolDispatcher, ToolDefinitionBuilder, host integration with cancel support. 275 tests (100 new). |
 
 ## Current Architecture
 
