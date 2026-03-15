@@ -19,7 +19,7 @@ The repo is no longer a speculative scaffold. It currently contains:
 - an answer-first Task Pane layout with separate `Plan`, `Status`, and `Tools` surfaces
 - background provider execution after host-thread context capture so slow network calls do not freeze the Task Pane
 - COM traversal cleanup and logged graceful degradation in the session-context builder
-- 130 compiled NUnit unit tests covering broker orchestration, model response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization
+- 166 compiled NUnit unit tests covering broker orchestration, model response parsing, configuration, prompt composition, all 10 grounding tools, trace serialization, deterministic answer building, tool results formatting, and synthesis service orchestration
 - machine-readable broker and benchmark reports
 - a one-command support bundle workflow for diagnostics
 
@@ -29,7 +29,7 @@ The repo is no longer a speculative scaffold. It currently contains:
 |------|--------|
 | `validate-json-schemas.ps1` | PASS |
 | `build-all.ps1 -StopSolidWorks` | PASS |
-| `run-tests.ps1` | PASS (`130/130`) |
+| `run-tests.ps1` | PASS (`166/166`) |
 | `run-broker-evals.ps1` | PASS (`12/12`) |
 | `validate-host-spike.ps1` | PASS |
 | `run-grounding-benchmarks.ps1` | PASS (`12/12`) |
@@ -47,8 +47,6 @@ The repo is no longer a speculative scaffold. It currently contains:
 **Why it matters:** The system now produces model-backed grounded answers, but the eval surface still focuses more on tool selection than on answer quality.
 
 **Next steps:**
-- add answer-quality eval cases for model synthesis
-- add explicit timeout/failure coverage for the synthesis path
 - run a real OpenAI or Anthropic smoke test with a local API key and record the observed answer source in logs
 - decide whether the assistant should surface evidence snippets or citations from tool results
 - expand from the current single-turn loop toward richer multi-step execution without breaking the COM boundary
@@ -108,12 +106,14 @@ The repo is no longer a speculative scaffold. It currently contains:
 - COM child-object release and diagnostic logging across session-context traversal
 - Machine-readable benchmark/eval reports
 - One-command support bundle generation under `%LOCALAPPDATA%\Adze\SupportBundles`
-- Compiled NUnit 3 unit test suite (130 tests) covering broker, tools, trace serialization, configuration, and prompt composition — all passing in under 1 second
+- Compiled NUnit 3 unit test suite (166 tests) covering broker, tools, trace serialization, configuration, prompt composition, deterministic answer building, tool results formatting, and synthesis service orchestration — all passing in under 1 second
+- Moved pure-logic synthesis types (GroundingAnswerBuilder, GroundingToolResultsBuilder, GroundingSynthesisService) from Host to Broker to enable unit testing without SOLIDWORKS COM dependencies
+- Portable setup scripts using `$PSScriptRoot`-relative paths instead of hardcoded repo locations
 
 ## Immediate Task Checklist
 
-- [ ] Add synthesis answer-quality eval cases
-- [ ] Add explicit synthesis timeout/failure eval cases
+- [x] Add synthesis answer-quality eval cases (36 unit tests covering answer builder, tool results builder, and synthesis service)
+- [x] Add explicit synthesis timeout/failure eval cases (synthesis service tests cover null client, model failure, empty/whitespace response, failure reason normalization)
 - [ ] Run a live provider-backed smoke test with a real API key
 - [ ] Capture a human visual acceptance pass of the latest Task Pane overhaul
 - [ ] Harden launcher/update/login interruption handling

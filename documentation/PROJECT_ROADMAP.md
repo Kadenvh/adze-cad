@@ -31,7 +31,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-11 | Discovery finalized and bootstrap documentation established |
 | 0.1.0 | 2026-03-13 | Reached grounded assistant alpha: native host, 10 read-only tools, hybrid broker, model-backed answer synthesis, answer-first Task Pane, support bundle workflow |
 | 0.1.0 | 2026-03-13 | Expanded alpha hardening: OpenAI plus Anthropic provider routing, assistant-workspace UI overhaul, background provider execution, and COM cleanup/logging across session-context traversal |
-| 0.1.0 | 2026-03-15 | Compiled NUnit 3 unit test suite: 130 tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization |
+| 0.1.0 | 2026-03-15 | Compiled NUnit 3 unit test suite: 166 tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization |
 
 ## Current Architecture
 
@@ -45,7 +45,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | Broker layer | Hybrid deterministic + OpenAI/Anthropic planning | Produces structured turn state, tool recommendations, blockers, and recovery guidance |
 | Answer layer | Provider-routed synthesis over executed tool results with deterministic fallback | Produces a grounded natural-language answer without giving the model direct CAD access |
 | Trace/progression layer | Snapshots, traces, recipe candidates, achievements, exploration, unlock tiers | Governs reuse and progression without autonomous capability expansion |
-| Unit test layer | 130 NUnit 3 compiled tests across broker, tools, and trace | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
+| Unit test layer | 166 NUnit 3 compiled tests across broker, tools, and trace | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
 | Validation/ops layer | PowerShell validation scripts, JSON reports, support bundle collection | Makes the system diagnosable and regression-testable in the real Windows/SOLIDWORKS environment |
 
 ### Runtime Loop

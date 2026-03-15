@@ -23,7 +23,7 @@ The first usable build is not a production release. It is the first build where 
 - provider-routed model-backed final answer synthesis with deterministic fallback
 - traces, recipes, achievements, exploration, and unlock tiers
 - green scripted validation on the curated corpus
-- 130 compiled NUnit unit tests covering broker, tools, and trace layers
+- 166 compiled NUnit unit tests covering broker, tools, and trace layers
 - assistant-first Task Pane workspace with `Plan`, `Status`, and `Tools` tabs
 - one-command support bundle collection
 
@@ -130,7 +130,7 @@ Minimum validation gate:
 
 1. `validate-json-schemas.ps1`
 2. `build-all.ps1 -StopSolidWorks`
-3. `run-tests.ps1` (130 compiled unit tests)
+3. `run-tests.ps1` (166 compiled unit tests)
 4. `validate-host-spike.ps1`
 5. `run-grounding-benchmarks.ps1`
 6. `run-broker-evals.ps1`
