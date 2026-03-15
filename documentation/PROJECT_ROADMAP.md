@@ -37,7 +37,8 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-15 | Phase 2A hardening complete: launcher interruption hardening (multi-pattern detection, JSON preflight, retry, validation gate), beta install/uninstall/packaging, Task Pane messaging, visual acceptance confirmed |
 | 0.1.0 | 2026-03-15 | Full agentic vision validated: 4 discovery briefs + 7 research briefs + external agent review. END-GOAL-FINAL.md, IMPLEMENTATION-BLUEPRINT.md, and TASK-INDEX.md compiled. 8 architecture layers, 5 capability classes, 8 phase gates defined. |
 | 0.1.0 | 2026-03-15 | Agentic tool loop implemented (Phase 1A+1B+2): clarification UI, conversation state with truncation, OpenAIFormatAgentClient, AgentLoopRunner, AgentToolDispatcher, ToolDefinitionBuilder, host integration with cancel support. 275 tests (100 new). |
-| 0.1.0 | 2026-03-16 | Write tool safety infrastructure + first-wave write tools (Phase 3+4 core): IStateSnapshotService, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder, WriteExecutionCoordinator, SetCustomPropertyTool, SetDimensionValueTool, SuppressFeatureTool, UnsuppressFeatureTool. Feature-gated behind SOLIDWORKS_AI_FIRST_WAVE_WRITES. 341 tests (66 new). |
+| 0.1.0 | 2026-03-16 | Write tool safety infrastructure + first-wave write tools (Phase 3+4 core): IStateSnapshotService, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder, WriteExecutionCoordinator, SetCustomPropertyTool, SetDimensionValueTool, SuppressFeatureTool, UnsuppressFeatureTool. Feature-gated behind SOLIDWORKS_AI_FIRST_WAVE_WRITES. |
+| 0.1.0 | 2026-03-16 | Learning activation + memory + hardening (Phases 5-8 core): ITrustService, TrustService, AgentRecipeCaptureService, write tool achievements, TrustedBounded tier, DocumentMemory, MemoryStore, UserPreferenceMemory, CostBudgetSettings, BudgetStatus, FeatureGateRegistry. 378 tests (103 new this session). |
 
 ## Current Architecture
 
@@ -47,11 +48,12 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 |------|-------------------------|---------|
 | Native host | In-process C# SOLIDWORKS add-in | Owns lifecycle, COM access, Task Pane UI, and tool execution |
 | Context boundary | Shared C# contracts plus JSON schemas | Keeps host, broker, tools, traces, and scripts aligned |
-| Tool layer | 10 read-only grounding tools | Exposes auditable inspection over the active CAD session |
+| Tool layer | 10 read-only grounding tools + 4 first-wave write tools | Exposes auditable inspection and governed modification over the active CAD session |
 | Broker layer | Hybrid deterministic + OpenAI/Anthropic planning | Produces structured turn state, tool recommendations, blockers, and recovery guidance |
 | Answer layer | Provider-routed synthesis over executed tool results with deterministic fallback | Produces a grounded natural-language answer without giving the model direct CAD access |
-| Trace/progression layer | Snapshots, traces, recipe candidates, achievements, exploration, unlock tiers | Governs reuse and progression without autonomous capability expansion |
-| Unit test layer | 175 NUnit 3 compiled tests across broker, tools, trace, and usage parsing | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
+| Write safety layer | Snapshot/diff/verification, WriteExecutionCoordinator, IWriteTool lifecycle | Ensures write tools follow preview/apply/verify/trace pattern |
+| Trace/progression layer | Snapshots, traces, recipe candidates, achievements, trust tiers, per-document memory | Governs reuse, learning, and progression without autonomous capability expansion |
+| Unit test layer | 378 NUnit 3 compiled tests across broker, tools (read + write), trace, learning, memory, cost budgets, and feature gates | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
 | Live provider test layer | 6 NUnit 3 smoke tests against real provider APIs | Validates end-to-end model path with usage tracking under real network conditions |
 | Validation/ops layer | PowerShell validation scripts, JSON reports, support bundle collection | Makes the system diagnosable and regression-testable in the real Windows/SOLIDWORKS environment |
 

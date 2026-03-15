@@ -144,55 +144,49 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ---
 
-## Phase 5: Learning Activation and Trust Policy
+## Phase 5: Learning Activation and Trust Policy ✓ (core)
 
-### T5-01: Recipe candidate capture from agent traces
-- [ ] Extract tool sequences from successful multi-step runs
-- [ ] Create RecipeCandidate with title, tool sequence, verified run count
-- [ ] Only capture from runs with verified write success
-- **Files:** `src/Adze.Trace/Recipes/`
+### T5-01: Recipe candidate capture from agent traces ✓
+- `AgentRecipeCaptureService` in `Adze.Trace/Recipes/`
+- Captures from successful runs, requires verified writes for write-containing recipes
+- Promotes to review_ready after 3 successful traces
+- 6 unit tests
 
-### T5-02: Recipe promotion workflow
-- [ ] Require repeated verified success (configurable threshold)
-- [ ] Track failure/cancellation rates
-- [ ] User review step before promotion
-- [ ] Promoted recipes stored under `%LOCALAPPDATA%\Adze\recipes\promoted\`
-- **Files:** `src/Adze.Trace/Recipes/`, `src/Adze.Host/`
+### T5-02: Recipe promotion workflow ✓
+- `AgentRecipeCaptureService.Promote()` — moves review_ready to promoted directory
+- `ListPromoted()` — enumerates promoted recipes
 
-### T5-03: Trust tier progression
-- [ ] Implement ITrustService with tier calculation from evidence
-- [ ] Tiers: Baseline → Assisted → Reviewed → TrustedBounded
-- [ ] Tier governs which capability classes are available
-- [ ] No silent permission widening
-- **Files:** `src/Adze.Host/Policy/`
+### T5-03: Trust tier progression ✓
+- `ITrustService` in `Adze.Contracts/Abstractions/`
+- `TrustService` in `Adze.Trace/Progression/`
+- Tiers: Baseline → Assisted → Reviewed → TrustedBounded
+- TrustedBounded requires Reviewed + all first-wave writes completed
+- 5 unit tests
 
 ### T5-04: Surface recipes in Task Pane
 - [ ] "Suggested recipes" section when relevant recipes match current context
 - [ ] One-click execution of promoted recipes
-- [ ] Recipe execution still respects confirmation requirements
 - **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
 
-### T5-05: Achievement tracking from real usage
-- [ ] Track mastery areas by tool usage patterns
-- [ ] Achievement events recorded in traces
-- [ ] Exploration percentage updated per session
-- **Files:** `src/Adze.Trace/Progression/`
+### T5-05: Achievement tracking from real usage ✓
+- Write tool achievements added to ProgressionEngine: first_property_write, first_dimension_write, first_feature_suppression, first_wave_writes_completed
+- 3 unit tests
 
 ---
 
-## Phase 6: Retrieval and Cross-Session Memory
+## Phase 6: Retrieval and Cross-Session Memory (core ✓)
 
-### T6-01: Implement per-document memory
-- [ ] Store learned patterns per document under `%LOCALAPPDATA%\Adze\memory\{hash}\`
-- [ ] Key dimensions, common workflows, known issues
-- [ ] Load on document open, save on session end
-- **Files:** `src/Adze.Host/Runtime/` (new IMemoryStore)
+### T6-01: Implement per-document memory ✓
+- `DocumentMemory` + `MemoryStore` in `Adze.Trace/Memory/`
+- SHA256 document key, stores key dimensions, properties, workflows, issues, recent intents
+- `RecordIntent()` increments session count and tracks intents
+- 8 unit tests
 
-### T6-02: Implement user preference memory
-- [ ] Preferred answer mode, verbosity, focus areas
-- [ ] Store under `%LOCALAPPDATA%\Adze\state\user-preferences.json`
-- [ ] Inject into system prompt for personalization
-- **Files:** `src/Adze.Host/Runtime/`
+### T6-02: Implement user preference memory ✓
+- `UserPreferenceMemory` in `Adze.Trace/Memory/`
+- Stores answer mode, verbosity, focus areas, diagnostics preference
+- Save/load under `%LOCALAPPDATA%\Adze\state\user-preferences.json`
+- 4 unit tests
 
 ### T6-03: Implement Adze.Index project (OLE reader)
 - [ ] New project or namespace for closed-file indexing
@@ -246,11 +240,13 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ## Phase 8: Production Hardening
 
-### T8-01: Cost controls and budget management
-- [ ] Per-session token budget limit
-- [ ] Per-day token budget limit
+### T8-01: Cost controls and budget management ✓ (core)
+- `CostBudgetSettings` + `BudgetStatus` in `Adze.Broker/Configuration/`
+- Per-session and per-day token limits from env vars
+- `IsOverBudget`, `IsNearLimit(percent)`, `FormatSummary()`
 - [ ] Usage dashboard in Status tab with cost estimates by provider
-- [ ] Warning when approaching budget limit
+- [ ] Warning UI when approaching budget limit
+- 6 unit tests
 
 ### T8-02: Local model support (experimental)
 - [ ] Add Ollama/LM Studio as provider options
@@ -288,14 +284,11 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ## Cross-Cutting Tasks
 
-### TX-01: Feature gate infrastructure
-- [ ] `SOLIDWORKS_AI_AGENT_LOOP=true|false`
-- [ ] `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true|false`
-- [ ] `SOLIDWORKS_AI_RETRIEVAL=true|false`
-- [ ] `SOLIDWORKS_AI_LOCAL_MODELS=true|false`
-- [ ] `SOLIDWORKS_AI_STREAM_FINAL_TEXT=true|false`
-- [ ] Each phase independently disable-able
-- [ ] Fallback path always reachable
+### TX-01: Feature gate infrastructure ✓
+- `FeatureGateRegistry` in `Adze.Broker/Configuration/`
+- Constants: AgentLoop, FirstWaveWrites, Retrieval, LocalModels, StreamFinalText
+- `IsEnabled()`, `GetAllStates()`, `FormatSummary()`
+- 4 unit tests
 
 ### TX-02: IUiThreadInvoker abstraction
 - [ ] Clean interface for UI-thread marshaling

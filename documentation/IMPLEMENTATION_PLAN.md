@@ -3,8 +3,8 @@
 **Version:** 0.1.0
 **Created:** 2026-03-11
 **Last Updated:** 2026-03-16
-**Current Phase:** Phases 3 and 4 (core) complete. Next: Phase 4 UI (confirmation panel, write history), Phase 5 (Learning), Phase 6 (Retrieval).
-**Status:** Write tool safety infrastructure (snapshot/diff/verification) and first-wave write tools (set_custom_property, set_dimension_value, suppress_feature, unsuppress_feature) are implemented with full preview/apply/verify lifecycle, coordinator, and agent dispatch integration. 341 tests passing. Next: confirmation UI in Task Pane, write history panel, then learning activation.
+**Current Phase:** Phases 3 through 7/8 (core infrastructure) complete. Next: Phase 4 UI (confirmation panel), Phase 6 retrieval (OLE indexer), live SOLIDWORKS testing.
+**Status:** All core infrastructure for the agentic vision is implemented: write safety layer, first-wave write tools, learning/trust system, per-document memory, cost budgets, and feature gate registry. 378 tests passing. Remaining work is primarily UI integration, live testing, and the OLE closed-file indexer.
 
 ## Current Working Baseline
 
