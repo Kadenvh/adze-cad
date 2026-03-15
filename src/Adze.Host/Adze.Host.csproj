@@ -91,6 +91,7 @@
     <Compile Include="Services\GroundingExecutionService.cs" />
     <Compile Include="Services\GroundingPlanBuilder.cs" />
     <Compile Include="Services\GroundingSynthesisService.cs" />
+    <Compile Include="Services\GroundingToolResultsBuilder.cs" />
     <Compile Include="Services\SessionContextBuilder.cs" />
     <Compile Include="UI\TaskPaneControl.cs">
       <SubType>UserControl</SubType>

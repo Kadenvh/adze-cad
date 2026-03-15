@@ -2,16 +2,16 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
+using System.Linq;
 using Adze.Broker.Abstractions;
 using Adze.Broker.Configuration;
 using Adze.Broker.Models;
 
 namespace Adze.Broker.Clients;
 
-public sealed class AnthropicMessagesModelClient : IModelClient
+public sealed class OpenAIModelClient : IModelClient
 {
     private sealed class TextCompletionResult
     {
@@ -26,7 +26,7 @@ public sealed class AnthropicMessagesModelClient : IModelClient
 
     private readonly BrokerModelSettings _settings;
 
-    public AnthropicMessagesModelClient(BrokerModelSettings settings)
+    public OpenAIModelClient(BrokerModelSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
@@ -90,7 +90,7 @@ public sealed class AnthropicMessagesModelClient : IModelClient
             RawResponseText = completion.AssistantText,
             Response = parsedResponse,
             Summary = parsedResponse?.Summary ?? string.Empty,
-            RequestedTools = parsedResponse?.RecommendedTools.Select(item => item.ToolName).ToList() ?? new List<string>()
+            RequestedTools = parsedResponse?.RecommendedTools.ConvertAll(item => item.ToolName) ?? new List<string>()
         };
     }
 
@@ -146,17 +146,21 @@ public sealed class AnthropicMessagesModelClient : IModelClient
             string requestBody = ModelResponseParser.CreateSerializer().Serialize(new Dictionary<string, object?>
             {
                 ["model"] = _settings.Model,
-                ["max_tokens"] = maxTokens,
-                ["temperature"] = _settings.Temperature,
-                ["system"] = systemPrompt,
                 ["messages"] = new object[]
                 {
+                    new Dictionary<string, object?>
+                    {
+                        ["role"] = "system",
+                        ["content"] = systemPrompt
+                    },
                     new Dictionary<string, object?>
                     {
                         ["role"] = "user",
                         ["content"] = userPrompt
                     }
-                }
+                },
+                ["max_tokens"] = maxTokens,
+                ["temperature"] = _settings.Temperature
             });
 
             var request = (HttpWebRequest)WebRequest.Create(_settings.Endpoint);
@@ -165,8 +169,7 @@ public sealed class AnthropicMessagesModelClient : IModelClient
             request.Accept = "application/json";
             request.Timeout = timeoutMilliseconds;
             request.ReadWriteTimeout = timeoutMilliseconds;
-            request.Headers["x-api-key"] = _settings.ApiKey;
-            request.Headers["anthropic-version"] = _settings.ApiVersion;
+            request.Headers[HttpRequestHeader.Authorization] = "Bearer " + _settings.ApiKey;
 
             byte[] payloadBytes = Encoding.UTF8.GetBytes(requestBody);
             using (Stream requestStream = request.GetRequestStream())
@@ -197,11 +200,11 @@ public sealed class AnthropicMessagesModelClient : IModelClient
         }
         catch (WebException ex)
         {
-            string responseText = ReadErrorBody(ex);
+            string responseText = ReadResponseBody(ex.Response);
             return new TextCompletionResult
             {
                 RawResponseText = responseText,
-                FailureReason = string.IsNullOrWhiteSpace(responseText) ? ex.Message : responseText
+                FailureReason = ParseErrorResponse(responseText, ex)
             };
         }
         catch (Exception ex)
@@ -225,19 +228,51 @@ public sealed class AnthropicMessagesModelClient : IModelClient
             return false;
         }
 
-        if (!responseDictionary.TryGetValue("content", out object? contentValue) || contentValue is not IEnumerable contentItems)
+        if (!responseDictionary.TryGetValue("choices", out object? choicesValue) || choicesValue is not IEnumerable choices)
         {
-            failure = "Model response did not contain content blocks.";
+            failure = "Model response did not contain choices.";
             return false;
+        }
+
+        foreach (object? item in choices)
+        {
+            if (item is not IDictionary<string, object> choiceDictionary ||
+                !choiceDictionary.TryGetValue("message", out object? messageValue) ||
+                messageValue is not IDictionary<string, object> messageDictionary ||
+                !messageDictionary.TryGetValue("content", out object? contentValue))
+            {
+                continue;
+            }
+
+            string text = ExtractMessageContent(contentValue);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                assistantText = text.Trim();
+                return true;
+            }
+        }
+
+        failure = "Model response did not contain assistant message content.";
+        return false;
+    }
+
+    private static string ExtractMessageContent(object? contentValue)
+    {
+        if (contentValue is string contentText)
+        {
+            return contentText;
+        }
+
+        if (contentValue is not IEnumerable contentItems)
+        {
+            return string.Empty;
         }
 
         var textParts = new List<string>();
         foreach (object? item in contentItems)
         {
-            if (item is IDictionary<string, object> itemDictionary &&
-                itemDictionary.TryGetValue("type", out object? typeValue) &&
-                string.Equals(Convert.ToString(typeValue), "text", StringComparison.OrdinalIgnoreCase) &&
-                itemDictionary.TryGetValue("text", out object? textValue))
+            if (item is IDictionary<string, object> contentDictionary &&
+                contentDictionary.TryGetValue("text", out object? textValue))
             {
                 string text = Convert.ToString(textValue) ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(text))
@@ -247,19 +282,53 @@ public sealed class AnthropicMessagesModelClient : IModelClient
             }
         }
 
-        if (textParts.Count == 0)
-        {
-            failure = "Model response did not contain any text content blocks.";
-            return false;
-        }
-
-        assistantText = string.Join(Environment.NewLine, textParts);
-        return true;
+        return string.Join(Environment.NewLine, textParts);
     }
 
-    private static string ReadErrorBody(WebException ex)
+    private static string ParseErrorResponse(string responseText, WebException ex)
     {
-        using Stream? responseStream = ex.Response?.GetResponseStream();
+        if (!string.IsNullOrWhiteSpace(responseText))
+        {
+            try
+            {
+                object? payload = ModelResponseParser.CreateSerializer().DeserializeObject(responseText);
+                if (payload is IDictionary<string, object> responseDictionary &&
+                    responseDictionary.TryGetValue("error", out object? errorValue) &&
+                    errorValue is IDictionary<string, object> errorDictionary)
+                {
+                    string message = TryReadErrorValue(errorDictionary, "message");
+                    string type = TryReadErrorValue(errorDictionary, "type");
+                    string code = TryReadErrorValue(errorDictionary, "code");
+                    string reason = string.Join(
+                        " | ",
+                        new[] { message.Trim(), type.Trim(), code.Trim() }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+                    if (!string.IsNullOrWhiteSpace(reason))
+                    {
+                        return reason;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return responseText;
+        }
+
+        return ex.Message;
+    }
+
+    private static string TryReadErrorValue(IDictionary<string, object> dictionary, string key)
+    {
+        return dictionary.TryGetValue(key, out object? value)
+            ? Convert.ToString(value) ?? string.Empty
+            : string.Empty;
+    }
+
+    private static string ReadResponseBody(WebResponse? response)
+    {
+        using Stream? responseStream = response?.GetResponseStream();
         if (responseStream == null)
         {
             return string.Empty;

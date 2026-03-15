@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swconst;
 using Adze.Contracts.Enums;
 using Adze.Contracts.Models;
 using Adze.Contracts.Tooling;
+using Adze.Host.Infrastructure;
 
 namespace Adze.Host.Services;
 
@@ -90,27 +92,51 @@ internal static class SessionContextBuilder
             IsReadOnly = IsReadOnly(model.GetPathName())
         };
 
-        SelectionMgr? selectionManager = model.ISelectionManager;
-        int selectionCount = selectionManager?.GetSelectedObjectCount2(-1) ?? 0;
-        context.Selection = new SelectionInfo
+        SelectionMgr? selectionManager = null;
+        try
         {
-            Count = selectionCount
-        };
-
-        if (selectionManager != null)
-        {
-            int previewCount = Math.Min(selectionCount, 3);
-            for (int index = 1; index <= previewCount; index++)
+            selectionManager = model.ISelectionManager;
+            int selectionCount = selectionManager?.GetSelectedObjectCount2(-1) ?? 0;
+            context.Selection = new SelectionInfo
             {
-                object? selected = selectionManager.GetSelectedObject6(index, -1);
-                int selectedType = selectionManager.GetSelectedObjectType3(index, -1);
-                context.Selection.Items.Add(new SelectionItem
+                Count = selectionCount
+            };
+
+            if (selectionManager != null)
+            {
+                int previewCount = Math.Min(selectionCount, 3);
+                for (int index = 1; index <= previewCount; index++)
                 {
-                    Kind = "type_" + selectedType,
-                    Name = selected?.ToString() ?? "<unknown>",
-                    Owner = string.Empty
-                });
+                    object? selected = null;
+                    try
+                    {
+                        selected = selectionManager.GetSelectedObject6(index, -1);
+                        int selectedType = selectionManager.GetSelectedObjectType3(index, -1);
+                        context.Selection.Items.Add(new SelectionItem
+                        {
+                            Kind = "type_" + selectedType,
+                            Name = selected?.ToString() ?? "<unknown>",
+                            Owner = string.Empty
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        LogContextError("Selection preview failed.", ex);
+                    }
+                    finally
+                    {
+                        ReleaseComObject(selected);
+                    }
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            LogContextError("Selection manager traversal failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(selectionManager);
         }
 
         context.Configurations = BuildConfigurations(model, context.Document.ActiveConfiguration);
@@ -170,17 +196,39 @@ internal static class SessionContextBuilder
             Radius = previewLimit
         };
 
-        Feature? feature = model.IFirstFeature();
-        while (feature != null && featureTree.Features.Count < previewLimit)
+        Feature? feature = null;
+        try
         {
-            featureTree.Features.Add(new FeatureNode
+            feature = model.IFirstFeature();
+            while (feature != null && featureTree.Features.Count < previewLimit)
             {
-                Name = feature.Name ?? "<unnamed>",
-                Kind = feature.GetTypeName2() ?? feature.GetTypeName() ?? "<unknown>",
-                State = GetFeatureState(feature)
-            });
+                Feature currentFeature = feature;
+                feature = null;
 
-            feature = feature.IGetNextFeature();
+                try
+                {
+                    featureTree.Features.Add(new FeatureNode
+                    {
+                        Name = currentFeature.Name ?? "<unnamed>",
+                        Kind = currentFeature.GetTypeName2() ?? currentFeature.GetTypeName() ?? "<unknown>",
+                        State = GetFeatureState(currentFeature)
+                    });
+
+                    feature = currentFeature.IGetNextFeature();
+                }
+                finally
+                {
+                    ReleaseComObject(currentFeature);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LogContextError("Feature tree traversal failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(feature);
         }
 
         if (selection.Items.Count > 0)
@@ -198,10 +246,11 @@ internal static class SessionContextBuilder
     private static ReferenceGraphInfo BuildReferenceGraph(ModelDoc2 model)
     {
         var referenceGraph = new ReferenceGraphInfo();
+        ModelDocExtension? extension = null;
 
         try
         {
-            ModelDocExtension? extension = model.Extension;
+            extension = model.Extension;
             if (extension == null)
             {
                 return referenceGraph;
@@ -213,8 +262,13 @@ internal static class SessionContextBuilder
             referenceGraph.TransitiveCount = referenceGraph.TransitiveItems.Count;
             referenceGraph.BrokenReferenceCount = referenceGraph.TransitiveItems.Count(item => item.IsBroken);
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Reference graph failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(extension);
         }
 
         return referenceGraph;
@@ -229,25 +283,64 @@ internal static class SessionContextBuilder
             return mates;
         }
 
-        Feature? feature = model.IFirstFeature();
-        while (feature != null && mates.Items.Count < maxMates)
+        Feature? feature = null;
+        try
         {
-            if (string.Equals(feature.GetTypeName2(), "MateGroup", StringComparison.OrdinalIgnoreCase))
+            feature = model.IFirstFeature();
+            while (feature != null && mates.Items.Count < maxMates)
             {
-                Feature? subFeature = feature.IGetFirstSubFeature();
-                while (subFeature != null && mates.Items.Count < maxMates)
-                {
-                    MateNode? mate = TryBuildMateNode(subFeature);
-                    if (mate != null)
-                    {
-                        mates.Items.Add(mate);
-                    }
+                Feature currentFeature = feature;
+                feature = null;
 
-                    subFeature = subFeature.IGetNextSubFeature();
+                try
+                {
+                    if (string.Equals(currentFeature.GetTypeName2(), "MateGroup", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Feature? subFeature = null;
+                        try
+                        {
+                            subFeature = currentFeature.IGetFirstSubFeature();
+                            while (subFeature != null && mates.Items.Count < maxMates)
+                            {
+                                Feature currentSubFeature = subFeature;
+                                subFeature = null;
+
+                                try
+                                {
+                                    MateNode? mate = TryBuildMateNode(currentSubFeature);
+                                    if (mate != null)
+                                    {
+                                        mates.Items.Add(mate);
+                                    }
+
+                                    subFeature = currentSubFeature.IGetNextSubFeature();
+                                }
+                                finally
+                                {
+                                    ReleaseComObject(currentSubFeature);
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            ReleaseComObject(subFeature);
+                        }
+                    }
+                    feature = currentFeature.IGetNextFeature();
+                }
+                finally
+                {
+                    ReleaseComObject(currentFeature);
                 }
             }
-
-            feature = feature.IGetNextFeature();
+        }
+        catch (Exception ex)
+        {
+            LogContextError("Mate traversal failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(feature);
         }
 
         mates.Count = mates.Items.Count;
@@ -271,21 +364,51 @@ internal static class SessionContextBuilder
                     restoreFeatureDimensions = true;
                 }
 
-                Feature? feature = model.IFirstFeature();
-                while (feature != null && dimensions.Items.Count < maxDimensions)
+                Feature? feature = null;
+                try
                 {
-                    object currentDisplay = feature.GetFirstDisplayDimension();
-                    while (currentDisplay != null && dimensions.Items.Count < maxDimensions)
+                    feature = model.IFirstFeature();
+                    while (feature != null && dimensions.Items.Count < maxDimensions)
                     {
-                        if (currentDisplay is DisplayDimension displayDimension)
+                        Feature currentFeature = feature;
+                        feature = null;
+                        object? currentDisplay = null;
+
+                        try
                         {
-                            TryAddDimensionNode(dimensions, seen, displayDimension, model);
+                            currentDisplay = currentFeature.GetFirstDisplayDimension();
+                            while (currentDisplay != null && dimensions.Items.Count < maxDimensions)
+                            {
+                                object currentDisplayObject = currentDisplay;
+                                currentDisplay = null;
+
+                                try
+                                {
+                                    if (currentDisplayObject is DisplayDimension displayDimension)
+                                    {
+                                        TryAddDimensionNode(dimensions, seen, displayDimension, model);
+                                    }
+
+                                    currentDisplay = currentFeature.GetNextDisplayDimension(currentDisplayObject);
+                                }
+                                finally
+                                {
+                                    ReleaseComObject(currentDisplayObject);
+                                }
+                            }
+
+                            feature = currentFeature.IGetNextFeature();
                         }
-
-                        currentDisplay = feature.GetNextDisplayDimension(currentDisplay);
+                        finally
+                        {
+                            ReleaseComObject(currentDisplay);
+                            ReleaseComObject(currentFeature);
+                        }
                     }
-
-                    feature = feature.IGetNextFeature();
+                }
+                finally
+                {
+                    ReleaseComObject(feature);
                 }
             }
             finally
@@ -296,8 +419,9 @@ internal static class SessionContextBuilder
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Dimension traversal failed.", ex);
         }
 
         dimensions.Count = dimensions.Items.Count;
@@ -310,9 +434,10 @@ internal static class SessionContextBuilder
         DisplayDimension displayDimension,
         ModelDoc2 model)
     {
+        Dimension? dimension = null;
         try
         {
-            Dimension? dimension = displayDimension.IGetDimension();
+            dimension = displayDimension.IGetDimension();
             string fullName = dimension?.FullName ?? string.Empty;
             string selectionName = displayDimension.GetNameForSelection() ?? string.Empty;
             string name = !string.IsNullOrWhiteSpace(selectionName)
@@ -329,8 +454,9 @@ internal static class SessionContextBuilder
             {
                 value = dimension?.GetUserValueIn(model) ?? 0;
             }
-            catch
+            catch (Exception ex)
             {
+                LogContextError("Dimension value read failed.", ex);
             }
 
             dimensions.Items.Add(new DimensionNode
@@ -341,8 +467,13 @@ internal static class SessionContextBuilder
                 UnitSource = "document"
             });
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Dimension node creation failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(dimension);
         }
     }
 
@@ -467,10 +598,13 @@ internal static class SessionContextBuilder
 
     private static MateNode? TryBuildMateNode(Feature feature)
     {
+        object? specificFeature = null;
+        Mate2? mate = null;
         try
         {
-            object specificFeature = feature.GetSpecificFeature2();
-            if (specificFeature is not Mate2 mate)
+            specificFeature = feature.GetSpecificFeature2();
+            mate = specificFeature as Mate2;
+            if (mate == null)
             {
                 return null;
             }
@@ -479,10 +613,12 @@ internal static class SessionContextBuilder
             int entityCount = mate.GetMateEntityCount();
             for (int index = 0; index < entityCount; index++)
             {
+                MateEntity2? entity = null;
+                Component2? component = null;
                 try
                 {
-                    MateEntity2? entity = mate.MateEntity(index);
-                    Component2? component = entity?.ReferenceComponent;
+                    entity = mate.MateEntity(index);
+                    component = entity?.ReferenceComponent;
                     string componentName = component?.Name2 ?? string.Empty;
                     if (!string.IsNullOrWhiteSpace(componentName) &&
                         !components.Contains(componentName, StringComparer.OrdinalIgnoreCase))
@@ -490,8 +626,14 @@ internal static class SessionContextBuilder
                         components.Add(componentName);
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    LogContextError("Mate entity traversal failed.", ex);
+                }
+                finally
+                {
+                    ReleaseComObject(component);
+                    ReleaseComObject(entity);
                 }
             }
 
@@ -503,9 +645,21 @@ internal static class SessionContextBuilder
                 Components = components
             };
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Mate node creation failed.", ex);
             return null;
+        }
+        finally
+        {
+            if (mate != null)
+            {
+                ReleaseComObject(mate);
+            }
+            else
+            {
+                ReleaseComObject(specificFeature);
+            }
         }
     }
 
@@ -527,9 +681,10 @@ internal static class SessionContextBuilder
 
     private static void PopulateCustomProperties(ModelDoc2 model, string activeConfigurationName, IDictionary<string, object?> properties)
     {
+        ModelDocExtension? extension = null;
         try
         {
-            ModelDocExtension? extension = model.Extension;
+            extension = model.Extension;
             if (extension == null)
             {
                 return;
@@ -544,8 +699,13 @@ internal static class SessionContextBuilder
                     properties);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Custom properties failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(extension);
         }
     }
 
@@ -576,10 +736,13 @@ internal static class SessionContextBuilder
                     properties[prefix + propertyName + ".__linked"] = true;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                LogContextError("Custom property read failed.", ex);
             }
         }
+
+        ReleaseComObject(manager);
     }
 
     private static IEnumerable<string> GetPropertyNames(CustomPropertyManager manager)
@@ -599,8 +762,9 @@ internal static class SessionContextBuilder
                     .Where(value => !string.IsNullOrWhiteSpace(value));
             }
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Custom property enumeration failed.", ex);
         }
 
         return Array.Empty<string>();
@@ -608,16 +772,25 @@ internal static class SessionContextBuilder
 
     private static string GetActiveConfigurationName(ModelDoc2 model)
     {
+        ConfigurationManager? configurationManager = null;
+        Configuration? activeConfiguration = null;
         try
         {
-            ConfigurationManager? configurationManager = model.ConfigurationManager;
-            if (configurationManager?.ActiveConfiguration != null)
+            configurationManager = model.ConfigurationManager;
+            activeConfiguration = configurationManager?.ActiveConfiguration;
+            if (activeConfiguration != null)
             {
-                return configurationManager.ActiveConfiguration.Name ?? string.Empty;
+                return activeConfiguration.Name ?? string.Empty;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Active configuration lookup failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(activeConfiguration);
+            ReleaseComObject(configurationManager);
         }
 
         return string.Empty;
@@ -641,8 +814,9 @@ internal static class SessionContextBuilder
                     .ToArray();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Configuration enumeration failed.", ex);
         }
 
         return Array.Empty<string>();
@@ -670,8 +844,9 @@ internal static class SessionContextBuilder
 
             return units?.ToString() ?? string.Empty;
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Unit lookup failed.", ex);
             return string.Empty;
         }
     }
@@ -691,32 +866,40 @@ internal static class SessionContextBuilder
                 return firstValue ? "suppressed" : "resolved";
             }
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Feature suppression state lookup failed.", ex);
         }
 
         try
         {
             return feature.IsSuppressed() ? "suppressed" : "resolved";
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Fallback feature suppression lookup failed.", ex);
             return string.Empty;
         }
     }
 
     private static string GetRebuildState(ModelDoc2 model)
     {
+        ModelDocExtension? extension = null;
         try
         {
-            ModelDocExtension? extension = model.Extension;
+            extension = model.Extension;
             if (extension != null)
             {
                 return extension.NeedsRebuild2 != 0 ? "needs_rebuild" : "current";
             }
         }
-        catch
+        catch (Exception ex)
         {
+            LogContextError("Rebuild diagnostics failed.", ex);
+        }
+        finally
+        {
+            ReleaseComObject(extension);
         }
 
         return "connected";
@@ -738,5 +921,27 @@ internal static class SessionContextBuilder
             3 => "drawing",
             _ => "unknown"
         };
+    }
+
+    private static void LogContextError(string message, Exception ex)
+    {
+        FileLogger.Error(message, ex);
+    }
+
+    private static void ReleaseComObject(object? value)
+    {
+        if (value == null || !Marshal.IsComObject(value))
+        {
+            return;
+        }
+
+        try
+        {
+            Marshal.ReleaseComObject(value);
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("COM object release failed.", ex);
+        }
     }
 }

@@ -13,6 +13,10 @@ The canonical project record lives one directory up:
 
 Use the files here for historical context, detailed discovery rationale, diagnostics, and agent handoff. Do not treat them as the primary product record when they conflict with the canonical docs.
 
+## Current Reality
+
+Most files here are historical or handoff-oriented. The current product state lives in the canonical docs one directory up. When you need the latest truth about provider support, Task Pane behavior, validation status, or next implementation work, prefer those canonical docs first.
+
 ## Contents
 
 | File/Folder | Purpose |

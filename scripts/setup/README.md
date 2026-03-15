@@ -20,6 +20,7 @@ This directory contains the active developer scripts for build, registration, la
 | `validate-host-spike.ps1` | End-to-end validation of the current host/tool baseline |
 | `run-grounding-benchmarks.ps1` | Execute the curated grounding benchmark suite |
 | `run-broker-evals.ps1` | Evaluate broker tool recommendation against the curated tasks |
+| `run-tests.ps1` | Restore NuGet packages, build, and run the NUnit 3 compiled unit test suite |
 | `collect-support-bundle.ps1` | Collect logs, traces, snapshots, latest reports, and preflight output into a zipped support bundle |
 | `RegressionReportHelpers.ps1` | Shared helper for writing JSON regression reports |
 | `find-custom-property-fixtures.ps1` | Discover parts with usable custom properties |

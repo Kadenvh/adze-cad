@@ -127,7 +127,7 @@ A "major folder" is one with multiple files serving a distinct purpose. When in 
 
 ### Step 7: Confirm Prompts Are Present
 
-The `.prompts/` directory should contain the 18 canonical prompts. Verify the core set exists:
+The `.prompts/` directory should contain the 19 canonical prompts. Verify the core set exists:
 
 - [ ] `init.md` — session initialization (orient, read docs, verify state)
 - [ ] `closeout.md` — this file (end-of-session documentation updates)
@@ -147,6 +147,7 @@ The `.prompts/` directory should contain the 18 canonical prompts. Verify the co
 - [ ] `explore.md` — mid-project open thinking and assumption questioning
 - [ ] `together.md` — relationship mode, human-first dialogue
 - [ ] `cleanup.md` — DAL health audit and fact curation
+- [ ] `dal-setup.md` — DAL setup, configuration, and reference (sessions, facts, notes, dual-session)
 
 If any are missing, copy from the canonical source at `/home/ava/Prompt_Engineering/template/.prompts/`.
 
@@ -156,12 +157,25 @@ These prompts are universal — they are NOT project-specific. Do not generate p
 
 ## PART D: CLEAN UP PROJECT NOTES
 
-If the project has a notes/issues/task tracking system (same sources checked during init):
+Check for notes in this order:
 
-For `.tab-notes.json`: set `"completed": true` on resolved notes. Do NOT delete entries — the UI handles cleanup. Match notes to the relevant tab key.
+### DAL Notes (if `.ava/brain.db` exists)
+
+```bash
+node .ava/dal.mjs note list
+node .ava/dal.mjs note counts
+```
+
+Review open notes against this session's work. Mark resolved items as completed. Add new notes for issues discovered but not fixed.
+
+### Markdown / UI Notes (if applicable)
+
+For `.tab-notes.json`: set `"completed": true` on resolved notes. Do NOT delete entries — the UI handles cleanup. For markdown-based notes (`TODO.md`, `NOTES.md`, `notes/`): update or remove resolved items.
+
+### For all note sources:
 
 1. **Review all open notes** against this session's completed work.
-2. **Mark resolved** (set `completed: true`) any notes that describe:
+2. **Mark resolved** any notes that describe:
    - Bugs that were fixed this session
    - Improvements that were implemented
    - Questions that were answered
@@ -169,25 +183,25 @@ For `.tab-notes.json`: set `"completed": true` on resolved notes. Do NOT delete 
 3. **Update remaining notes** with any new context from this session (e.g., "Investigated this — root cause is X, fix requires Y").
 4. **Add new notes** for issues discovered but not fixed this session (these also go in IMPLEMENTATION_PLAN handoff notes).
 
+**If no notes system exists**, skip this part. Session state is captured in IMPLEMENTATION_PLAN.md handoff notes.
+
 **Be aggressive about cleanup.** Stale notes are noise that slow down the next session. If it's done, remove it. If it's outdated, remove it. Only keep notes that represent real, actionable work.
 
 ---
 
 ## PART D-2: CURATE SESSION FACTS
 
-### Curate Facts (if DAL is active)
+> **If `.ava/brain.db` does NOT exist, skip this entire section.** Fact curation requires an active DAL. Projects without the DAL use the 3-doc markdown system for session state — no additional steps needed.
 
-If `.ava/brain.db` exists, review facts created or modified this session:
+### Curate Facts
 
-**Step 0: Audit current state** (if DAL supports `fact audit`)
+**Step 0: Audit current state**
 
 ```bash
 node .ava/dal.mjs fact audit
 ```
 
 Review the output: unclassified facts, stale facts, and expired ephemeral facts.
-
-> **Backward compatibility:** If `fact audit` is not recognized (DAL < v2.0), skip Steps 0, 4, and 5 — proceed with manual classification below.
 
 1. **Classify permanence** for new and unclassified facts using these heuristics:
    - `immutable`: Mission, vision, identity, founding principles — NEVER pruned
@@ -213,6 +227,12 @@ Review the output: unclassified facts, stale facts, and expired ephemeral facts.
    ```
 
 5. **Verify**: Run `node .ava/dal.mjs fact audit` again. Target: 0 unclassified facts remaining.
+
+6. **Minimum coverage check**: After curation, verify brain.db has at minimum:
+   - At least 1 `persistent` fact about the project's tech stack or architecture
+   - At least 1 `persistent` fact about the project's identity or purpose
+   - At least 1 active decision
+   If any of these are missing, record them now from CLAUDE.md or PROJECT_ROADMAP.md. A brain.db with only session-specific facts provides no continuity value — the next agent needs architectural context injected at session start.
 
 ---
 

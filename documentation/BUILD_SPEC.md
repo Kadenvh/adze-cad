@@ -1,7 +1,7 @@
 # Adze - Build Spec
 
 **Version:** 0.1.0  
-**Last Updated:** 2026-03-13  
+**Last Updated:** 2026-03-15  
 **Status:** Active implementation baseline
 
 ## Purpose
@@ -21,7 +21,7 @@ Use this document when editing source, scripts, schemas, traces, validation harn
 
 | Item | Current Value |
 |------|---------------|
-| Repo root | `C:\SW_plugin` |
+| Repo root | `C:\adze-cad` |
 | SOLIDWORKS data/config root | `C:\SOLIDWORKS` |
 | SOLIDWORKS install tree | `C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x` |
 | Native scaffold strategy | Raw native C# add-in |
@@ -38,7 +38,7 @@ Use this document when editing source, scripts, schemas, traces, validation harn
 | `src/Adze.Host` | In-process add-in, Task Pane UI, host orchestration, answer synthesis integration |
 | `src/Adze.Contracts` | Shared models, enums, tool names, context/result contracts |
 | `src/Adze.Tools` | Read-only grounding tool implementations and tool catalog |
-| `src/Adze.Broker` | Prompt composition, Anthropic client integration, hybrid planning |
+| `src/Adze.Broker` | Prompt composition, OpenAI/Anthropic client integration, hybrid planning |
 | `src/Adze.Trace` | Trace, snapshot, recipe, progression, and state persistence |
 | `schemas/context` | Broker-facing session context schema |
 | `schemas/tools` | Tool request/result schemas |
@@ -46,7 +46,8 @@ Use this document when editing source, scripts, schemas, traces, validation harn
 | `benchmarks/grounding` | Curated grounding task corpus and manifests |
 | `benchmarks/reports` | Machine-readable eval and benchmark outputs |
 | `scripts/setup` | Build, registration, launch, validation, and support scripts |
-| `tests/contracts` | Reserved compiled test boundary; current validation is still script-first |
+| `tests/Adze.Tests` | NUnit 3 compiled unit tests covering broker, tools, and trace layers (130 tests) |
+| `tests/contracts` | Reserved compiled test boundary for future schema and contract tests |
 | `install` | Packaging/install placeholder boundary; not yet implemented beyond documentation |
 
 ## Runtime Shape
@@ -54,12 +55,20 @@ Use this document when editing source, scripts, schemas, traces, validation harn
 ```text
 SOLIDWORKS in-process add-in
   -> Task Pane UI
-  -> SessionContext builder
+  -> SessionContext builder on the host/UI thread
   -> hybrid broker turn planner
   -> typed tool execution
-  -> optional model-backed answer synthesis
+  -> optional provider-routed model-backed answer synthesis off the UI thread
   -> deterministic fallback answer renderer
   -> trace / snapshot / progression persistence
+
+Compiled unit tests (NUnit 3, no SOLIDWORKS required)
+  -> broker orchestration tests
+  -> model response parsing tests
+  -> configuration/env-var tests
+  -> prompt composition tests
+  -> grounding tool tests
+  -> trace serialization tests
 
 Validation + support tooling
   -> broker eval reports
@@ -68,6 +77,16 @@ Validation + support tooling
   -> support bundle collection
 ```
 
+## UI And Threading Contract
+
+- `TaskPaneControl` remains a COM-visible WinForms control built programmatically.
+- SOLIDWORKS COM capture and `SessionContext` construction stay on the host/UI thread.
+- Provider network work may run off-thread only after COM data has been serialized into contracts.
+- The `Status` surface auto-refreshes only while that tab is active.
+- Status refresh must preserve scroll position instead of resetting the text view to the top.
+- The answer surface is the primary UI, with `Plan`, `Status`, and `Tools` as supporting detail views.
+- Any future write flow must preserve this separation: confirmations and previews can expand the workspace, but should not demote the answer surface back into a debugging panel.
+
 ## Boundary Rules
 
 - All SOLIDWORKS COM execution stays inside the add-in.
@@ -75,7 +94,8 @@ Validation + support tooling
 - The broker reasons over typed contracts and serialized results only.
 - Closed-file indexing and retrieval must stay outside the live COM execution loop.
 - Learning is trace promotion and policy-driven unlocks, not self-modifying behavior.
-- Use Anthropic API credentials for the model path. This app does not consume Claude Max plan usage limits.
+- Use provider API credentials for the model path. This app does not consume Claude Max, ChatGPT Plus, or other consumer-plan usage limits.
+- Keep SOLIDWORKS COM capture on the host thread. Only serialized broker/synthesis work may move off-thread.
 
 ## Runtime Artifact Locations
 
@@ -87,7 +107,7 @@ Validation + support tooling
 | Latest snapshot | `%LOCALAPPDATA%\Adze\snapshots\latest-grounding-snapshot.json` |
 | Recipe candidates | `%LOCALAPPDATA%\Adze\recipes\candidates` |
 | Support bundles | `%LOCALAPPDATA%\Adze\SupportBundles` |
-| Benchmark/eval reports | `C:\SW_plugin\benchmarks\reports` |
+| Benchmark/eval reports | `benchmarks\reports` (repo-relative) |
 
 ## Build And Validation Commands
 
@@ -95,6 +115,7 @@ Validation + support tooling
 |---------|---------|
 | Validate schemas | `pwsh -NoProfile -File scripts\setup\validate-json-schemas.ps1` |
 | Build full solution | `pwsh -NoProfile -File scripts\setup\build-all.ps1 -StopSolidWorks` |
+| Run unit tests | `pwsh -NoProfile -File scripts\setup\run-tests.ps1` |
 | Launch preflight | `powershell.exe -NoProfile -File scripts\setup\launch-and-check-host.ps1` |
 | Host validation | `powershell.exe -NoProfile -File scripts\setup\validate-host-spike.ps1` |
 | Grounding benchmarks | `powershell.exe -NoProfile -File scripts\setup\run-grounding-benchmarks.ps1` |
@@ -107,9 +128,10 @@ The minimum acceptable regression floor for the current baseline is:
 
 1. schema validation passes
 2. full solution build passes
-3. host validation passes
-4. grounding benchmarks pass
-5. broker evals pass
+3. unit tests pass (`130/130`)
+4. host validation passes
+5. grounding benchmarks pass
+6. broker evals pass
 
 If a launcher prerequisite window blocks the host, clear it before treating host validation as a code regression.
 
@@ -118,18 +140,38 @@ If a launcher prerequisite window blocks the host, clear it before treating host
 ### Required
 
 - `SOLIDWORKS_AI_ENABLE_MODEL=true`
-- `SOLIDWORKS_AI_ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY`
+- one provider API key:
+  `SOLIDWORKS_AI_OPENAI_API_KEY` or `OPENAI_API_KEY`
+  `SOLIDWORKS_AI_ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY`
 
-### Optional
+### Provider Selection
 
-- `SOLIDWORKS_AI_ANTHROPIC_MODEL`
-- `SOLIDWORKS_AI_ANTHROPIC_ENDPOINT`
-- `SOLIDWORKS_AI_ANTHROPIC_VERSION`
-- `SOLIDWORKS_AI_ANTHROPIC_TIMEOUT_MS`
-- `SOLIDWORKS_AI_ANTHROPIC_MAX_TOKENS`
-- `SOLIDWORKS_AI_ANTHROPIC_SYNTHESIS_TIMEOUT_MS`
-- `SOLIDWORKS_AI_ANTHROPIC_SYNTHESIS_MAX_TOKENS`
-- `SOLIDWORKS_AI_ANTHROPIC_TEMPERATURE`
+- `SOLIDWORKS_AI_PROVIDER=openai`
+- `SOLIDWORKS_AI_PROVIDER=anthropic`
+- If unset:
+  `openai` wins when only an OpenAI key exists.
+  `anthropic` wins when an Anthropic key exists.
+  with no usable key, the host falls back to deterministic behavior.
+
+### Provider-Specific Overrides
+
+- OpenAI:
+  `SOLIDWORKS_AI_OPENAI_MODEL`
+  `SOLIDWORKS_AI_OPENAI_ENDPOINT`
+- Anthropic:
+  `SOLIDWORKS_AI_ANTHROPIC_MODEL`
+  `SOLIDWORKS_AI_ANTHROPIC_ENDPOINT`
+  `SOLIDWORKS_AI_ANTHROPIC_VERSION`
+
+### Shared Planning And Synthesis Controls
+
+- `SOLIDWORKS_AI_MAX_TOKENS`
+- `SOLIDWORKS_AI_SYNTHESIS_MAX_TOKENS`
+- `SOLIDWORKS_AI_TIMEOUT_MS`
+- `SOLIDWORKS_AI_SYNTHESIS_TIMEOUT_MS`
+- `SOLIDWORKS_AI_TEMPERATURE`
+
+Backward-compatible Anthropic-prefixed timeout/token/temperature variables are still accepted as fallback aliases.
 
 Planning and final answer synthesis intentionally have separate timeout/token controls because the synthesis prompt is larger.
 
@@ -211,12 +253,17 @@ Completed when:
 
 Current baseline:
 - 10 read-only tools implemented
-- hybrid planning path implemented
+- provider-routed hybrid planning path implemented
 - model-backed answer synthesis implemented
 - traces/progression/recipes implemented
+- assistant-first Task Pane workspace implemented
+- active-tab-only status refresh and background model execution implemented
 - host validation, broker evals, and grounding benchmarks green
 
 ### Phase 2A - Hardening To First Usable Build
+
+Completed:
+- compiled NUnit 3 unit test suite (130 tests) covering broker, tools, configuration, prompt composition, and trace serialization
 
 Still required:
 - answer-quality eval coverage for synthesis
@@ -242,7 +289,9 @@ Required before entry:
 ## Immediate Next Deliverables
 
 1. Add synthesis answer-quality evals and explicit failure-mode coverage.
-2. Harden launcher/login/update interruption handling.
-3. Add install/update assets under `install/` for a tester-friendly path.
-4. Define the first write-capable tool contract and candidate tool.
-5. Decide whether the Task Pane should expose evidence snippets or citations from tool results.
+2. Run a live external-provider smoke test with a real API key and record the result.
+3. Harden launcher/login/update interruption handling.
+4. Add install/update assets under `install/` for a tester-friendly path.
+5. Define the first write-capable tool contract and candidate tool.
+6. Decide whether the Task Pane should expose evidence snippets or citations from tool results.
+7. Capture a human-verified desktop acceptance pass for the current Task Pane layout and resize behavior.

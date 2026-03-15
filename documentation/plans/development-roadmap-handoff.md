@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Last Updated:** 2026-03-13  
-**Primary Next Focus:** Synthesis eval coverage, launcher/install hardening, and safe-write contract definition
+**Primary Next Focus:** Synthesis eval coverage, live provider smoke validation, direct desktop UI acceptance, launcher/install hardening, and safe-write contract definition
 
 ## Validated Baseline
 
@@ -13,8 +13,7 @@ Current green baseline:
 - broker evals `12/12`
 - grounding benchmarks `12/12`
 - host validation spike PASS
-- mocked Anthropic broker turn PASS
-- mocked Anthropic answer synthesis PASS
+- provider selection matrix PASS
 - support-bundle generation PASS
 
 The system now has:
@@ -22,9 +21,10 @@ The system now has:
 - 5 C# projects
 - native host execution inside SOLIDWORKS
 - 10 live read-only grounding tools
-- hybrid deterministic + Anthropic planning
+- hybrid deterministic + OpenAI/Anthropic planning
 - model-backed final answer synthesis with deterministic fallback
-- answer-first Task Pane layout
+- answer-first Task Pane workspace with `Plan`, `Status`, and `Tools`
+- background model execution after host-thread context capture
 - trace/progression/recipe persistence
 
 ## Completed Phases
@@ -56,9 +56,11 @@ Completed:
 
 Completed baseline:
 - answer-first layout in the Task Pane
-- plan and status moved away from the primary answer surface
+- plan, status, and tool-result views moved away from the primary answer surface
 - run-state messaging added
 - blocked/no-document guidance improved
+- active-tab-only status refresh with preserved scroll position
+- provider network work moved off the UI thread after host-thread context capture
 
 ## Active Phases
 
@@ -67,9 +69,11 @@ Completed baseline:
 Next tasks:
 1. Add answer-quality evals for synthesis output.
 2. Add explicit timeout/failure coverage for the synthesis path.
-3. Harden launcher/login/update interruption handling.
-4. Add install/update assets under `install/`.
-5. Decide whether answer evidence snippets belong in the Task Pane.
+3. Run a real OpenAI or Anthropic smoke test with a local API key.
+4. Capture a direct desktop acceptance pass for Task Pane rendering and resize behavior.
+5. Harden launcher/login/update interruption handling.
+6. Add install/update assets under `install/`.
+7. Decide whether answer evidence snippets belong in the Task Pane.
 
 ### Phase 6 - Safe Write Design
 

@@ -1,23 +1,36 @@
 # Documentation
 
 **Version:** 0.1.0  
-**Last Updated:** 2026-03-13  
+**Last Updated:** 2026-03-15  
 **Role:** Canonical product documentation for Adze
 
 This directory is the source of truth for project documentation. The root `CLAUDE.md` remains the auto-read agent entrypoint, but the durable product, architecture, build, and tactical records belong here.
 
 ## Current Baseline
 
-As of 2026-03-13, the repo has a real working implementation, not just planning material:
+As of 2026-03-15, the repo has a real working implementation, not just planning material:
 
-- a buildable 5-project C# solution
+- a buildable 6-project C# solution (5 production + 1 test)
 - a native SOLIDWORKS add-in host with a Task Pane UI
 - 10 live read-only grounding tools
-- a hybrid broker that can use Anthropic for planning while preserving deterministic fallback
+- a hybrid broker that can use OpenAI or Anthropic for planning while preserving deterministic fallback
 - model-backed final answer synthesis over executed tool results, again with deterministic fallback
+- an assistant-first Task Pane workspace with `Plan`, `Status`, and `Tools` tabs
+- background model execution after UI-thread context capture so slow network calls do not freeze the pane
 - trace, recipe-candidate, achievement, exploration, and unlock persistence
-- green scripted validation for build, schemas, broker evals, host validation, and grounding benchmarks
+- 130 compiled NUnit unit tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization
+- green scripted validation for build, schemas, unit tests, broker evals, host validation, and grounding benchmarks
 - one-command support bundle collection for logs, traces, snapshots, reports, and launcher preflight output
+- explicit COM cleanup and logged graceful degradation across the session-context builder
+
+## Related Root Docs
+
+These live at the repo root because they serve different audiences:
+
+| Path | Role |
+|------|------|
+| `CLAUDE.md` | Agent entrypoint, execution rules, current quick-reference commands |
+| `SETUP.md` | User-facing setup, registration, model configuration, validation, and troubleshooting guide |
 
 ## Read In This Order
 
@@ -45,6 +58,7 @@ As of 2026-03-13, the repo has a real working implementation, not just planning 
 | Current implementation state, blockers, validations, handoff | `IMPLEMENTATION_PLAN.md` |
 | Near-term path to the first usable internal/beta build | `FIRST_USABLE_BUILD.md` |
 | Historical planning context, diagnostics, discovery notes | `plans/` |
+| Local developer/operator setup steps | root `SETUP.md` |
 
 ## Directory Map
 

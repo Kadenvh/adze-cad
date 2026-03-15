@@ -173,7 +173,7 @@ Before considering the spec complete:
 
 ## 7. OUTPUT
 
-- Store requirement specs in `documentation/plans/` as `requirements-<feature-slug>.md`.
+- Store requirement specs in `documentation/plans/` as `requirements-<feature-slug>.md`. (Create the directory if it doesn't exist.)
 - If the spec references architecture, link to or generate diagrams in `documentation/visualization/`.
 
 ---

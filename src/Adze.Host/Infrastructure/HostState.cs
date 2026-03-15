@@ -8,11 +8,24 @@ using Adze.Trace.Tracing;
 
 namespace Adze.Host.Infrastructure;
 
+internal sealed class AssistantRunPreparation
+{
+    public SessionContext Context { get; set; } = new();
+
+    public string Request { get; set; } = string.Empty;
+
+    public bool IsApplicationConnected { get; set; }
+}
+
 internal sealed class AssistantRunSnapshot
 {
     public string AnswerText { get; set; } = string.Empty;
 
+    public string AnswerFooterText { get; set; } = string.Empty;
+
     public string PlanText { get; set; } = string.Empty;
+
+    public string ToolsText { get; set; } = string.Empty;
 
     public string TraceId { get; set; } = string.Empty;
 
@@ -37,44 +50,51 @@ internal static class HostState
 
     public static string BuildStatusText()
     {
-        lock (Sync)
-        {
-            return BuildStatusTextUnsafe(_application);
-        }
+        ISldWorks? application = GetApplicationSnapshot();
+        return BuildStatusTextUnsafe(application);
     }
 
     public static string BuildGroundingPlanText(string? userRequest)
     {
-        lock (Sync)
+        ISldWorks? application = GetApplicationSnapshot();
+        SessionContext context = BuildContextUnsafe(application);
+        return GroundingPlanBuilder.Build(context, userRequest, application != null);
+    }
+
+    public static AssistantRunPreparation PrepareAssistantRun(string? userRequest)
+    {
+        ISldWorks? application = GetApplicationSnapshot();
+        SessionContext context = BuildContextUnsafe(application);
+        return new AssistantRunPreparation
         {
-            SessionContext context = BuildContextUnsafe(_application);
-            return GroundingPlanBuilder.Build(context, userRequest, _application != null);
-        }
+            Context = context,
+            Request = GroundingExecutionService.NormalizeRequest(userRequest),
+            IsApplicationConnected = application != null
+        };
     }
 
     public static AssistantRunSnapshot RunAssistant(string? userRequest)
     {
-        lock (Sync)
-        {
-            return RunAssistantUnsafe(_application, userRequest);
-        }
+        AssistantRunPreparation preparation = PrepareAssistantRun(userRequest);
+        return CompleteAssistantRun(preparation);
     }
 
-    private static string BuildStatusTextUnsafe(ISldWorks? application)
+    public static AssistantRunSnapshot CompleteAssistantRun(AssistantRunPreparation preparation)
     {
-        GroundingDashboardSnapshot snapshot = BuildSnapshotUnsafe(application);
-        return snapshot.Text;
+        if (preparation == null)
+        {
+            throw new ArgumentNullException(nameof(preparation));
+        }
+
+        return RunAssistantUnsafe(preparation.Context, preparation.Request, preparation.IsApplicationConnected);
     }
 
     public static void LogSnapshot(string reason)
     {
         try
         {
-            GroundingDashboardSnapshot snapshot;
-            lock (Sync)
-            {
-                snapshot = BuildSnapshotUnsafe(_application);
-            }
+            ISldWorks? application = GetApplicationSnapshot();
+            GroundingDashboardSnapshot snapshot = BuildSnapshotUnsafe(application);
 
             FileLogger.Info(reason + System.Environment.NewLine + snapshot.Text);
             GroundingSnapshotStore.WriteLatest(new GroundingSnapshotRecord
@@ -103,10 +123,15 @@ internal static class HostState
         }
     }
 
-    private static AssistantRunSnapshot RunAssistantUnsafe(ISldWorks? application, string? userRequest)
+    private static string BuildStatusTextUnsafe(ISldWorks? application)
     {
-        SessionContext context = BuildContextUnsafe(application);
-        GroundingExecutionReport report = GroundingExecutionService.Execute(context, userRequest, application != null);
+        GroundingDashboardSnapshot snapshot = BuildSnapshotUnsafe(application);
+        return snapshot.Text;
+    }
+
+    private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected)
+    {
+        GroundingExecutionReport report = GroundingExecutionService.Execute(context, request, isApplicationConnected);
         string intent = "assistant_run: " + report.Request;
         RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(intent, report.ToolResults, UserId);
         int reviewReadyCandidateCount = RecipeCandidateEngine.CountReviewReadyCandidates();
@@ -128,6 +153,7 @@ internal static class HostState
         GroundingSynthesisOutcome synthesis = GroundingSynthesisService.Build(context, report);
         string answerText = synthesis.AnswerText;
         string planText = GroundingPlanBuilder.Build(report);
+        string toolsText = GroundingToolResultsBuilder.Build(report.ToolResults);
         if (!string.IsNullOrWhiteSpace(synthesis.FailureReason))
         {
             planText +=
@@ -155,20 +181,26 @@ internal static class HostState
 
         return new AssistantRunSnapshot
         {
-            AnswerText =
-                answerText +
-                System.Environment.NewLine +
-                System.Environment.NewLine +
+            AnswerText = answerText,
+            AnswerFooterText =
                 "Answer source: " +
                 answerSourceText +
-                System.Environment.NewLine +
-                "Trace ID: " +
+                "    Trace ID: " +
                 recorded.TraceEvent.TraceId,
             PlanText = planText,
+            ToolsText = toolsText,
             TraceId = recorded.TraceEvent.TraceId,
             AnswerSource = synthesis.Source,
             AnswerModelId = synthesis.ModelId
         };
+    }
+
+    private static ISldWorks? GetApplicationSnapshot()
+    {
+        lock (Sync)
+        {
+            return _application;
+        }
     }
 
     private static GroundingDashboardSnapshot BuildSnapshotUnsafe(ISldWorks? application)

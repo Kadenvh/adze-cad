@@ -1,9 +1,7 @@
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
-[assembly: AssemblyTitle("Adze.Broker")]
-[assembly: InternalsVisibleTo("Adze.Tests")]
-[assembly: AssemblyDescription("Broker orchestration and model-provider boundary for Adze.")]
+[assembly: AssemblyTitle("Adze.Tests")]
+[assembly: AssemblyDescription("Unit tests for Adze broker, tools, and trace layers.")]
 [assembly: AssemblyCompany("Adze")]
 [assembly: AssemblyProduct("Adze")]
 [assembly: AssemblyVersion("0.1.0.0")]

@@ -32,7 +32,12 @@ internal static class GroundingSynthesisService
             return CreateFallback(fallbackAnswer);
         }
 
-        var modelClient = new AnthropicMessagesModelClient(settings);
+        var modelClient = ModelClientFactory.Create(settings);
+        if (modelClient == null)
+        {
+            return CreateFallback(fallbackAnswer, "Model provider configuration is invalid.");
+        }
+
         AssistantSynthesisPrompt prompt = ContextPromptComposer.ComposeSynthesisPrompt(
             report.Request,
             report.Response,
@@ -52,7 +57,7 @@ internal static class GroundingSynthesisService
         return new GroundingSynthesisOutcome
         {
             AnswerText = synthesis.ResponseText.Trim(),
-            Source = "model_anthropic",
+            Source = ModelClientFactory.BuildModelSourceLabel(synthesis.Provider),
             ModelId = synthesis.Model
         };
     }

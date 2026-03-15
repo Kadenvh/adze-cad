@@ -1,7 +1,7 @@
 # Adze - First Usable Build
 
 **Version:** 0.1.0  
-**Last Updated:** 2026-03-13  
+**Last Updated:** 2026-03-15  
 **Purpose:** Define the shortest path from the current grounded alpha to the first build that feels like the intended assistant product
 
 ## Definition
@@ -20,9 +20,11 @@ The first usable build is not a production release. It is the first build where 
 - answer-first Task Pane UI
 - 10 live read-only grounding tools
 - hybrid broker with deterministic fallback
-- model-backed final answer synthesis with deterministic fallback
+- provider-routed model-backed final answer synthesis with deterministic fallback
 - traces, recipes, achievements, exploration, and unlock tiers
 - green scripted validation on the curated corpus
+- 130 compiled NUnit unit tests covering broker, tools, and trace layers
+- assistant-first Task Pane workspace with `Plan`, `Status`, and `Tools` tabs
 - one-command support bundle collection
 
 ## What Still Prevents "First Usable Build"
@@ -38,15 +40,16 @@ The first usable build is not a production release. It is the first build where 
 
 ### Already Done
 
-- model-backed planning exists
-- model-backed final answer synthesis exists
+- provider-routed model-backed planning exists
+- provider-routed model-backed final answer synthesis exists
 - deterministic fallback exists for both planning and final answer rendering
-- mocked provider checks already prove the synthesis branch can succeed
+- provider-selection checks already prove the OpenAI/Anthropic routing branch works as designed
 
 ### Remaining
 
 - add answer-quality eval tasks for synthesis output
 - add explicit synthesis timeout/failure coverage
+- run a live external-provider smoke test with a real API key
 - decide whether answers should expose evidence snippets or citations from tool results
 - tighten any prompt behavior that feels too generic or too verbose in live use
 
@@ -64,9 +67,11 @@ The first usable build is not a production release. It is the first build where 
 
 - deliberate `Run assistant` flow
 - answer-first layout
-- plan and status separated from the primary answer surface
+- `Plan`, `Status`, and `Tools` separated from the primary answer surface
 - blocked/no-document messaging improved
 - explicit run-state messaging added
+- active-tab status refresh with scroll preservation added
+- provider network work moved off the UI thread after host-thread context capture
 
 ### Remaining
 
@@ -74,6 +79,7 @@ The first usable build is not a production release. It is the first build where 
 - decide how much evidence to show inline vs in the plan tab
 - reserve cleaner space for later write confirmations and recipe suggestions
 - continue smoothing the interaction so it feels less like a developer panel
+- capture a direct desktop acceptance pass for rendering, resize behavior, and status-tab scroll preservation
 
 ### Exit Criteria
 
@@ -124,11 +130,13 @@ Minimum validation gate:
 
 1. `validate-json-schemas.ps1`
 2. `build-all.ps1 -StopSolidWorks`
-3. `validate-host-spike.ps1`
-4. `run-grounding-benchmarks.ps1`
-5. `run-broker-evals.ps1`
-6. synthesis-specific evals once added
-7. support-bundle smoke test
+3. `run-tests.ps1` (130 compiled unit tests)
+4. `validate-host-spike.ps1`
+5. `run-grounding-benchmarks.ps1`
+6. `run-broker-evals.ps1`
+7. synthesis-specific evals once added
+8. support-bundle smoke test
+9. direct desktop Task Pane acceptance pass
 
 ## Recommended Execution Order From Here
 

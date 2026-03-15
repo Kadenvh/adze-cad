@@ -1,14 +1,14 @@
 # Prompt Engineering Metrics Report
-Generated: 2026-03-11T11:26:16.749Z | Events analyzed: 1211
+Generated: 2026-03-13T22:50:44.696Z | Events analyzed: 1245
 
 ## Usage Summary
 | Tool | Type | Uses | Unique Projects | Last Used |
 |------|------|------|-----------------|----------|
-| SKILL | skill | 442 | 0 | 2026-03-03 |
+| SKILL | skill | 444 | 0 | 2026-03-11 |
 | lint-on-edit | hook | 332 | 0 | 2026-03-10 |
 | typecheck-on-edit | hook | 304 | 0 | 2026-03-10 |
-| smoke_test | unknown | 75 | 0 | 2026-03-11 |
-| session-context | hook | 46 | 0 | 2026-03-11 |
+| smoke_test | unknown | 101 | 0 | 2026-03-13 |
+| session-context | hook | 52 | 0 | 2026-03-13 |
 | discovery | skill | 3 | 1 | 2026-03-03 |
 | doc-validator | template | 2 | 0 | 2026-03-03 |
 | testing | prompt | 2 | 0 | 2026-03-03 |
@@ -36,9 +36,9 @@ Generated: 2026-03-11T11:26:16.749Z | Events analyzed: 1211
 ## Optimization Targets
 Priority = high usage x (high edit rate OR high error correlation)
 
-1. **SKILL** — 442 uses, 0% edit rate
+1. **SKILL** — 444 uses, 0% edit rate
 2. **lint-on-edit** — 332 uses, 0% edit rate
 3. **typecheck-on-edit** — 304 uses, 0% edit rate
-4. **smoke_test** — 75 uses, 0% edit rate
-5. **session-context** — 46 uses, 0% edit rate
+4. **smoke_test** — 101 uses, 0% edit rate
+5. **session-context** — 52 uses, 0% edit rate
 

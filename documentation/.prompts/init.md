@@ -49,6 +49,22 @@ Before proceeding to any task, confirm:
 - [ ] **Blockers** — check `IMPLEMENTATION_PLAN.md` for known issues and blockers before starting work.
 - [ ] **Build/run** — can you build and run the project with the commands in `CLAUDE.md`? If the user asks you to make changes, verify the project compiles first.
 
+### DAL Health Check (if brain.db exists)
+
+If `.ava/brain.db` exists at the project root, the project uses the DAL for session continuity:
+
+```bash
+node .ava/dal.mjs status        # Verify schema version and integrity
+node .ava/dal.mjs fact audit     # Check for unclassified/stale/expired facts
+```
+
+- If `status` shows issues, flag them before starting work.
+- If `fact audit` shows unclassified facts, note them for classification during closeout.
+- **If brain.db exists but has 0 facts and 0 sessions**, the DAL was deployed but never populated. Recommend running `/cleanup` before starting work — it will read the project's documentation and hydrate brain.db with facts and decisions. Without this, the DAL provides no session continuity value.
+- If `.ava/brain.db` does NOT exist, skip this — the project uses the 3-doc markdown system only. Session state lives in CLAUDE.md + PROJECT_ROADMAP.md + IMPLEMENTATION_PLAN.md.
+
+Run `/dal-setup` for full DAL reference if needed.
+
 ---
 
 ## 4. UNDERSTAND THE PROMPT SYSTEM
@@ -98,12 +114,12 @@ Don't filter yourself. The human wants a collaborator who notices things, not an
 
 If the project has a notes, issues, or task tracking system (markdown files, in-app notes, TODO lists, etc.):
 
-1. **Locate notes.** Check for: `.tab-notes.json` (ava_hub notes system), `notes/`, `TODO.md`, `NOTES.md`, issue tracker references in CLAUDE.md, or any notes directory/file mentioned in the documentation. For `.tab-notes.json`: notes are grouped by tab name, each with `id`, `category` (bug/issue/improvement/idea), `text`, `completed` (boolean). Filter to uncompleted notes for the relevant tab.
+1. **Locate notes.** Check these sources in order:
+   - **DAL notes** (if `.ava/brain.db` exists): `node .ava/dal.mjs note list` and `node .ava/dal.mjs note counts`. Categories: improvement, issue, bug, idea.
+   - **Markdown notes**: `notes/`, `TODO.md`, `NOTES.md`, or any notes directory/file mentioned in the documentation.
+   - **Ava_Main ecosystem only** (optional): `.tab-notes.json` via REST API (`GET /api/notes/all` or `GET /api/notes/:tabKey`). Requires Ava_Main's REST server — not available in standalone deployments.
 
-> **Ava ecosystem:** Notes are stored server-side in `.tab-notes.json` via the
-> `GET /api/notes/all` endpoint (or `GET /api/notes/:tabKey` per tab). Categories:
-> improvement, issue, bug, idea. Open notes are your primary task queue alongside
-> IMPLEMENTATION_PLAN.md handoff notes.
+   Open notes are your primary task queue alongside IMPLEMENTATION_PLAN.md handoff notes.
 
 2. **Read all open items.** Categorize what you find: bugs, improvements, feature requests, questions, stale/already-resolved items.
 3. **Flag resolved items.** If a note describes something that's already been fixed or implemented (based on the current codebase), flag it for removal.

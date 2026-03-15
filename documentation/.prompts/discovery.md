@@ -136,7 +136,7 @@ Synthesize sub-agent findings before presenting to the user — don't dump raw r
 
 ## 7. OUTPUT
 
-- Store discovery briefs in `documentation/plans/` as `discovery-<topic-slug>.md`.
+- Store discovery briefs in `documentation/plans/` as `discovery-<topic-slug>.md`. (Create the directory if it doesn't exist.)
 - If the brief includes architecture diagrams, reference or generate them in `documentation/visualization/`.
 
 ---

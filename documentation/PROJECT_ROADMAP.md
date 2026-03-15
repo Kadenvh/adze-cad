@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
 **Version:** 0.1.0  
-**Last Updated:** 2026-03-13  
-**Status:** Grounded assistant alpha with native host execution, model-backed answer synthesis, and green scripted validation
+**Last Updated:** 2026-03-15  
+**Status:** Grounded assistant alpha with native host execution, provider-routed model-backed answer synthesis, and green scripted validation
 
 ## Product Thesis
 
@@ -30,6 +30,8 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 |---------|------|-----------|
 | 0.1.0 | 2026-03-11 | Discovery finalized and bootstrap documentation established |
 | 0.1.0 | 2026-03-13 | Reached grounded assistant alpha: native host, 10 read-only tools, hybrid broker, model-backed answer synthesis, answer-first Task Pane, support bundle workflow |
+| 0.1.0 | 2026-03-13 | Expanded alpha hardening: OpenAI plus Anthropic provider routing, assistant-workspace UI overhaul, background provider execution, and COM cleanup/logging across session-context traversal |
+| 0.1.0 | 2026-03-15 | Compiled NUnit 3 unit test suite: 130 tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization |
 
 ## Current Architecture
 
@@ -40,9 +42,10 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | Native host | In-process C# SOLIDWORKS add-in | Owns lifecycle, COM access, Task Pane UI, and tool execution |
 | Context boundary | Shared C# contracts plus JSON schemas | Keeps host, broker, tools, traces, and scripts aligned |
 | Tool layer | 10 read-only grounding tools | Exposes auditable inspection over the active CAD session |
-| Broker layer | Hybrid deterministic + Anthropic planning | Produces structured turn state, tool recommendations, blockers, and recovery guidance |
-| Answer layer | Model-backed synthesis over executed tool results with deterministic fallback | Produces a grounded natural-language answer without giving the model direct CAD access |
+| Broker layer | Hybrid deterministic + OpenAI/Anthropic planning | Produces structured turn state, tool recommendations, blockers, and recovery guidance |
+| Answer layer | Provider-routed synthesis over executed tool results with deterministic fallback | Produces a grounded natural-language answer without giving the model direct CAD access |
 | Trace/progression layer | Snapshots, traces, recipe candidates, achievements, exploration, unlock tiers | Governs reuse and progression without autonomous capability expansion |
+| Unit test layer | 130 NUnit 3 compiled tests across broker, tools, and trace | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
 | Validation/ops layer | PowerShell validation scripts, JSON reports, support bundle collection | Makes the system diagnosable and regression-testable in the real Windows/SOLIDWORKS environment |
 
 ### Runtime Loop
@@ -62,7 +65,9 @@ User request
 ### Current Implemented Capability Surface
 
 - native Task Pane host with deliberate `Run assistant` flow
-- answer-first assistant UI with tabbed plan/status panels
+- answer-first assistant UI with tabbed `Plan` / `Status` / `Tools` panels
+- active-tab-only status refresh that preserves scroll position
+- background model execution after live context capture so slow provider calls do not freeze the pane
 - 10 live read-only grounding tools:
   - active document
   - document summary
@@ -102,8 +107,8 @@ User request
 
 ### Hybrid Model Path With Deterministic Fallback
 
-**Decision:** Use Anthropic for planning and answer synthesis when configured, but preserve deterministic local behavior.  
-**Reason:** This keeps the product usable and diagnosable when the model path is unavailable, degraded, or intentionally disabled.
+**Decision:** Support provider-routed OpenAI or Anthropic planning and answer synthesis when configured, but preserve deterministic local behavior.  
+**Reason:** This keeps the product usable and diagnosable when the model path is unavailable, degraded, intentionally disabled, or switched between providers.
 
 ### User-Scope Registration First
 
@@ -135,6 +140,7 @@ Goal:
 - harden launcher/login/update interruption handling
 - add installer/update assets under `install/`
 - make support bundle collection and support instructions beta-ready
+- capture a human desktop acceptance pass for the current Task Pane rendering and resize behavior
 
 ### Track 3 - Safe Write Tools
 
@@ -161,5 +167,5 @@ Goal:
 - no unsupervised self-modifying behavior
 - no external broker/process taking direct ownership of SOLIDWORKS COM
 - no production-safe write tools until preview/apply/verify/rollback exists
-- no dependence on Claude Max consumer-plan usage limits for this application
+- no dependence on Claude Max, ChatGPT Plus, or other consumer-plan usage limits for this application
 - no UI-automation-first product path

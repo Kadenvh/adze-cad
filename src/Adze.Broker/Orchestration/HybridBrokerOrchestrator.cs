@@ -51,7 +51,7 @@ public sealed class HybridBrokerOrchestrator : IBrokerOrchestrator
             return fallbackResponse;
         }
 
-        return MergeResponses(context, fallbackResponse, modelTurn.Response, modelTurn.Model);
+        return MergeResponses(context, fallbackResponse, modelTurn.Response, modelTurn.Provider, modelTurn.Model);
     }
 
     private static bool ShouldAttemptModel(BrokerResponse fallbackResponse)
@@ -64,6 +64,7 @@ public sealed class HybridBrokerOrchestrator : IBrokerOrchestrator
         SessionContext context,
         BrokerResponse fallbackResponse,
         BrokerResponse modelResponse,
+        string provider,
         string modelId)
     {
         List<string> blockers = MergeLists(fallbackResponse.Blockers, modelResponse.Blockers, 6);
@@ -87,7 +88,7 @@ public sealed class HybridBrokerOrchestrator : IBrokerOrchestrator
         return new BrokerResponse
         {
             Mode = fallbackResponse.Mode,
-            Source = "model_anthropic",
+            Source = ModelClientFactory.BuildModelSourceLabel(provider),
             ModelId = modelId,
             TurnStatus = mergedTurnStatus,
             Intent = ChooseValue(modelResponse.Intent, fallbackResponse.Intent),
@@ -164,9 +165,6 @@ public sealed class HybridBrokerOrchestrator : IBrokerOrchestrator
 
     private static IModelClient? CreateDefaultModelClient()
     {
-        BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
-        return settings.IsUsable()
-            ? new AnthropicMessagesModelClient(settings)
-            : null;
+        return ModelClientFactory.CreateDefault();
     }
 }

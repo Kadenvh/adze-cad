@@ -32,12 +32,19 @@ internal static class GroundingExecutionService
 {
     public const string DefaultRequest = "Summarize the active document and tell me which grounding tools should run first.";
 
+    public static string NormalizeRequest(string? userRequest)
+    {
+        return string.IsNullOrWhiteSpace(userRequest)
+            ? DefaultRequest
+            : userRequest?.Trim() ?? DefaultRequest;
+    }
+
     private static readonly HybridBrokerOrchestrator Orchestrator = new();
     private static readonly GroundingToolCatalog GroundingTools = ToolCatalog.CreateGroundingCatalog();
 
     public static GroundingExecutionReport Execute(SessionContext context, string? userRequest, bool isApplicationConnected = true)
     {
-        string request = string.IsNullOrWhiteSpace(userRequest) ? DefaultRequest : userRequest?.Trim() ?? DefaultRequest;
+        string request = NormalizeRequest(userRequest);
         BrokerPrompt prompt = ContextPromptComposer.Compose(context, request);
         BrokerResponse response = Orchestrator.CreateGroundingPlan(context, request, isApplicationConnected);
         List<ToolResult> toolResults = ExecuteRecommendedTools(context, response);

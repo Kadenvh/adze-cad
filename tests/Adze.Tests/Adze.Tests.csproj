@@ -5,10 +5,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{0D61A2A9-2C77-4B1D-8703-D6D59F89A89E}</ProjectGuid>
+    <ProjectGuid>{F1E2D3C4-B5A6-7890-ABCD-EF1234567890}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Adze.Broker</RootNamespace>
-    <AssemblyName>Adze.Broker</AssemblyName>
+    <RootNamespace>Adze.Tests</RootNamespace>
+    <AssemblyName>Adze.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -42,27 +42,45 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web.Extensions" />
+    <Reference Include="nunit.framework">
+      <HintPath>..\..\packages\NUnit.3.14.0\lib\net45\nunit.framework.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Adze.Contracts\Adze.Contracts.csproj">
+    <ProjectReference Include="..\..\src\Adze.Contracts\Adze.Contracts.csproj">
       <Project>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</Project>
       <Name>Adze.Contracts</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Adze.Broker\Adze.Broker.csproj">
+      <Project>{0D61A2A9-2C77-4B1D-8703-D6D59F89A89E}</Project>
+      <Name>Adze.Broker</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Adze.Tools\Adze.Tools.csproj">
+      <Project>{9B474ACB-90A0-40A6-8BFA-B8C0AD8837C6}</Project>
+      <Name>Adze.Tools</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Adze.Trace\Adze.Trace.csproj">
+      <Project>{D12E7A9F-7EE6-45F3-9111-693E4949AA89}</Project>
+      <Name>Adze.Trace</Name>
     </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Abstractions\IBrokerOrchestrator.cs" />
-    <Compile Include="Clients\AnthropicMessagesModelClient.cs" />
-    <Compile Include="Clients\ModelClientFactory.cs" />
-    <Compile Include="Clients\ModelResponseParser.cs" />
-    <Compile Include="Clients\OpenAIModelClient.cs" />
-    <Compile Include="Configuration\BrokerModelSettings.cs" />
-    <Compile Include="Formatting\ContextPromptComposer.cs" />
-    <Compile Include="Models\BrokerContracts.cs" />
-    <Compile Include="Orchestration\HybridBrokerOrchestrator.cs" />
-    <Compile Include="Orchestration\KeywordBrokerOrchestrator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Helpers\SessionContextFactory.cs" />
+    <Compile Include="Broker\KeywordBrokerOrchestratorTests.cs" />
+    <Compile Include="Broker\HybridBrokerOrchestratorTests.cs" />
+    <Compile Include="Broker\ModelResponseParserTests.cs" />
+    <Compile Include="Broker\BrokerModelSettingsTests.cs" />
+    <Compile Include="Broker\ContextPromptComposerTests.cs" />
+    <Compile Include="Broker\ModelClientFactoryTests.cs" />
+    <Compile Include="Trace\ModelJsonMapperTests.cs" />
+    <Compile Include="Tools\GroundingToolTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

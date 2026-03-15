@@ -28,41 +28,129 @@ public sealed class BrokerModelSettings
 
     public static BrokerModelSettings LoadFromEnvironment()
     {
-        string apiKey = FirstNonEmpty(
+        string configuredProvider = NormalizeProvider(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER"));
+
+        string anthropicApiKey = FirstNonEmpty(
             Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_API_KEY"),
             Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY"));
-
-        string configuredModel = FirstNonEmpty(
+        string anthropicModel = FirstNonEmpty(
             Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_MODEL"),
             Environment.GetEnvironmentVariable("ANTHROPIC_MODEL"));
+        string anthropicEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_ENDPOINT"));
+        string anthropicVersion = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_VERSION"));
 
-        string configuredEndpoint = FirstNonEmpty(
-            Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_ENDPOINT"));
+        string openAiApiKey = FirstNonEmpty(
+            Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_API_KEY"),
+            Environment.GetEnvironmentVariable("OPENAI_API_KEY"));
+        string openAiModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_MODEL"));
+        string openAiEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_ENDPOINT"));
 
-        string configuredVersion = FirstNonEmpty(
-            Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_VERSION"));
+        string provider = ResolveProvider(configuredProvider, openAiApiKey, anthropicApiKey);
+        string activeApiKey = string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)
+            ? openAiApiKey
+            : anthropicApiKey;
+        bool defaultEnabled = !string.IsNullOrWhiteSpace(activeApiKey);
 
         return new BrokerModelSettings
         {
-            Enabled = ReadBoolean(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ENABLE_MODEL"), !string.IsNullOrWhiteSpace(apiKey)),
-            ApiKey = apiKey,
-            Model = string.IsNullOrWhiteSpace(configuredModel) ? "claude-sonnet-4-20250514" : configuredModel.Trim(),
-            Endpoint = string.IsNullOrWhiteSpace(configuredEndpoint) ? "https://api.anthropic.com/v1/messages" : configuredEndpoint.Trim(),
-            ApiVersion = string.IsNullOrWhiteSpace(configuredVersion) ? "2023-06-01" : configuredVersion.Trim(),
-            MaxTokens = ReadInteger(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_MAX_TOKENS"), 700),
-            SynthesisMaxTokens = ReadInteger(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_SYNTHESIS_MAX_TOKENS"), 1100),
-            TimeoutMilliseconds = ReadInteger(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_TIMEOUT_MS"), 20000),
-            SynthesisTimeoutMilliseconds = ReadInteger(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_SYNTHESIS_TIMEOUT_MS"), 30000),
-            Temperature = ReadDouble(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_TEMPERATURE"), 0.1)
+            Provider = provider,
+            Enabled = ReadBoolean(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ENABLE_MODEL"), defaultEnabled),
+            ApiKey = activeApiKey,
+            Model = string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)
+                ? DefaultIfBlank(openAiModel, "gpt-4o")
+                : DefaultIfBlank(anthropicModel, "claude-sonnet-4-20250514"),
+            Endpoint = string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)
+                ? DefaultIfBlank(openAiEndpoint, "https://api.openai.com/v1/chat/completions")
+                : DefaultIfBlank(anthropicEndpoint, "https://api.anthropic.com/v1/messages"),
+            ApiVersion = DefaultIfBlank(anthropicVersion, "2023-06-01"),
+            MaxTokens = ReadInteger(
+                FirstNonEmpty(
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_MAX_TOKENS"),
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_MAX_TOKENS")),
+                700),
+            SynthesisMaxTokens = ReadInteger(
+                FirstNonEmpty(
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_SYNTHESIS_MAX_TOKENS"),
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_SYNTHESIS_MAX_TOKENS")),
+                1100),
+            TimeoutMilliseconds = ReadInteger(
+                FirstNonEmpty(
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_TIMEOUT_MS"),
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_TIMEOUT_MS")),
+                20000),
+            SynthesisTimeoutMilliseconds = ReadInteger(
+                FirstNonEmpty(
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_SYNTHESIS_TIMEOUT_MS"),
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_SYNTHESIS_TIMEOUT_MS")),
+                30000),
+            Temperature = ReadDouble(
+                FirstNonEmpty(
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_TEMPERATURE"),
+                    Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_TEMPERATURE")),
+                0.1)
         };
     }
 
     public bool IsUsable()
     {
-        return Enabled &&
-               !string.IsNullOrWhiteSpace(ApiKey) &&
-               !string.IsNullOrWhiteSpace(Model) &&
-               !string.IsNullOrWhiteSpace(Endpoint);
+        if (!Enabled ||
+            string.IsNullOrWhiteSpace(ApiKey) ||
+            string.IsNullOrWhiteSpace(Model) ||
+            string.IsNullOrWhiteSpace(Endpoint))
+        {
+            return false;
+        }
+
+        return string.Equals(Provider, "openai", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(Provider, "anthropic", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveProvider(string configuredProvider, string openAiApiKey, string anthropicApiKey)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredProvider))
+        {
+            return configuredProvider;
+        }
+
+        if (!string.IsNullOrWhiteSpace(openAiApiKey) && string.IsNullOrWhiteSpace(anthropicApiKey))
+        {
+            return "openai";
+        }
+
+        if (!string.IsNullOrWhiteSpace(anthropicApiKey))
+        {
+            return "anthropic";
+        }
+
+        if (!string.IsNullOrWhiteSpace(openAiApiKey))
+        {
+            return "openai";
+        }
+
+        return "anthropic";
+    }
+
+    private static string NormalizeProvider(string? provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            return string.Empty;
+        }
+
+        string normalizedProvider = provider!.Trim().ToLowerInvariant();
+        return normalizedProvider switch
+        {
+            "anthropic" => "anthropic",
+            "openai" => "openai",
+            _ => normalizedProvider
+        };
+    }
+
+    private static string DefaultIfBlank(string value, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? fallback
+            : value.Trim();
     }
 
     private static string FirstNonEmpty(params string?[] values)

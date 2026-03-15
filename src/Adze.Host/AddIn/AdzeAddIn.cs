@@ -106,10 +106,61 @@ public sealed class AdzeAddIn : ISwAddin
             return;
         }
 
-        string iconPath = TaskPaneIcon.Ensure();
-        _taskPaneView = _application.CreateTaskpaneView2(iconPath, Title);
-        _taskPaneView.AddControl(TaskPaneControl.ProgIdValue, string.Empty);
-        FileLogger.Info("Task Pane created.");
+        try
+        {
+            string iconPath = TaskPaneIcon.Ensure();
+            _taskPaneView = _application.CreateTaskpaneView2(iconPath, Title);
+            object addControlResult = _taskPaneView.AddControl(TaskPaneControl.ProgIdValue, string.Empty);
+            FileLogger.Info("Task Pane created. AddControl returned: " + (addControlResult ?? "<null>") + ".");
+
+            if (IsAddControlFailure(addControlResult))
+            {
+                throw new InvalidOperationException("SOLIDWORKS returned false from TaskpaneView.AddControl for " + TaskPaneControl.ProgIdValue + ".");
+            }
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("Task Pane creation failed.", ex);
+
+            if (_taskPaneView != null)
+            {
+                try
+                {
+                    _taskPaneView.DeleteView();
+                }
+                catch (Exception cleanupException)
+                {
+                    FileLogger.Error("Task Pane cleanup after failed creation also failed.", cleanupException);
+                }
+                finally
+                {
+                    Marshal.FinalReleaseComObject(_taskPaneView);
+                    _taskPaneView = null;
+                }
+            }
+
+            throw;
+        }
+    }
+
+    private static bool IsAddControlFailure(object? addControlResult)
+    {
+        if (addControlResult is bool booleanResult)
+        {
+            return !booleanResult;
+        }
+
+        if (addControlResult is int integerResult)
+        {
+            return integerResult == 0;
+        }
+
+        if (addControlResult is short shortResult)
+        {
+            return shortResult == 0;
+        }
+
+        return false;
     }
 
     private void DestroyTaskPane()
@@ -119,14 +170,17 @@ public sealed class AdzeAddIn : ISwAddin
             return;
         }
 
+        TaskpaneView taskPaneView = _taskPaneView;
+        _taskPaneView = null;
+
         try
         {
-            _taskPaneView.DeleteView();
+            taskPaneView.DeleteView();
             FileLogger.Info("Task Pane deleted.");
         }
         finally
         {
-            _taskPaneView = null;
+            Marshal.FinalReleaseComObject(taskPaneView);
         }
     }
 
