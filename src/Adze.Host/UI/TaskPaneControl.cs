@@ -38,8 +38,16 @@ public sealed class TaskPaneControl : UserControl
     private readonly TabPage _statusTab;
     private readonly CheckBox _autoRefreshStatusCheckBox;
     private readonly Label _statusRefreshStateLabel;
+    private readonly Panel _clarificationPanel;
+    private readonly LinkLabel _clarificationToggle;
+    private readonly ComboBox _intentComboBox;
+    private readonly CheckedListBox _scopeListBox;
+    private readonly ComboBox _outputModeComboBox;
+    private readonly CheckBox _diagnosticsCheckBox;
+    private readonly TableLayoutPanel _composerRoot;
     private bool _isRunning;
     private bool _requestPlaceholderActive;
+    private bool _clarificationExpanded;
     private bool _statusRefreshScheduled;
     private bool _splitterInitialized;
     private bool _splitterAdjustedByUser;
@@ -137,6 +145,121 @@ public sealed class TaskPaneControl : UserControl
             runRow.Controls.Add(runButton, 0, 0);
             runRow.Controls.Add(runStateLabel, 1, 0);
 
+            // --- Clarification panel (collapsible, between request box and run button) ---
+
+            var clarificationToggle = new LinkLabel
+            {
+                Dock = DockStyle.Top,
+                Height = 20,
+                Margin = new Padding(0, 6, 0, 0),
+                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+                LinkColor = Color.FromArgb(86, 96, 108),
+                ActiveLinkColor = Color.FromArgb(34, 41, 47),
+                Text = "Show options"
+            };
+            clarificationToggle.LinkClicked += (_, _) => ToggleClarification();
+
+            var intentLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 16,
+                Margin = new Padding(0),
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(86, 96, 108),
+                Text = "Intent"
+            };
+
+            var intentComboBox = new ComboBox
+            {
+                Dock = DockStyle.Top,
+                Height = 24,
+                Margin = new Padding(0, 2, 0, 6),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular)
+            };
+            intentComboBox.Items.AddRange(new object[] { "Inspect", "Diagnose", "Explain", "Compare" });
+            intentComboBox.SelectedIndex = 0;
+
+            var scopeLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 16,
+                Margin = new Padding(0),
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(86, 96, 108),
+                Text = "Focus on"
+            };
+
+            var scopeListBox = new CheckedListBox
+            {
+                Dock = DockStyle.Top,
+                Height = 84,
+                Margin = new Padding(0, 2, 0, 6),
+                BorderStyle = BorderStyle.FixedSingle,
+                CheckOnClick = true,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                IntegralHeight = false
+            };
+
+            var outputLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 16,
+                Margin = new Padding(0),
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(86, 96, 108),
+                Text = "Output"
+            };
+
+            var outputModeComboBox = new ComboBox
+            {
+                Dock = DockStyle.Top,
+                Height = 24,
+                Margin = new Padding(0, 2, 0, 6),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular)
+            };
+            outputModeComboBox.Items.AddRange(new object[] { "Brief", "Detailed", "Tabular" });
+            outputModeComboBox.SelectedIndex = 0;
+
+            var diagnosticsCheckBox = new CheckBox
+            {
+                Dock = DockStyle.Top,
+                Height = 20,
+                Margin = new Padding(0, 0, 0, 4),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                Text = "Include rebuild diagnostics"
+            };
+
+            var clarificationInner = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 220,
+                Margin = new Padding(0),
+                Padding = new Padding(0, 4, 0, 0),
+                Visible = false
+            };
+            // Add in reverse dock order (last added = top)
+            clarificationInner.Controls.Add(diagnosticsCheckBox);
+            clarificationInner.Controls.Add(outputModeComboBox);
+            clarificationInner.Controls.Add(outputLabel);
+            clarificationInner.Controls.Add(scopeListBox);
+            clarificationInner.Controls.Add(scopeLabel);
+            clarificationInner.Controls.Add(intentComboBox);
+            clarificationInner.Controls.Add(intentLabel);
+
+            var clarificationPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
+            clarificationPanel.Controls.Add(clarificationInner);
+            clarificationPanel.Controls.Add(clarificationToggle);
+
+            // --- Composer panel ---
+
             var composerPanel = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -145,6 +268,7 @@ public sealed class TaskPaneControl : UserControl
                 BackColor = Color.White
             };
             composerPanel.Controls.Add(runRow);
+            composerPanel.Controls.Add(clarificationPanel);
             composerPanel.Controls.Add(requestBox);
             composerPanel.Controls.Add(requestLabel);
 
@@ -326,6 +450,13 @@ public sealed class TaskPaneControl : UserControl
             _statusTab = statusTab;
             _autoRefreshStatusCheckBox = autoRefreshCheckBox;
             _statusRefreshStateLabel = statusRefreshStateLabel;
+            _clarificationPanel = clarificationInner;
+            _clarificationToggle = clarificationToggle;
+            _intentComboBox = intentComboBox;
+            _scopeListBox = scopeListBox;
+            _outputModeComboBox = outputModeComboBox;
+            _diagnosticsCheckBox = diagnosticsCheckBox;
+            _composerRoot = root;
 
             Controls.Add(root);
             ApplyRequestPlaceholder();
@@ -439,7 +570,139 @@ public sealed class TaskPaneControl : UserControl
 
     private string GetRequestText()
     {
-        return _requestPlaceholderActive ? string.Empty : _requestBox.Text;
+        string rawText = _requestPlaceholderActive ? string.Empty : _requestBox.Text;
+        string prefix = BuildClarificationPrefix();
+        return string.IsNullOrWhiteSpace(prefix)
+            ? rawText
+            : prefix + Environment.NewLine + rawText;
+    }
+
+    private void ToggleClarification()
+    {
+        _clarificationExpanded = !_clarificationExpanded;
+        _clarificationPanel.Visible = _clarificationExpanded;
+        _clarificationToggle.Text = _clarificationExpanded ? "Hide options" : "Show options";
+
+        if (_clarificationExpanded)
+        {
+            PopulateScopeList();
+        }
+    }
+
+    private void PopulateScopeList()
+    {
+        try
+        {
+            _scopeListBox.Items.Clear();
+            var context = HostState.PrepareAssistantRun(null).Context;
+
+            if (context.Selection.Count > 0)
+            {
+                string selectionPreview = string.Join(", ", context.Selection.Items.ConvertAll(item => item.Kind + ":" + item.Name));
+                _scopeListBox.Items.Add("Current selection: " + selectionPreview, true);
+            }
+
+            if (context.Document != null)
+            {
+                foreach (var feature in context.FeatureTree.Features)
+                {
+                    if (_scopeListBox.Items.Count >= 20) break;
+                    if (feature.Kind == "OriginProfileFeature" || feature.Kind == "RefPlane") continue;
+                    _scopeListBox.Items.Add("Feature: " + feature.Name + " (" + feature.Kind + ")");
+                }
+
+                foreach (var dim in context.Dimensions.Items)
+                {
+                    if (_scopeListBox.Items.Count >= 20) break;
+                    _scopeListBox.Items.Add("Dimension: " + dim.FullName + " = " + dim.Value);
+                }
+
+                foreach (var config in context.Configurations.Items)
+                {
+                    if (_scopeListBox.Items.Count >= 20) break;
+                    _scopeListBox.Items.Add("Configuration: " + config.Name);
+                }
+
+                if (string.Equals(context.Document.Type, "assembly", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var mate in context.Mates.Items)
+                    {
+                        if (_scopeListBox.Items.Count >= 20) break;
+                        _scopeListBox.Items.Add("Mate: " + mate.Name + " (" + mate.Kind + ")");
+                    }
+
+                    foreach (var refNode in context.ReferenceGraph.DirectItems)
+                    {
+                        if (_scopeListBox.Items.Count >= 20) break;
+                        _scopeListBox.Items.Add("Component: " + refNode.Name);
+                    }
+                }
+            }
+
+            bool showCompare = context.Configurations.Count > 1;
+            if (!showCompare && _intentComboBox.Items.Contains("Compare"))
+            {
+                _intentComboBox.Items.Remove("Compare");
+            }
+            else if (showCompare && !_intentComboBox.Items.Contains("Compare"))
+            {
+                _intentComboBox.Items.Add("Compare");
+            }
+
+            bool hasIssues = context.Diagnostics.Warnings.Count > 0 ||
+                             context.Diagnostics.MissingReferences.Count > 0 ||
+                             !string.Equals(context.Diagnostics.RebuildState, "clean", StringComparison.OrdinalIgnoreCase);
+            _diagnosticsCheckBox.Checked = hasIssues;
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("Clarification scope population failed.", ex);
+        }
+    }
+
+    private string BuildClarificationPrefix()
+    {
+        if (!_clarificationExpanded)
+        {
+            return string.Empty;
+        }
+
+        var parts = new System.Collections.Generic.List<string>();
+
+        string intent = _intentComboBox.SelectedItem?.ToString() ?? "Inspect";
+        if (!string.Equals(intent, "Inspect", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add("intent=" + intent.ToLowerInvariant());
+        }
+
+        var checkedItems = new System.Collections.Generic.List<string>();
+        for (int i = 0; i < _scopeListBox.CheckedItems.Count; i++)
+        {
+            checkedItems.Add(_scopeListBox.CheckedItems[i]?.ToString() ?? string.Empty);
+        }
+
+        if (checkedItems.Count > 0)
+        {
+            parts.Add("scope=" + string.Join("; ", checkedItems));
+        }
+
+        string outputMode = _outputModeComboBox.SelectedItem?.ToString() ?? "Brief";
+        if (!string.Equals(outputMode, "Brief", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add("output=" + outputMode.ToLowerInvariant());
+        }
+
+        if (_diagnosticsCheckBox.Checked)
+        {
+            parts.Add("diagnostics=yes");
+        }
+
+        if (parts.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return "[clarification] " + string.Join(", ", parts) + " [/clarification]";
     }
 
     private void RefreshStatus(bool force = false)

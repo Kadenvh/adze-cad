@@ -73,6 +73,7 @@
     <Compile Include="Broker\HybridBrokerOrchestratorTests.cs" />
     <Compile Include="Broker\ModelResponseParserTests.cs" />
     <Compile Include="Broker\BrokerModelSettingsTests.cs" />
+    <Compile Include="Broker\ConversationStateTests.cs" />
     <Compile Include="Broker\ContextPromptComposerTests.cs" />
     <Compile Include="Broker\ModelClientFactoryTests.cs" />
     <Compile Include="Broker\GroundingAnswerBuilderTests.cs" />

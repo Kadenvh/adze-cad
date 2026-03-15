@@ -49,20 +49,29 @@
       <Project>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</Project>
       <Name>Adze.Contracts</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Adze.Tools\Adze.Tools.csproj">
+      <Project>{9B474ACB-90A0-40A6-8BFA-B8C0AD8837C6}</Project>
+      <Name>Adze.Tools</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Abstractions\IAgentContracts.cs" />
     <Compile Include="Abstractions\IBrokerOrchestrator.cs" />
     <Compile Include="Clients\AnthropicMessagesModelClient.cs" />
     <Compile Include="Clients\ModelClientFactory.cs" />
     <Compile Include="Clients\ModelResponseParser.cs" />
     <Compile Include="Clients\OpenAIModelClient.cs" />
+    <Compile Include="Configuration\AgentModelSettings.cs" />
     <Compile Include="Configuration\BrokerModelSettings.cs" />
     <Compile Include="Formatting\ContextPromptComposer.cs" />
     <Compile Include="Formatting\GroundingAnswerBuilder.cs" />
     <Compile Include="Formatting\GroundingToolResultsBuilder.cs" />
+    <Compile Include="Models\AgentContracts.cs" />
     <Compile Include="Models\BrokerContracts.cs" />
+    <Compile Include="Models\ConversationContracts.cs" />
     <Compile Include="Models\GroundingExecutionReport.cs" />
+    <Compile Include="Orchestration\ConversationTruncator.cs" />
     <Compile Include="Orchestration\GroundingSynthesisService.cs" />
     <Compile Include="Orchestration\HybridBrokerOrchestrator.cs" />
     <Compile Include="Orchestration\KeywordBrokerOrchestrator.cs" />
