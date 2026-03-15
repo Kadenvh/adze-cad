@@ -31,7 +31,8 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-11 | Discovery finalized and bootstrap documentation established |
 | 0.1.0 | 2026-03-13 | Reached grounded assistant alpha: native host, 10 read-only tools, hybrid broker, model-backed answer synthesis, answer-first Task Pane, support bundle workflow |
 | 0.1.0 | 2026-03-13 | Expanded alpha hardening: OpenAI plus Anthropic provider routing, assistant-workspace UI overhaul, background provider execution, and COM cleanup/logging across session-context traversal |
-| 0.1.0 | 2026-03-15 | Compiled NUnit 3 unit test suite: 166 tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization |
+| 0.1.0 | 2026-03-15 | Compiled NUnit 3 unit test suite: 130 tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, and trace serialization |
+| 0.1.0 | 2026-03-15 | Synthesis answer-quality and failure coverage: moved pure-logic types from Host to Broker, added 36 tests for answer building, tool results formatting, and synthesis orchestration (166 total) |
 
 ## Current Architecture
 
