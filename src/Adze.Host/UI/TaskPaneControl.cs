@@ -119,7 +119,19 @@ public sealed class TaskPaneControl : UserControl
                 FlatStyle = FlatStyle.System,
                 Text = "Run assistant"
             };
-            runButton.Click += (_, _) => RunAssistant();
+            runButton.Click += (_, _) =>
+            {
+                if (_isRunning)
+                {
+                    HostState.CancelRun();
+                    _runStateLabel.Text = "Cancelling...";
+                    _runButton.Enabled = false;
+                }
+                else
+                {
+                    RunAssistant();
+                }
+            };
 
             var runStateLabel = new Label
             {
@@ -747,13 +759,15 @@ public sealed class TaskPaneControl : UserControl
         try
         {
             _isRunning = true;
-            _runButton.Enabled = false;
+            _runButton.Text = "Cancel";
+            _runButton.Enabled = true;
             _requestBox.Enabled = false;
             _runStateLabel.Text = "Running...";
             _refreshTimer.Stop();
             UpdateStatusRefreshIndicator();
             Update();
 
+            HostState.BeginRun();
             preparation = HostState.PrepareAssistantRun(GetRequestText());
         }
         catch (Exception ex)
@@ -776,6 +790,7 @@ public sealed class TaskPaneControl : UserControl
             }
             finally
             {
+                HostState.EndRun();
                 PostToUi(FinishAssistantRunUi);
             }
         });
@@ -805,6 +820,7 @@ public sealed class TaskPaneControl : UserControl
     {
         _requestBox.Enabled = true;
         _runButton.Enabled = true;
+        _runButton.Text = "Run assistant";
         _isRunning = false;
         ApplyRequestPlaceholderIfNeeded();
         RefreshStatus(force: _detailsTabs.SelectedTab == _statusTab);

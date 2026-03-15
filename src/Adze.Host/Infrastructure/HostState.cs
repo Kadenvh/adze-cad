@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Web.Script.Serialization;
 using SolidWorks.Interop.sldworks;
 using Adze.Broker.Abstractions;
@@ -55,6 +57,35 @@ internal static class HostState
     private static ISldWorks? _application;
     private static int _sessionRunCount;
     private static ModelUsage _sessionUsage = new();
+    private static CancellationTokenSource? _currentRunCts;
+
+    public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
+
+    public static void BeginRun()
+    {
+        lock (Sync)
+        {
+            _currentRunCts?.Dispose();
+            _currentRunCts = new CancellationTokenSource();
+        }
+    }
+
+    public static void CancelRun()
+    {
+        lock (Sync)
+        {
+            _currentRunCts?.Cancel();
+        }
+    }
+
+    public static void EndRun()
+    {
+        lock (Sync)
+        {
+            _currentRunCts?.Dispose();
+            _currentRunCts = null;
+        }
+    }
 
     public static void SetApplication(ISldWorks? application)
     {
@@ -160,6 +191,129 @@ internal static class HostState
 
     private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected)
     {
+        // Try the agentic tool loop if enabled
+        if (isApplicationConnected && AgentModelClientFactory.IsAgentLoopEnabled())
+        {
+            BrokerModelSettings brokerSettings = BrokerModelSettings.LoadFromEnvironment();
+            IAgentModelClient? agentClient = AgentModelClientFactory.Create(brokerSettings);
+            if (agentClient != null)
+            {
+                return RunAgenticAssistant(context, request, agentClient);
+            }
+        }
+
+        // Fallback to existing two-pass flow
+        return RunClassicAssistant(context, request, isApplicationConnected);
+    }
+
+    private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient)
+    {
+        AgentModelSettings agentSettings = AgentModelSettings.LoadFromEnvironment();
+        List<AgentToolDefinition> toolDefinitions = ToolDefinitionBuilder.BuildReadToolDefinitions();
+        var toolDispatcher = new AgentToolDispatcher();
+        var loopRunner = new AgentLoopRunner();
+
+        var executionContext = new ToolExecutionContext
+        {
+            SessionId = context.Session.RequestId,
+            DocumentKey = context.Document?.Path ?? string.Empty,
+            SessionContext = context
+        };
+
+        CancellationToken ct;
+        lock (Sync)
+        {
+            ct = _currentRunCts?.Token ?? CancellationToken.None;
+        }
+
+        // Wrap the dispatcher to inject context
+        var contextAwareExecutor = new ContextAwareToolExecutor(toolDispatcher, executionContext);
+
+        string systemPrompt = ContextPromptComposer.BuildAgentSystemPrompt();
+
+        AgentLoopResult result = loopRunner.Run(
+            agentClient,
+            contextAwareExecutor,
+            systemPrompt,
+            request,
+            toolDefinitions,
+            agentSettings,
+            ct,
+            null);
+
+        string intent = "agent_run: " + request;
+        RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(intent, new List<Contracts.Models.ToolResult>(), UserId);
+
+        ModelUsage runUsage = result.AggregateUsage ?? new ModelUsage();
+        lock (Sync)
+        {
+            _sessionRunCount++;
+            _sessionUsage = _sessionUsage + runUsage;
+        }
+
+        string answerText = !string.IsNullOrWhiteSpace(result.FinalAnswer)
+            ? result.FinalAnswer
+            : "The agent loop completed with outcome: " + result.Outcome + ".";
+
+        string source = result.Outcome == AgentRunOutcome.Success ? "agent_loop" : "agent_fallback";
+        string usageText = runUsage.TotalTokens > 0
+            ? "    Tokens: " + runUsage.TotalTokens + " (prompt=" + runUsage.PromptTokens + " completion=" + runUsage.CompletionTokens + ")"
+            : string.Empty;
+
+        string toolsSummary = result.ExecutedTools.Count > 0
+            ? string.Join(", ", result.ExecutedTools.ConvertAll(t => t.ToolName))
+            : "none";
+
+        FileLogger.Info(
+            "Agent run completed. outcome=" + result.Outcome +
+            " tools=" + toolsSummary +
+            " tokens=" + runUsage.TotalTokens +
+            System.Environment.NewLine + answerText);
+
+        return new AssistantRunSnapshot
+        {
+            AnswerText = answerText,
+            AnswerFooterText = "Answer source: " + source + usageText + "    Trace ID: " + recorded.TraceEvent.TraceId,
+            PlanText = "Agent loop: " + result.Outcome + " | Tools executed: " + result.ExecutedTools.Count + " | " + toolsSummary,
+            ToolsText = BuildAgentToolsText(result.ExecutedTools),
+            TraceId = recorded.TraceEvent.TraceId,
+            AnswerSource = source,
+            AnswerModelId = string.Empty,
+            TurnStatus = result.Outcome == AgentRunOutcome.Success ? "ready" : "attention_needed",
+            RunUsage = runUsage
+        };
+    }
+
+    private static string BuildAgentToolsText(List<AgentToolResult> executedTools)
+    {
+        if (executedTools.Count == 0)
+        {
+            return "No tools were executed during this agent run.";
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Agent tool execution log");
+        sb.AppendLine("-----------------------");
+        foreach (AgentToolResult tool in executedTools)
+        {
+            sb.AppendLine(tool.ToolName + " [" + (tool.IsError ? "error" : "ok") + "]");
+            if (tool.OutputJson.Length > 500)
+            {
+                sb.AppendLine(tool.OutputJson.Substring(0, 500) + "...");
+            }
+            else
+            {
+                sb.AppendLine(tool.OutputJson);
+            }
+
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    private static AssistantRunSnapshot RunClassicAssistant(SessionContext context, string request, bool isApplicationConnected)
+    {
         GroundingExecutionReport report = GroundingExecutionService.Execute(context, request, isApplicationConnected);
         string intent = "assistant_run: " + report.Request;
         RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(intent, report.ToolResults, UserId);
@@ -243,6 +397,23 @@ internal static class HostState
             TurnStatus = report.Response.TurnStatus,
             RunUsage = runUsage
         };
+    }
+
+    private sealed class ContextAwareToolExecutor : IToolExecutor
+    {
+        private readonly IToolExecutor _inner;
+        private readonly ToolExecutionContext _context;
+
+        public ContextAwareToolExecutor(IToolExecutor inner, ToolExecutionContext context)
+        {
+            _inner = inner;
+            _context = context;
+        }
+
+        public AgentToolResult Execute(string toolName, System.Collections.Generic.Dictionary<string, object?> arguments, ToolExecutionContext context)
+        {
+            return _inner.Execute(toolName, arguments, _context);
+        }
     }
 
     private static ISldWorks? GetApplicationSnapshot()
