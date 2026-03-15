@@ -133,6 +133,29 @@ public static class ProgressionEngine
             UnlockAchievement(state, update.NewAchievementIds, "diagnostics_grounded", "Diagnostics grounded", traceEvent.TraceId);
         }
 
+        // Write tool achievements
+        if (successfulToolSet.Contains(ToolNames.SetCustomProperty))
+        {
+            UnlockAchievement(state, update.NewAchievementIds, "first_property_write", "First property write", traceEvent.TraceId);
+        }
+
+        if (successfulToolSet.Contains(ToolNames.SetDimensionValue))
+        {
+            UnlockAchievement(state, update.NewAchievementIds, "first_dimension_write", "First dimension write", traceEvent.TraceId);
+        }
+
+        if (successfulToolSet.Contains(ToolNames.SuppressFeature) || successfulToolSet.Contains(ToolNames.UnsuppressFeature))
+        {
+            UnlockAchievement(state, update.NewAchievementIds, "first_feature_suppression", "First feature suppression toggle", traceEvent.TraceId);
+        }
+
+        if (successfulToolSet.Contains(ToolNames.SetCustomProperty) &&
+            successfulToolSet.Contains(ToolNames.SetDimensionValue) &&
+            (successfulToolSet.Contains(ToolNames.SuppressFeature) || successfulToolSet.Contains(ToolNames.UnsuppressFeature)))
+        {
+            UnlockAchievement(state, update.NewAchievementIds, "first_wave_writes_completed", "All first-wave write tools used", traceEvent.TraceId);
+        }
+
         if (ExplorationTools.All(toolName => successfulToolSet.Contains(toolName)))
         {
             UnlockAchievement(state, update.NewAchievementIds, "grounding_triad_completed", "Grounding triad completed", traceEvent.TraceId);
@@ -213,6 +236,13 @@ public static class ProgressionEngine
         if (hasReviewReadyRecipe)
         {
             computedTier = ToolUnlockTier.Reviewed;
+        }
+
+        // TrustedBounded requires: reviewed tier + first-wave writes completed + reviewed recipe with writes
+        if (computedTier >= ToolUnlockTier.Reviewed &&
+            state.Achievements.Any(a => string.Equals(a.AchievementId, "first_wave_writes_completed", StringComparison.OrdinalIgnoreCase)))
+        {
+            computedTier = ToolUnlockTier.TrustedBounded;
         }
 
         if (state.ToolUnlockTier > computedTier)

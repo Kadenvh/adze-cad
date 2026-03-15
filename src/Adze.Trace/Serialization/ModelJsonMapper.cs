@@ -380,7 +380,7 @@ public static class ModelJsonMapper
             ToolUnlockTier.Baseline => "baseline",
             ToolUnlockTier.Assisted => "assisted",
             ToolUnlockTier.Reviewed => "reviewed",
-            ToolUnlockTier.Trusted => "trusted",
+            ToolUnlockTier.TrustedBounded => "trusted_bounded",
             _ => "baseline"
         };
     }
@@ -392,7 +392,8 @@ public static class ModelJsonMapper
             "baseline" => ToolUnlockTier.Baseline,
             "assisted" => ToolUnlockTier.Assisted,
             "reviewed" => ToolUnlockTier.Reviewed,
-            "trusted" => ToolUnlockTier.Trusted,
+            "trusted" => ToolUnlockTier.TrustedBounded,
+            "trusted_bounded" => ToolUnlockTier.TrustedBounded,
             _ => ToolUnlockTier.Baseline
         };
     }

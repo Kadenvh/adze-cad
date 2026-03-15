@@ -61,6 +61,8 @@
     <Compile Include="Storage\StatePaths.cs" />
     <Compile Include="Tracing\GroundingSnapshotStore.cs" />
     <Compile Include="Tracing\TraceRecorder.cs" />
+    <Compile Include="Progression\TrustService.cs" />
+    <Compile Include="Recipes\AgentRecipeCaptureService.cs" />
     <Compile Include="Tracing\WriteTraceRecordBuilder.cs" />
   </ItemGroup>
 
