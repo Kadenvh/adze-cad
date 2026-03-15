@@ -84,6 +84,7 @@
     <Compile Include="Broker\GroundingSynthesisServiceTests.cs" />
     <Compile Include="Broker\LiveProviderSmokeTests.cs" />
     <Compile Include="Broker\ModelUsageParsingTests.cs" />
+    <Compile Include="Broker\ProductionHardeningTests.cs" />
     <Compile Include="Broker\WriteExecutionCoordinatorTests.cs" />
     <Compile Include="Broker\WriteInfrastructureTests.cs" />
     <Compile Include="Trace\LearningSystemTests.cs" />

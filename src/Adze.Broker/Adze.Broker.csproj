@@ -66,6 +66,8 @@
     <Compile Include="Clients\OpenAIModelClient.cs" />
     <Compile Include="Configuration\AgentModelSettings.cs" />
     <Compile Include="Configuration\BrokerModelSettings.cs" />
+    <Compile Include="Configuration\CostBudgetSettings.cs" />
+    <Compile Include="Configuration\FeatureGateRegistry.cs" />
     <Compile Include="Formatting\ContextPromptComposer.cs" />
     <Compile Include="Formatting\GroundingAnswerBuilder.cs" />
     <Compile Include="Formatting\GroundingToolResultsBuilder.cs" />
