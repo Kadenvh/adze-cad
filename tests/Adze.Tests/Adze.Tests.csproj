@@ -87,6 +87,7 @@
     <Compile Include="Broker\WriteExecutionCoordinatorTests.cs" />
     <Compile Include="Broker\WriteInfrastructureTests.cs" />
     <Compile Include="Trace\LearningSystemTests.cs" />
+    <Compile Include="Trace\MemoryStoreTests.cs" />
     <Compile Include="Trace\ModelJsonMapperTests.cs" />
     <Compile Include="Tools\GroundingToolTests.cs" />
     <Compile Include="Tools\WriteToolTests.cs" />
