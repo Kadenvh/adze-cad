@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Adze.Broker.Configuration;
 using Adze.Broker.Models;
+using Adze.Contracts.Models;
 
 namespace Adze.Broker.Abstractions;
 
@@ -49,4 +50,6 @@ public sealed class ToolExecutionContext
     public int CurrentIteration { get; set; }
 
     public CancellationToken CancellationToken { get; set; }
+
+    public SessionContext? SessionContext { get; set; }
 }
