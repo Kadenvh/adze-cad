@@ -46,9 +46,9 @@ Use this document when editing source, scripts, schemas, traces, validation harn
 | `benchmarks/grounding` | Curated grounding task corpus and manifests |
 | `benchmarks/reports` | Machine-readable eval and benchmark outputs |
 | `scripts/setup` | Build, registration, launch, validation, and support scripts |
-| `tests/Adze.Tests` | NUnit 3 compiled unit tests covering broker, tools, and trace layers (130 tests) |
+| `tests/Adze.Tests` | NUnit 3 compiled unit tests (175 tests + 6 live provider smoke tests) covering broker, tools, trace, and usage parsing |
 | `tests/contracts` | Reserved compiled test boundary for future schema and contract tests |
-| `install` | Packaging/install placeholder boundary; not yet implemented beyond documentation |
+| `install` | Beta install/uninstall/packaging scripts and release zip generation |
 
 ## Runtime Shape
 
