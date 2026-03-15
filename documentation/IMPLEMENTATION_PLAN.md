@@ -14,7 +14,7 @@
 - hybrid broker with OpenAI/Anthropic/OpenRouter provider routing and deterministic fallback
 - model-backed final answer synthesis with deterministic fallback
 - per-run and session-level token usage monitoring (API response → answer footer → Status tab)
-- 341 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- 378 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
 - **agentic tool loop** (Phase 2): `OpenAIFormatAgentClient`, `AgentLoopRunner`, `AgentToolDispatcher`, `ToolDefinitionBuilder`, `AgentModelClientFactory`. Feature-gated behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Existing single-turn path remains default fallback.
 - **write tool safety infrastructure** (Phase 3): `IStateSnapshotService`, `IStateDiffService`, `IVerificationPolicy`, `StateDiffService`, `DefaultVerificationPolicy`, `WriteTraceRecordBuilder`. All contracts and pure logic implementations with 30 tests.
 - **first-wave write tools** (Phase 4 core): `SetCustomPropertyTool`, `SetDimensionValueTool`, `SuppressFeatureTool`, `UnsuppressFeatureTool`. Full `IWriteTool<TParams>` implementations with preview/apply/verify/undo lifecycle. `WriteExecutionCoordinator` orchestrates the 8-step write lifecycle. Agent dispatch integration with feature gate `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true`. 36 tests.
@@ -33,7 +33,7 @@
 | Check | Result |
 |------|--------|
 | `build-all.ps1 -StopSolidWorks` | PASS |
-| `run-tests.ps1` | PASS (`341` total, 335 passed, 6 inconclusive smoke tests without env vars) |
+| `run-tests.ps1` | PASS (`378` total, 372 passed, 6 inconclusive smoke tests without env vars) |
 | `run-broker-evals.ps1` | PASS (`12/12`) |
 | `validate-host-spike.ps1` | PASS |
 | `run-grounding-benchmarks.ps1` | PASS (`12/12`) |
@@ -113,8 +113,10 @@
 - [x] **Phase 3:** Implement snapshot/diff verification layer (IStateSnapshotService, IStateDiffService, IVerificationPolicy, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder — 30 tests)
 - [x] **Phase 4 core:** Implement first-wave write tools (set_custom_property, set_dimension_value, suppress_feature, unsuppress_feature) with IWriteTool, WriteExecutionCoordinator, agent dispatch, feature gate — 36 tests
 - [ ] **Phase 4 UI:** Add WritePreview confirmation panel and write history/undo surface to TaskPaneControl
-- [ ] **Phase 5:** Learning activation (recipe capture, promotion, trust tiers)
-- [ ] **Phase 6:** Multi-session memory and closed-file retrieval
+- [x] **Phase 5:** Learning activation — ITrustService, TrustService, AgentRecipeCaptureService, write tool achievements, TrustedBounded tier progression — 14 tests
+- [x] **Phase 6 core:** Per-document memory (DocumentMemory, MemoryStore) and user preference storage — 12 tests
+- [ ] **Phase 6 retrieval:** OLE Structured Storage closed-file indexer (requires OpenMcdf NuGet)
+- [x] **Phase 7/8 partial:** Cost budget controls (CostBudgetSettings, BudgetStatus), FeatureGateRegistry — 11 tests
 - [ ] Decide whether answer evidence snippets belong in the Task Pane
 - [ ] Decide whether recipe suggestions should appear in the Task Pane
 
@@ -127,7 +129,7 @@ If a new agent or session picks this up:
 3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown (now with completion markers).
 4. Read `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` for C# interface contracts.
 5. The 7 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
-6. Phases 1A, 1B, 2, 3, and 4 (core) are implemented. 341 tests passing.
-7. The agentic tool loop is live behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Write tools are behind `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true`.
-8. Next priorities: (a) live test agent loop + write tools in SOLIDWORKS, (b) add confirmation UI panel to TaskPaneControl, (c) Phase 5 learning activation.
-9. Key new files this session: `Adze.Contracts/Models/WriteContracts.cs`, `Adze.Contracts/Abstractions/IWriteServices.cs`, `Adze.Broker/Orchestration/StateDiffService.cs`, `Adze.Broker/Orchestration/DefaultVerificationPolicy.cs`, `Adze.Broker/Orchestration/WriteExecutionCoordinator.cs`, `Adze.Tools/Write/*.cs`, `Adze.Trace/Tracing/WriteTraceRecordBuilder.cs`.
+6. Phases 1A through 7/8 (core infrastructure) are implemented. 378 tests passing.
+7. Feature gates: `SOLIDWORKS_AI_AGENT_LOOP=true` (agentic loop), `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true` (write tools). See `FeatureGateRegistry` for all 5 gates.
+8. Next priorities: (a) live test agent loop + write tools in SOLIDWORKS, (b) add confirmation UI panel to TaskPaneControl (T4-09), (c) OLE closed-file indexer (T6-03, needs OpenMcdf NuGet), (d) local model support (T8-02), (e) final-answer streaming (T8-03).
+9. Key new infrastructure this session: write contracts + tools, snapshot/diff/verification, write execution coordinator, trust service, recipe capture from agent runs, per-document memory, cost budgets, feature gate registry.
