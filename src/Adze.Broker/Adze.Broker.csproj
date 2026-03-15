@@ -59,7 +59,11 @@
     <Compile Include="Clients\OpenAIModelClient.cs" />
     <Compile Include="Configuration\BrokerModelSettings.cs" />
     <Compile Include="Formatting\ContextPromptComposer.cs" />
+    <Compile Include="Formatting\GroundingAnswerBuilder.cs" />
+    <Compile Include="Formatting\GroundingToolResultsBuilder.cs" />
     <Compile Include="Models\BrokerContracts.cs" />
+    <Compile Include="Models\GroundingExecutionReport.cs" />
+    <Compile Include="Orchestration\GroundingSynthesisService.cs" />
     <Compile Include="Orchestration\HybridBrokerOrchestrator.cs" />
     <Compile Include="Orchestration\KeywordBrokerOrchestrator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

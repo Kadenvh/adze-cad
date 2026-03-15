@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using Adze.Contracts.Models;
 
-namespace Adze.Host.Services;
+namespace Adze.Broker.Formatting;
 
-internal static class GroundingToolResultsBuilder
+public static class GroundingToolResultsBuilder
 {
     public static string Build(IEnumerable<ToolResult> toolResults)
     {

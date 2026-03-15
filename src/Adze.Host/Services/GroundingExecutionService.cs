@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Adze.Broker.Formatting;
 using Adze.Broker.Models;
@@ -8,25 +7,6 @@ using Adze.Contracts.Tooling;
 using Adze.Tools;
 
 namespace Adze.Host.Services;
-
-internal sealed class GroundingExecutionReport
-{
-    public DateTimeOffset ExecutedUtc { get; set; }
-
-    public bool IsApplicationConnected { get; set; }
-
-    public string Request { get; set; } = string.Empty;
-
-    public BrokerPrompt Prompt { get; set; } = new();
-
-    public BrokerResponse Response { get; set; } = new();
-
-    public List<ToolResult> ToolResults { get; set; } = new();
-
-    public int SuccessfulToolCount { get; set; }
-
-    public int FailedToolCount { get; set; }
-}
 
 internal static class GroundingExecutionService
 {

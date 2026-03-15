@@ -1,9 +1,18 @@
 using System;
+using System.Linq;
+using System.Web.Script.Serialization;
 using SolidWorks.Interop.sldworks;
+using Adze.Broker.Abstractions;
+using Adze.Broker.Clients;
+using Adze.Broker.Configuration;
+using Adze.Broker.Formatting;
+using Adze.Broker.Models;
+using Adze.Broker.Orchestration;
 using Adze.Contracts.Models;
 using Adze.Host.Services;
 using Adze.Trace.Progression;
 using Adze.Trace.Recipes;
+using Adze.Trace.Serialization;
 using Adze.Trace.Tracing;
 
 namespace Adze.Host.Infrastructure;
@@ -150,7 +159,12 @@ internal static class HostState
             LatestAchievementTitle = latestAchievement?.Title
         });
 
-        GroundingSynthesisOutcome synthesis = GroundingSynthesisService.Build(context, report);
+        var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+        string contextJson = serializer.Serialize(ModelJsonMapper.ToJson(context));
+        string toolResultsJson = serializer.Serialize(report.ToolResults.Select(ModelJsonMapper.ToJson).ToArray());
+        BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
+        IModelClient? modelClient = settings.IsUsable() ? ModelClientFactory.Create(settings) : null;
+        GroundingSynthesisOutcome synthesis = GroundingSynthesisService.Build(report, contextJson, toolResultsJson, modelClient);
         string answerText = synthesis.AnswerText;
         string planText = GroundingPlanBuilder.Build(report);
         string toolsText = GroundingToolResultsBuilder.Build(report.ToolResults);

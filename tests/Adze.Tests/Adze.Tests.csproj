@@ -75,6 +75,9 @@
     <Compile Include="Broker\BrokerModelSettingsTests.cs" />
     <Compile Include="Broker\ContextPromptComposerTests.cs" />
     <Compile Include="Broker\ModelClientFactoryTests.cs" />
+    <Compile Include="Broker\GroundingAnswerBuilderTests.cs" />
+    <Compile Include="Broker\GroundingToolResultsBuilderTests.cs" />
+    <Compile Include="Broker\GroundingSynthesisServiceTests.cs" />
     <Compile Include="Trace\ModelJsonMapperTests.cs" />
     <Compile Include="Tools\GroundingToolTests.cs" />
   </ItemGroup>

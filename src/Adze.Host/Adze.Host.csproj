@@ -86,12 +86,9 @@
     <Compile Include="Infrastructure\FileLogger.cs" />
     <Compile Include="Infrastructure\TaskPaneIcon.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\GroundingAnswerBuilder.cs" />
     <Compile Include="Services\GroundingDashboardBuilder.cs" />
     <Compile Include="Services\GroundingExecutionService.cs" />
     <Compile Include="Services\GroundingPlanBuilder.cs" />
-    <Compile Include="Services\GroundingSynthesisService.cs" />
-    <Compile Include="Services\GroundingToolResultsBuilder.cs" />
     <Compile Include="Services\SessionContextBuilder.cs" />
     <Compile Include="UI\TaskPaneControl.cs">
       <SubType>UserControl</SubType>

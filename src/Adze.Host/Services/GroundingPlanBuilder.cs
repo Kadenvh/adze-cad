@@ -1,4 +1,5 @@
 using System.Text;
+using Adze.Broker.Models;
 using Adze.Contracts.Models;
 
 namespace Adze.Host.Services;

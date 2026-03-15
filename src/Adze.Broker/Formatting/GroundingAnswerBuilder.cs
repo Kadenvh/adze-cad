@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Adze.Broker.Models;
 using Adze.Contracts.Models;
 
-namespace Adze.Host.Services;
+namespace Adze.Broker.Formatting;
 
-internal static class GroundingAnswerBuilder
+public static class GroundingAnswerBuilder
 {
     public static string Build(GroundingExecutionReport report)
     {
