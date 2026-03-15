@@ -88,7 +88,7 @@ The repo is no longer a speculative scaffold. It currently contains:
 
 - No local `dotnet` SDK is installed. The repo still assumes a Visual Studio/MSBuild-first workflow. NUnit tests run via the NUnit3 console runner and NuGet packages restored with `nuget.exe` under `tools/`.
 - Launcher-managed prerequisite windows can block live host validation even when the add-in code is healthy.
-- The current eval surface is stronger for tool selection than for final answer quality.
+- The eval surface now covers tool selection, answer building, tool results formatting, and synthesis orchestration. Live provider answer quality still needs a real API key smoke test.
 - No real provider API key is available in the current shell environment, so external provider smoke validation is still pending.
 - The latest Task Pane overhaul is build-validated and host-validated, but its current visual acceptance still needs a direct desktop check inside SOLIDWORKS.
 - Packaging/install/update is still not implemented as a tester-friendly workflow.
