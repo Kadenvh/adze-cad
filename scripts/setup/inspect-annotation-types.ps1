@@ -4,6 +4,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
 $interopPath = "C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x\SOLIDWORKS\api\redist\SolidWorks.Interop.sldworks.dll"
 $constPath = "C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x\SOLIDWORKS\api\redist\SolidWorks.Interop.swconst.dll"
 
@@ -89,7 +91,7 @@ public static class SolidWorksAnnotationInspector
 }
 
 if (-not [string]::IsNullOrWhiteSpace($Path)) {
-    & powershell.exe -NoProfile -File "C:\SW_plugin\scripts\setup\open-sample-document.ps1" -Path $Path | Out-Null
+    & powershell.exe -NoProfile -File (Join-Path $repoRoot 'scripts\setup\open-sample-document.ps1') -Path $Path | Out-Null
     Start-Sleep -Seconds 6
 }
 

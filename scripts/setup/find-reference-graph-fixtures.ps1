@@ -11,9 +11,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $snapshotPath = Join-Path $env:LOCALAPPDATA "Adze\snapshots\latest-grounding-snapshot.json"
-$reloadScript = "C:\SW_plugin\scripts\setup\reload-host.ps1"
-$openScript = "C:\SW_plugin\scripts\setup\open-sample-document.ps1"
+$reloadScript = Join-Path $repoRoot 'scripts\setup\reload-host.ps1'
+$openScript = Join-Path $repoRoot 'scripts\setup\open-sample-document.ps1'
 
 function Get-MemberValue {
     param(

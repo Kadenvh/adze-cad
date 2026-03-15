@@ -4,11 +4,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $logPath = Join-Path $env:LOCALAPPDATA "Adze\logs\host.log"
 $progressionPath = Join-Path $env:LOCALAPPDATA "Adze\state\progression-state.json"
 $traceRoot = Join-Path $env:LOCALAPPDATA "Adze\traces"
 
-& powershell.exe -NoProfile -File "C:\SW_plugin\scripts\setup\reload-host.ps1" -SamplePath $SamplePath | Out-Null
+& powershell.exe -NoProfile -File (Join-Path $repoRoot 'scripts\setup\reload-host.ps1') -SamplePath $SamplePath | Out-Null
 
 if (-not (Test-Path $logPath)) {
     throw "Host log not found: $logPath"

@@ -6,8 +6,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $msbuild = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
-$solution = "C:\SW_plugin\Adze.sln"
+$solution = Join-Path $repoRoot 'Adze.sln'
 
 if (-not (Test-Path $msbuild)) {
     throw "MSBuild not found: $msbuild"
@@ -18,7 +19,7 @@ if (-not (Test-Path $solution)) {
 }
 
 if ($StopSolidWorks) {
-    & powershell.exe -NoProfile -File "C:\SW_plugin\scripts\setup\stop-solidworks-processes.ps1"
+    & powershell.exe -NoProfile -File (Join-Path $repoRoot 'scripts\setup\stop-solidworks-processes.ps1')
 }
 
 & $msbuild $solution /t:Build /p:Configuration=$Configuration /p:Platform="Any CPU" /nologo

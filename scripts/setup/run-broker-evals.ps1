@@ -1,13 +1,16 @@
 param(
-    [string]$TasksPath = "C:\SW_plugin\benchmarks\grounding\starter-grounding-tasks.json",
-    [string]$ReportsPath = "C:\SW_plugin\benchmarks\reports",
+    [string]$TasksPath = "",
+    [string]$ReportsPath = "",
     [switch]$IncludePending
 )
 
 $ErrorActionPreference = "Stop"
 
-$contractsAssemblyPath = "C:\SW_plugin\src\Adze.Contracts\bin\Debug\Adze.Contracts.dll"
-$brokerAssemblyPath = "C:\SW_plugin\src\Adze.Broker\bin\Debug\Adze.Broker.dll"
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+if (-not $TasksPath) { $TasksPath = Join-Path $repoRoot 'benchmarks\grounding\starter-grounding-tasks.json' }
+if (-not $ReportsPath) { $ReportsPath = Join-Path $repoRoot 'benchmarks\reports' }
+$contractsAssemblyPath = Join-Path $repoRoot 'src\Adze.Contracts\bin\Debug\Adze.Contracts.dll'
+$brokerAssemblyPath = Join-Path $repoRoot 'src\Adze.Broker\bin\Debug\Adze.Broker.dll'
 $reportHelpersPath = Join-Path $PSScriptRoot "RegressionReportHelpers.ps1"
 
 if (-not (Test-Path $reportHelpersPath)) {

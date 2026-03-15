@@ -5,8 +5,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $msbuild = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
-$project = "C:\SW_plugin\src\Adze.Host\Adze.Host.csproj"
+$project = Join-Path $repoRoot 'src\Adze.Host\Adze.Host.csproj'
 
 if (-not (Test-Path $msbuild)) {
     throw "MSBuild not found: $msbuild"

@@ -5,7 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$assemblyPath = "C:\SW_plugin\src\Adze.Host\bin\$Configuration\Adze.Host.dll"
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$assemblyPath = Join-Path $repoRoot "src\Adze.Host\bin\$Configuration\Adze.Host.dll"
 $classesRoot = "HKCU\Software\Classes"
 $solidWorksRoot = "HKCU\Software\SolidWorks"
 $implementedCategory = "{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}"

@@ -1,6 +1,6 @@
 param(
-    [string]$TasksPath = "C:\SW_plugin\benchmarks\grounding\starter-grounding-tasks.json",
-    [string]$ReportsPath = "C:\SW_plugin\benchmarks\reports",
+    [string]$TasksPath = "",
+    [string]$ReportsPath = "",
     [int]$PostLaunchDelaySeconds = 8,
     [int]$PostOpenDelaySeconds = 10,
     [switch]$IncludePending
@@ -8,8 +8,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+if (-not $TasksPath) { $TasksPath = Join-Path $repoRoot 'benchmarks\grounding\starter-grounding-tasks.json' }
+if (-not $ReportsPath) { $ReportsPath = Join-Path $repoRoot 'benchmarks\reports' }
 $snapshotPath = Join-Path $env:LOCALAPPDATA "Adze\snapshots\latest-grounding-snapshot.json"
-$reloadScript = "C:\SW_plugin\scripts\setup\reload-host.ps1"
+$reloadScript = Join-Path $repoRoot 'scripts\setup\reload-host.ps1'
 $reportHelpersPath = Join-Path $PSScriptRoot "RegressionReportHelpers.ps1"
 
 if (-not (Test-Path $reportHelpersPath)) {
