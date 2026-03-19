@@ -44,7 +44,9 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 ### T2-12: Add PaneState state machine — partial (basic run/cancel state, full state machine deferred)
 ### T2-13: Progress display during agent loop — partial (run state label, full live-append deferred)
 ### T2-14: Unit tests for agent loop ✓ (19 tests)
-### T2-15: Live smoke tests for agent loop — pending live SOLIDWORKS test
+### T2-15: Live smoke tests for agent loop ✓
+- Verified 2026-03-16 via OpenRouter: model called get_dimensions autonomously, synthesized grounded answer (1866 tokens, outcome=Success)
+- Bugs fixed during live test: SplitContainer init crash, AgentLoopRunner error counting, endpoint /chat/completions normalization
 
 ---
 
@@ -308,3 +310,52 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [ ] Update IMPLEMENTATION_PLAN.md checklist and handoff notes
 - [ ] Update PROJECT_ROADMAP.md milestone table
 - [ ] Update SETUP.md if new configuration is added
+
+---
+
+## Phase 9: Ecosystem-Informed Enhancements (from research-solidworks-ai-ecosystem.md)
+
+### T9-01: HTML answer panel (replace raw TextBox)
+- [ ] Replace answer TextBox with WebBrowser control in TaskPaneControl
+- [ ] Render agent responses as formatted HTML (headers, bold, lists, tables)
+- [ ] Message-style layout: user question → assistant response
+- [ ] Subtle token/source/trace footer
+- [ ] Preserve scroll position on refresh
+- **Why:** Every competitor (AURA, Autodesk Assistant, Siemens Copilot) renders polished conversational UI. Raw text is Adze's most visible gap.
+- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
+- **Priority:** HIGH — highest UX impact for lowest effort
+
+### T9-02: "What's Wrong" diagnostic intent
+- [ ] Add dedicated diagnostic intent to clarification UI
+- [ ] When triggered, agent prioritizes: get_rebuild_diagnostics, get_feature_tree_slice, get_dimensions
+- [ ] Prompt tuning for root-cause analysis output style
+- **Why:** SOLIDWORKS Labs "What's Wrong (Beta)" validates this as a high-value use case. Adze already has the tools — just needs intent routing.
+- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`, `src/Adze.Broker/Formatting/ContextPromptComposer.cs`
+- **Priority:** MEDIUM — low effort, leverages existing infrastructure
+
+### T9-03: Accelerate recipe suggestions in Task Pane (was T5-04)
+- [ ] "Suggested recipes" section when relevant recipes match current context
+- [ ] One-click execution of promoted recipes
+- **Why:** SOLIDWORKS Labs "Command Predictor" validates predictive assistance. Adze's recipe system is architecturally richer. Surface it.
+- **Reference:** T5-04, research-solidworks-ai-ecosystem.md (Command Predictor comparison)
+- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
+
+### T9-04: MCP server exposure (future)
+- [ ] Expose Adze's 14 tools as an MCP server
+- [ ] External agents (Claude Code, Cursor, etc.) can inspect/modify SOLIDWORKS models
+- [ ] Authentication and trust boundary for external tool callers
+- **Why:** Autodesk is adopting MCP for Fusion AI extensibility. This is an industry-direction signal. Adze's typed tool surface is already MCP-shaped.
+- **Reference:** research-solidworks-ai-ecosystem.md (Autodesk MCP adoption)
+- **Priority:** LOW now, HIGH strategic — Phase 10+
+
+### T9-05: Conversational chat history in Task Pane
+- [ ] Show conversation thread (multi-turn) instead of single Q&A
+- [ ] Agent conversation state already exists (AgentConversationState) — surface it in UI
+- [ ] Follow-up questions without re-entering full context
+- **Why:** Every competitor has chat-style interaction. Adze has the backend (conversation state + truncation) but renders single-shot.
+- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
+
+### T9-06: .env file loader for scripts
+- [x] `scripts/setup/load-env.ps1` — loads `.env` into process environment
+- [x] Wired into `reload-host.ps1`
+- [ ] Wire into `validate-host-spike.ps1`, `run-provider-smoke.ps1`, `run-broker-evals.ps1`

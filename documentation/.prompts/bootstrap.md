@@ -53,6 +53,8 @@ The DO NOT section is the most important part of CLAUDE.md — it prevents mista
 | Any project | DO NOT read, write, or reference OpenClaw config files: AGENTS.md, HEARTBEAT.md, IDENTITY.md, MEMORY.md, SOUL.md, TOOLS.md, USER.md, or the `memory/` directory. These belong to the orchestrating agent, not to Claude Code sessions. |
 | Any project | ALWAYS: when outputting commands for the user to run manually, use fenced code blocks (```bash) with one command per block, no commentary inside the block. Commands must be directly copy-paste ready. |
 | Any project | ALWAYS: when a command requires elevated permissions (sudo), do NOT attempt to run it. Output it in a copy-paste-ready code block for the user to execute manually. |
+| `.ava/brain.db` exists | ALWAYS: start significant sessions with `/session-init`, end with `/session-closeout`. brain.db is the source of truth for project state — docs are rendered views. Classify fact permanence during closeout (immutable/persistent/standard/ephemeral). Record architectural decisions to brain.db, not just docs. |
+| `.ava/brain.db` exists | DO NOT commit `.ava/` — brain.db is gitignored by design. Do not use `.notes.json` — brain.db notes are the standard. |
 
 **This table is a seed, not a ceiling.** Every project has unique dangers. If you discover a project-specific anti-pattern during bootstrap that isn't listed here, add it to the DO NOT section and flag it in your closeout notes — it may warrant adding to this table for future bootstraps.
 

@@ -83,9 +83,16 @@ public sealed class AgentLoopRunner : IAgentLoopRunner
                 continue;
             }
 
-            // Successful API call: reset consecutive error counter and accumulate usage.
-            consecutiveErrors = 0;
+            // Accumulate usage from any response that includes it.
             aggregateUsage = aggregateUsage + (response.Usage ?? new ModelUsage());
+
+            // Only reset the consecutive error counter for non-error responses.
+            // SendTurn may catch its own exceptions and return StopReason.Error
+            // without throwing — those must still count as consecutive errors.
+            if (response.StopReason != AgentStopReason.Error)
+            {
+                consecutiveErrors = 0;
+            }
 
             // --- Handle stop reasons ---
             if (response.StopReason == AgentStopReason.EndTurn || response.StopReason == AgentStopReason.MaxTokens)
@@ -183,6 +190,10 @@ public sealed class AgentLoopRunner : IAgentLoopRunner
             if (response.StopReason == AgentStopReason.Error)
             {
                 consecutiveErrors++;
+                ReportProgress(onProgress, AgentProgressKind.Failed,
+                    $"API error on iteration {iteration}: {response.FailureReason}",
+                    iteration: iteration);
+
                 if (consecutiveErrors >= settings.MaxConsecutiveErrors)
                 {
                     string failureReason = $"Max consecutive errors ({settings.MaxConsecutiveErrors}) reached. Last reason: {response.FailureReason}";

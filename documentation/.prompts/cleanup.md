@@ -2,6 +2,8 @@
 
 You are performing a comprehensive reconciliation of the project's persistent state (brain.db) against its documentation and codebase. Whether brain.db is empty (first run / hydration) or full (ongoing maintenance), the job is the same: **brain.db must accurately reflect project reality.**
 
+brain.db is the primary context source for every future session. The session-context hook injects brain.db contents at startup — if brain.db is incomplete, the next agent starts blind. **Every cleanup must leave brain.db in a state where the next agent can be productive without reading any docs.**
+
 ---
 
 ## 1. PREREQUISITES
@@ -23,203 +25,219 @@ node .ava/dal.mjs decision list
 node .ava/dal.mjs session list
 ```
 
-**Detect mode:** If facts = 0 AND sessions = 0, this is a **first-run hydration** — brain.db is deployed but unpopulated. Proceed to Section 2 (doc-aware reconciliation) and be comprehensive. If facts > 0, this is **ongoing maintenance** — focus on drift and gaps.
+**Detect mode:** If facts = 0 AND sessions = 0, this is a **first-run hydration** — brain.db is deployed but unpopulated. Be comprehensive — extract everything. If facts > 0, this is **ongoing maintenance** — focus on drift, gaps, and completeness.
 
 ---
 
-## 2. DOC-AWARE RECONCILIATION
+## 2. REQUIRED FACT EXTRACTION
 
-This is the core of cleanup. Read the project's documentation and reconcile with brain.db.
+Every project's brain.db MUST have these facts. Extract them from the sources listed. If a fact exists but is wrong, update it. If missing, insert it.
 
-### 2a. Read project documentation
+### From CLAUDE.md (read the entire file):
 
-Read these files in order (skip any that don't exist):
+| Fact Key | What to Extract | Permanence |
+|----------|----------------|------------|
+| `project.name` | Project name from header | `persistent` |
+| `project.version` | Version from header | `standard` |
+| `project.status` | Status line from header | `standard` |
+| `project.identity` | First paragraph — what the project IS | `persistent` |
+| `tech.stack` | Primary language/framework/runtime | `persistent` |
+| `tech.build` | Build/run commands | `persistent` |
+| `tech.test` | Test commands and framework | `persistent` |
+| `project.structure` | Key directories and their purposes | `persistent` |
+| `rules.critical` | DO NOT rules (summarized) | `persistent` |
 
-1. **CLAUDE.md** (project root) — tech stack, critical rules, commands, file structure
-2. **documentation/PROJECT_ROADMAP.md** — architecture decisions, version history, vision
-3. **documentation/IMPLEMENTATION_PLAN.md** — current tasks, handoff notes, blockers
-4. Any additional docs: `SETUP.md`, `BUILD_SPEC.md`, `README.md`, etc.
-5. **documentation/archive/** — historical context worth preserving
+### From PROJECT_ROADMAP.md:
 
-### 2b. Extract facts from documentation
+| Fact Key | What to Extract | Permanence |
+|----------|----------------|------------|
+| `project.vision` | Vision/goals — why this project exists | `immutable` |
+| `arch.*` | Each architectural decision (AD-*) → record as **decision**, not fact | — |
+| `tech.architecture` | High-level architecture description | `persistent` |
 
-For each document, identify knowledge that should be a brain.db fact:
+### From IMPLEMENTATION_PLAN.md:
 
-| Doc Source | What to Extract | Typical Permanence |
-|------------|----------------|-------------------|
-| CLAUDE.md | Project identity, tech stack, critical commands, conventions | `persistent` |
-| CLAUDE.md | Version number, current status | `standard` |
-| PROJECT_ROADMAP.md | Vision, mission, founding principles | `immutable` |
-| PROJECT_ROADMAP.md | Tech stack choices, deployment architecture | `persistent` |
-| IMPLEMENTATION_PLAN.md | Current blockers, active work | `ephemeral` |
-| IMPLEMENTATION_PLAN.md | Handoff context for next session | `ephemeral` |
-| SETUP.md / BUILD_SPEC.md | Build commands, dependencies, environment | `persistent` |
+| Fact Key | What to Extract | Permanence |
+|----------|----------------|------------|
+| `current.phase` | Current development phase | `standard` |
+| `current.blockers` | Active blockers (if any) | `ephemeral` |
+| `current.handoff` | Handoff notes for next session | `ephemeral` |
 
-Architecture decisions (AD-* entries in ROADMAP, or implicit choices) should be recorded as decisions, not facts:
+### From other docs (SETUP.md, BUILD_SPEC.md, README.md, etc.):
+
+| Fact Key | What to Extract | Permanence |
+|----------|----------------|------------|
+| `env.*` | Environment setup, dependencies, prerequisites | `persistent` |
+| `deploy.*` | Deployment targets, procedures | `persistent` |
+
+### Architecture Decisions → Decision Records
+
+Every AD-* entry in PROJECT_ROADMAP.md and every significant architectural choice should be a decision record:
 
 ```bash
 node .ava/dal.mjs decision add "Decision title" --context "Why it came up" --chosen "What was chosen" --rationale "Why"
 ```
 
-### 2c. Compare and reconcile
-
-For each extracted item:
-- **If brain.db already has it:** verify the value matches. If it contradicts, flag it.
-- **If brain.db is missing it:** insert with appropriate permanence.
-- **If brain.db has something docs don't mention:** verify it's still true. If outdated, flag for removal.
-
-### 2d. Codebase validation (lightweight)
-
-Scan the project structure to validate key facts:
-- File structure matches what CLAUDE.md describes
-- Tech stack facts match actual dependencies (package.json, Cargo.toml, *.csproj, etc.)
-- Key directories mentioned in docs actually exist
-
-Don't deep-read the codebase — just validate that documented facts match reality.
-
-**Present all proposed inserts, updates, and flags as a table. Wait for user confirmation before applying.**
+**Do not skip this.** Decisions are the most valuable brain.db content — they prevent the next agent from relitigating settled questions.
 
 ---
 
-## 3. FACT HEALTH
+## 3. COMPARE AND RECONCILE
 
-### 3a. Run the audit
+After extraction, compare systematically:
+
+### 3a. brain.db → docs (is brain.db accurate?)
+For every fact in brain.db, verify it matches current documentation:
+- Version facts match CLAUDE.md header
+- Tech stack facts match actual dependencies
+- Architecture facts match ROADMAP
+- Ephemeral facts are still relevant
+
+### 3b. docs → brain.db (is brain.db complete?)
+For every required fact in the schema above, verify brain.db has it:
+- Missing required facts = **FAIL** (insert them)
+- All required facts present = PASS
+
+### 3c. Codebase validation (lightweight)
+Spot-check that facts match reality:
+- File structure in `project.structure` fact matches actual directories
+- Tech stack matches package.json / Cargo.toml / *.csproj / etc.
+- Build commands in `tech.build` actually work
+
+### 3d. Archive check
+Read `documentation/archive/` if it exists. Historical context worth preserving as facts should be extracted. Archive content is valid — it was moved for size management, not because it stopped being true.
+
+**Present all proposed inserts, updates, and removals as a table. Wait for user confirmation before applying.**
+
+---
+
+## 4. FACT HEALTH
+
+### 4a. Audit
 
 ```bash
 node .ava/dal.mjs fact audit
 ```
 
-Report findings:
-- **Unclassified facts** (permanence = 'standard' that should be reclassified) — present each with a recommended permanence tier.
-- **Stale facts** (>90 days without confirmation, not immutable/persistent) — recommend: confirm, reclassify, or delete.
-- **Expired ephemeral facts** (3+ sessions since last confirm) — recommend pruning.
+- **Unclassified facts** → classify using the permanence heuristics below
+- **Stale facts** (>90 days, not immutable/persistent) → confirm or remove
+- **Expired ephemeral** (3+ sessions since confirm) → prune
 
-### 3b. Classify unclassified facts
+### 4b. Permanence classification
 
 | Content Pattern | Permanence |
 |----------------|-----------|
 | Mission, vision, identity, founding principles | `immutable` |
-| Architecture patterns, tech stack, service ports, conventions | `persistent` |
-| Current implementation patterns, recent learnings | `standard` (keep as-is) |
-| Debug findings, temp workarounds, session-specific context | `ephemeral` |
+| Architecture, tech stack, build commands, conventions, ports | `persistent` |
+| Current state, version, recent patterns, working knowledge | `standard` |
+| Session-specific findings, temp workarounds, current blockers | `ephemeral` |
 
-Present recommendations as a table. Ask user to confirm before applying.
-
-Use: `node .ava/dal.mjs fact set "<key>" --permanence <tier> --value "<existing value>"`
-
-### 3c. Prune expired ephemeral facts
+### 4c. Prune
 
 ```bash
 node .ava/dal.mjs fact prune --dry-run
 ```
 
-Show what would be deleted. If the user approves:
+Show results. If approved: `node .ava/dal.mjs fact prune --execute`
 
-```bash
-node .ava/dal.mjs fact prune --execute
-```
-
-### 3d. Verify
+### 4d. Verify
 
 ```bash
 node .ava/dal.mjs fact audit
 ```
 
-Target: 0 unclassified, 0 stale, 0 expired ephemeral.
+Target: 0 unclassified, 0 stale, 0 expired.
 
 ---
 
-## 4. DECISION HEALTH
-
-Review all active decisions:
+## 5. DECISION HEALTH
 
 ```bash
 node .ava/dal.mjs decision list
 ```
 
-For each active decision, evaluate:
-- **Still relevant?** If the project has moved past it, recommend marking as superseded.
-- **Correctly scoped?** If it covers too much or too little, flag it.
-- **Missing decisions?** If documentation records architectural choices without a matching brain.db decision, suggest adding one.
-
-Present findings as a table: Decision | Status | Recommendation.
+- **Still relevant?** Superseded decisions should be marked.
+- **Correctly scoped?** Too broad or too narrow → flag.
+- **Missing?** Documentation has architectural choices without matching decisions → add them.
 
 ---
 
-## 5. SESSION HEALTH
-
-Check for interrupted or crashed sessions:
+## 6. SESSION HEALTH
 
 ```bash
 node .ava/dal.mjs session list
 ```
 
-For any session with `exit_reason` of `interrupted` or `crashed`:
-- Check if it's recent (last 7 days) — may need recovery investigation.
-- Check if it's old (>7 days) — just note it as historical.
-- Report the pattern: are sessions closing cleanly? If not, what might be causing interruptions?
+- Interrupted/crashed sessions in last 7 days → investigate
+- Older interrupted sessions → note as historical
+- Pattern of unclean exits → flag as systemic issue
 
 ---
 
-## 6. NOTE HYGIENE
+## 7. NOTE HYGIENE
 
 ```bash
 node .ava/dal.mjs note list
 node .ava/dal.mjs note counts
 ```
 
-For open notes:
-- Flag completed notes that should be cleared.
-- Flag notes older than 30 days — still relevant?
-- Report by category: how many improvements, issues, bugs, ideas are open?
+- Completed notes → clear
+- Notes older than 30 days → still relevant?
+- Report by category
 
 ---
 
-## 7. OVERALL HEALTH REPORT
+## 8. COVERAGE REPORT
 
-Compile a final report:
+This is the critical output. Not just "is brain.db healthy" but "is brain.db COMPLETE enough to be useful."
 
 ```
-DAL Health Report
-=================
+DAL Reconciliation Report
+=========================
 Mode:              {first-run hydration | ongoing maintenance}
 Schema version:    v{N}
-DB size:           {N} KB
 Integrity:         {ok|FAILED}
+
+COVERAGE (required facts):
+  project.name:      {present|MISSING}
+  project.version:   {present|MISSING}
+  project.identity:  {present|MISSING}
+  tech.stack:        {present|MISSING}
+  tech.build:        {present|MISSING}
+  project.vision:    {present|MISSING}
+  Coverage:          {N}/{total} required facts present
 
 Facts:             {total} total
   - immutable:     {N}
   - persistent:    {N}
   - standard:      {N}
   - ephemeral:     {N}
-  - stale:         {N} (>90 days)
 
-Decisions:         {total} ({active} active, {superseded} superseded)
-Sessions:          {total} ({normal} normal, {interrupted} interrupted)
-Notes:             {open} open across {tabs} contexts
-Tasks:             {active} active, {blocked} blocked
+Decisions:         {total} ({active} active)
+Sessions:          {total}
+Notes:             {open} open
 
 Reconciliation:
-  - Facts inserted from docs: {N}
+  - Facts inserted: {N}
   - Facts updated: {N}
-  - Decisions added from docs: {N}
-  - Contradictions flagged: {N}
-  - Gaps detected: {N}
+  - Facts removed: {N}
+  - Decisions added: {N}
+  - Contradictions found: {N}
+  - Gaps filled: {N}
 
-Actions taken:
-  - Facts classified: {N}
-  - Facts pruned: {N}
-  - Decisions updated: {N}
-  - Notes cleared: {N}
+VERDICT: {PASS — brain.db is complete and accurate |
+          FAIL — {N} required facts missing, {N} contradictions}
 ```
+
+**A cleanup that reports PASS with missing required facts is a failed cleanup.**
 
 ---
 
-## 8. RULES
+## 9. RULES
 
-- **Always dry-run first.** Never delete facts or prune without showing the user what will be affected.
-- **Present recommendations, don't auto-apply.** The user confirms every classification change and every deletion.
-- **Be honest about uncertainty.** If you're not sure whether a fact is persistent or standard, say so and let the user decide.
-- **Report everything.** Even if the DB is healthy, say so — "clean bill of health" is valuable information.
-- **Docs are truth, brain.db is the cache.** When docs and brain.db contradict, docs win. Update brain.db to match.
-- **Don't invent facts.** Only insert knowledge that's explicitly stated in documentation or verifiable in the codebase. Never infer or speculate.
+- **Always dry-run first.** Never delete without showing the user what will be affected.
+- **Present recommendations, don't auto-apply.** User confirms inserts, classifications, and deletions.
+- **Docs are truth, brain.db is the cache.** When they contradict, docs win.
+- **Don't invent facts.** Only insert knowledge explicitly stated in docs or verifiable in codebase.
+- **Coverage is mandatory.** A brain.db without the required facts is not "clean" — it's incomplete.
+- **Be honest.** If the brain.db is a mess, say so. "Clean bill of health" requires actual coverage.

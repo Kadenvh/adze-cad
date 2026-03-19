@@ -1,5 +1,5 @@
 # Prompt Engineering Metrics Report
-Generated: 2026-03-13T22:50:44.696Z | Events analyzed: 1245
+Generated: 2026-03-15T13:48:45.584Z | Events analyzed: 1247
 
 ## Usage Summary
 | Tool | Type | Uses | Unique Projects | Last Used |
@@ -7,7 +7,7 @@ Generated: 2026-03-13T22:50:44.696Z | Events analyzed: 1245
 | SKILL | skill | 444 | 0 | 2026-03-11 |
 | lint-on-edit | hook | 332 | 0 | 2026-03-10 |
 | typecheck-on-edit | hook | 304 | 0 | 2026-03-10 |
-| smoke_test | unknown | 101 | 0 | 2026-03-13 |
+| smoke_test | unknown | 103 | 0 | 2026-03-15 |
 | session-context | hook | 52 | 0 | 2026-03-13 |
 | discovery | skill | 3 | 1 | 2026-03-03 |
 | doc-validator | template | 2 | 0 | 2026-03-03 |
@@ -39,6 +39,6 @@ Priority = high usage x (high edit rate OR high error correlation)
 1. **SKILL** — 444 uses, 0% edit rate
 2. **lint-on-edit** — 332 uses, 0% edit rate
 3. **typecheck-on-edit** — 304 uses, 0% edit rate
-4. **smoke_test** — 101 uses, 0% edit rate
+4. **smoke_test** — 103 uses, 0% edit rate
 5. **session-context** — 52 uses, 0% edit rate
 

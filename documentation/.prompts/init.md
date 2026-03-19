@@ -60,8 +60,26 @@ node .ava/dal.mjs fact audit     # Check for unclassified/stale/expired facts
 
 - If `status` shows issues, flag them before starting work.
 - If `fact audit` shows unclassified facts, note them for classification during closeout.
-- **If brain.db exists but has 0 facts and 0 sessions**, the DAL was deployed but never populated. Recommend running `/cleanup` before starting work — it will read the project's documentation and hydrate brain.db with facts and decisions. Without this, the DAL provides no session continuity value.
-- If `.ava/brain.db` does NOT exist, skip this — the project uses the 3-doc markdown system only. Session state lives in CLAUDE.md + PROJECT_ROADMAP.md + IMPLEMENTATION_PLAN.md.
+- **If brain.db has 0 facts and 0 sessions**: the DAL was deployed but never populated. Run `/cleanup` before starting work — it reads the project's docs and populates brain.db with facts and decisions. Without this, the DAL provides zero continuity value.
+- **If brain.db has facts but is missing key ones** (no `project.name`, no `tech.stack`, no decisions): brain.db is incomplete. Run `/cleanup` to fill gaps before starting work.
+- If `.ava/brain.db` does NOT exist, skip this — the project uses the 3-doc markdown system only.
+
+**Coverage evaluation:** The DAL state injected above (by the SessionStart hook) should give you enough context to understand the project without reading all the docs. If it doesn't — if you find yourself needing to read CLAUDE.md, ROADMAP, and IMPL_PLAN to understand what's going on — that means brain.db is incomplete and `/cleanup` should be run.
+
+### Active Hooks (know what's running around you)
+
+These hooks fire automatically — you don't invoke them, but you should know they exist:
+
+| Hook | When | What It Does |
+|------|------|-------------|
+| `session-context.js` | Session start/resume | Injected the DAL state and git context you see above |
+| `stop-closeout-check.js` | Session end | Warns if docs are stale (>2hrs since last edit) and there are uncommitted changes |
+| `block-protected-files.js` | Before Edit/Write | Blocks writes to protected files (CLAUDE.md OpenClaw configs, .env, etc.) |
+| `block-dangerous-commands.js` | Before Bash | Blocks catastrophic commands (rm -rf /, force push main, etc.) |
+| `typecheck-on-edit.js` | After Edit/Write | Runs type checker on modified files |
+| `lint-on-edit.js` | After Edit/Write | Runs linter on modified files |
+
+If a write or command gets blocked, check `.claude/hooks/` for the specific rules. SOFT_BLOCK denials include override guidance.
 
 Run `/dal-setup` for full DAL reference if needed.
 

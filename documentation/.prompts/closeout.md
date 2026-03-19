@@ -48,6 +48,93 @@ Before touching any file, explicitly enumerate what happened:
 
 ---
 
+### Step 3: Extract Implicit Knowledge
+
+Step 1 captured what you *consciously* did. This step scans the full conversation for knowledge you didn't think to list — the implicit learnings that would otherwise be lost.
+
+**Review the conversation and extract:**
+
+| Look For | Example | Permanence |
+|----------|---------|------------|
+| Conventions established | "We agreed to always use slugs for IDs" | persistent |
+| Patterns discovered | "The API rejects requests without header X" | persistent |
+| Gotchas / failure modes | "SQLite can't ALTER CHECK constraints — must rebuild table" | standard |
+| Environment specifics | "Works on Linux but PowerShell needs different quoting" | persistent |
+| Tool/command discoveries | "Use `dal.mjs render` not manual doc edits" | standard |
+| Architecture clarified | "Component A talks to B via C, not directly" | persistent |
+| Performance insights | "FTS5 is fast enough — no need for sqlite-vss" | standard |
+| Configuration learned | "SSH key id_ed25519_zoe works for both Frank and Zoe" | persistent |
+
+**Quality filter — only extract facts that:**
+- Would prevent a future agent from repeating work or making the same mistake
+- Can't be derived by reading the current codebase (if you can `grep` for it, don't store it)
+- Are durable enough to matter next session (don't store dead-end debugging attempts)
+- Aren't already captured in Step 1's explicit inventory
+
+**For each extracted fact, produce:**
+```
+Key: <domain.descriptive_key>
+Value: <concise statement of the knowledge>
+Permanence: <tier>
+```
+
+List these alongside the explicit Step 1 inventory. They all get recorded in Part A-2 below.
+
+**If nothing was extracted:** That's fine — not every session produces implicit knowledge. But sessions involving debugging, configuration, cross-system work, or architecture discussions almost always do. If you found nothing, scan once more for gotchas and failure modes.
+
+---
+
+## PART A-2: RECORD SESSION KNOWLEDGE TO brain.db (Do This BEFORE Updating Docs)
+
+> **If `.ava/brain.db` does NOT exist, skip to Part B.** This section requires an active DAL.
+
+**This is the most important step for session continuity.** The facts and decisions you record here are what the next agent will see at session start. If you skip this, the next session starts blind.
+
+### Record facts from this session
+
+For each item in your Part A inventory, record durable knowledge:
+
+```bash
+# Record each fact with appropriate permanence
+node .ava/dal.mjs fact set "<key>" --value "<value>" --permanence <tier>
+```
+
+**What to record as facts:**
+- New tech stack choices or changes → `persistent`
+- New conventions or patterns established → `persistent`
+- Version changes → `standard` (update `project.version`)
+- Current blockers or handoff context → `ephemeral`
+- Bug root causes worth remembering → `standard`
+
+**What to record as decisions:**
+- Any architectural or design choice made this session
+- Any judgment call that deviated from the plan
+- Any "we chose X over Y because Z"
+
+```bash
+node .ava/dal.mjs decision add --title "Title" --context "Why it came up" --chosen "What was chosen" --rationale "Short summary" --rationale-long "Full narrative with context, alternatives considered, and why this was the right call"
+```
+
+### Verify existing facts still accurate
+
+Spot-check 3-5 existing `persistent` facts against current reality. If any are wrong, update them. If you relied on a fact this session, reconfirm it:
+
+```bash
+node .ava/dal.mjs fact confirm "<key>"
+```
+
+### Coverage check
+
+Verify brain.db has the required minimum facts (see `/cleanup` for the full schema):
+- `project.name`, `project.version`, `project.identity` — present?
+- `tech.stack`, `tech.build` — present?
+- `project.vision` — present?
+- At least 1 active decision — present?
+
+If any are missing, extract from CLAUDE.md or PROJECT_ROADMAP.md now. **A brain.db without these facts provides zero continuity value.**
+
+---
+
 ## PART B: UPDATE DOCUMENTATION
 
 ### Document Boundaries (Respect the Routing Rule)
@@ -85,7 +172,7 @@ Each piece of information belongs in exactly one file. Use this guide:
 - [ ] Add "Files Modified (V{X.Y.Z})" section
 - [ ] Update header: "Updated" date and "Status" line
 - [ ] Add new issues to "Known Issues" or "Blockers"
-- [ ] Refresh "Handoff Notes" for next session
+- [ ] Refresh "Handoff Notes" for next session (also write to brain.db: `node .ava/dal.mjs note add "note text" --category handoff`)
 - [ ] Include any "silent decisions" or deviations documented during the session
 
 ---
@@ -189,50 +276,21 @@ For `.tab-notes.json`: set `"completed": true` on resolved notes. Do NOT delete 
 
 ---
 
-## PART D-2: CURATE SESSION FACTS
+## PART D-2: FINAL FACT AUDIT
 
-> **If `.ava/brain.db` does NOT exist, skip this entire section.** Fact curation requires an active DAL. Projects without the DAL use the 3-doc markdown system for session state — no additional steps needed.
+> **If `.ava/brain.db` does NOT exist, skip this section.**
 
-### Curate Facts
-
-**Step 0: Audit current state**
+Session facts were recorded in Part A-2. Now do the final cleanup:
 
 ```bash
 node .ava/dal.mjs fact audit
 ```
 
-Review the output: unclassified facts, stale facts, and expired ephemeral facts.
+1. **Classify** any unclassified facts (immutable/persistent/standard/ephemeral).
+2. **Prune** expired ephemeral: `node .ava/dal.mjs fact prune --dry-run` then `--execute` if clean.
+3. **Verify** audit is clean: 0 unclassified, 0 stale, 0 expired.
 
-1. **Classify permanence** for new and unclassified facts using these heuristics:
-   - `immutable`: Mission, vision, identity, founding principles — NEVER pruned
-   - `persistent`: Architecture patterns, tech stack, service ports — rarely change
-   - `standard` (default): Working knowledge, current patterns — normal lifecycle
-   - `ephemeral`: Session-specific debug findings, temp workarounds — pruned after 3 sessions without reconfirmation
-
-   Use: `node .ava/dal.mjs fact set "<key>" --permanence <tier>`
-
-2. **Flag stale facts**: Any fact with `last_confirmed_at` older than 90 days
-   and not `immutable` or `persistent` — confirm or archive.
-
-3. **Reconfirm used facts**: If you relied on a fact this session, run
-   `node .ava/dal.mjs fact confirm "<key>"` to refresh its `last_confirmed_at` timestamp.
-
-4. **Prune expired ephemeral facts** (if DAL supports `fact prune`):
-   ```bash
-   node .ava/dal.mjs fact prune --dry-run
-   ```
-   Review what would be deleted. If acceptable:
-   ```bash
-   node .ava/dal.mjs fact prune --execute
-   ```
-
-5. **Verify**: Run `node .ava/dal.mjs fact audit` again. Target: 0 unclassified facts remaining.
-
-6. **Minimum coverage check**: After curation, verify brain.db has at minimum:
-   - At least 1 `persistent` fact about the project's tech stack or architecture
-   - At least 1 `persistent` fact about the project's identity or purpose
-   - At least 1 active decision
-   If any of these are missing, record them now from CLAUDE.md or PROJECT_ROADMAP.md. A brain.db with only session-specific facts provides no continuity value — the next agent needs architectural context injected at session start.
+If Part A-2 was skipped or incomplete, go back and do it now. **Closeout without fact recording is an incomplete closeout.**
 
 ---
 

@@ -241,7 +241,7 @@ internal static class HostState
             toolDefinitions,
             agentSettings,
             ct,
-            null);
+            progress => FileLogger.Info("Agent: " + progress.Kind + " — " + progress.Message));
 
         string intent = "agent_run: " + request;
         RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(intent, new List<Contracts.Models.ToolResult>(), UserId);
@@ -266,10 +266,15 @@ internal static class HostState
             ? string.Join(", ", result.ExecutedTools.ConvertAll(t => t.ToolName))
             : "none";
 
+        string failureInfo = !string.IsNullOrWhiteSpace(result.FailureReason)
+            ? " reason=" + result.FailureReason
+            : string.Empty;
+
         FileLogger.Info(
             "Agent run completed. outcome=" + result.Outcome +
             " tools=" + toolsSummary +
             " tokens=" + runUsage.TotalTokens +
+            failureInfo +
             System.Environment.NewLine + answerText);
 
         return new AssistantRunSnapshot

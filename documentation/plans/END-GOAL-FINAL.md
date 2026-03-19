@@ -659,6 +659,31 @@ Deliver:
 
 ---
 
+## 15b. Ecosystem-informed enhancements (from competitive research, 2026-03-16)
+
+Based on landscape analysis of AURA, LEO, SOLIDWORKS Labs, Autodesk Assistant, Siemens Copilot, Leo AI, MecAgent, and Backflip:
+
+### Adopt
+- **HTML answer panel** — every competitor renders polished conversational UI. Replace raw TextBox with WebBrowser control. Highest UX impact.
+- **"What's Wrong" diagnostic intent** — SOLIDWORKS Labs validates this use case. Adze already has the tools (rebuild diagnostics, feature tree). Add intent routing.
+- **Conversational chat history** — surface existing AgentConversationState as a multi-turn thread instead of single Q&A.
+- **Recipe suggestions** — SOLIDWORKS Labs "Command Predictor" validates predictive assistance. Accelerate T5-04.
+
+### Watch / plan for later
+- **MCP server exposure** — Autodesk is adopting MCP for Fusion extensibility. Adze's typed tool surface is already MCP-shaped. High strategic value, Phase 10+.
+- **Auto-drawing assistance** — both Dassault (LEO) and Siemens (Solid Edge) shipping AI-driven drawing creation. Requires Phase 7+ advanced write tools.
+- **Enterprise knowledge integration** — Leo AI (getleo.ai) proves the value prop with HP/Intel/Philips. Adze's recipe/memory system is a foundation for this.
+
+### Avoid
+- **Documentation search** — AURA and SOLIDWORKS Insight already do this well. Don't compete.
+- **Cloud dependency** — Adze's key differentiator is desktop-only, no 3DEXPERIENCE required. Protect this.
+- **Multi-CAD breadth** — depth in SOLIDWORKS > shallow coverage across platforms at this stage.
+
+### Positioning
+Adze = **deep grounding for desktop SOLIDWORKS users** who don't have or don't want 3DEXPERIENCE cloud dependencies. User-controlled AI provider. Governed writes. Offline-capable.
+
+---
+
 ## 16. Non-goals until later
 
 The following should stay out of scope until the core runtime is proven:

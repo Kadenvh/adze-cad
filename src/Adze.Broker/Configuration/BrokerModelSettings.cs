@@ -60,7 +60,7 @@ public sealed class BrokerModelSettings
                 ? DefaultIfBlank(openAiModel, "gpt-4o")
                 : DefaultIfBlank(anthropicModel, "claude-sonnet-4-20250514"),
             Endpoint = string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)
-                ? DefaultIfBlank(openAiEndpoint, "https://api.openai.com/v1/chat/completions")
+                ? EnsureChatCompletionsPath(DefaultIfBlank(openAiEndpoint, "https://api.openai.com/v1/chat/completions"))
                 : DefaultIfBlank(anthropicEndpoint, "https://api.anthropic.com/v1/messages"),
             ApiVersion = DefaultIfBlank(anthropicVersion, "2023-06-01"),
             MaxTokens = ReadInteger(
@@ -144,6 +144,13 @@ public sealed class BrokerModelSettings
             "openai" => "openai",
             _ => normalizedProvider
         };
+    }
+
+    private static string EnsureChatCompletionsPath(string endpoint)
+    {
+        if (endpoint.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+            return endpoint;
+        return endpoint.TrimEnd('/') + "/chat/completions";
     }
 
     private static string DefaultIfBlank(string value, string fallback)

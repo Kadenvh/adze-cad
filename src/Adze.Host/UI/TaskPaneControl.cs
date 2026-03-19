@@ -15,42 +15,31 @@ public sealed class TaskPaneControl : UserControl
 {
     public const string ProgIdValue = "Adze.Host.TaskPaneControl";
     private const string RequestPlaceholderText = "Ask about the active document...";
-    private const string InitialAnswerText = "Open a document and ask a question about it. Adze will inspect the live CAD session and ground an answer.";
-    private const string InitialAnswerFooterText = "Answer source and trace details appear here after a run.";
-    private const string InitialPlanText = "The broker plan will appear here after a run.";
-    private const string InitialStatusText = "Open the Status tab to inspect the live host dashboard.";
-    private const string InitialToolsText = "Run the assistant to inspect the last grounded tool execution results.";
     private const int StatusRefreshIntervalMilliseconds = 5000;
-    private const int EmGetFirstVisibleLine = 0x00CE;
-    private const int EmLineScroll = 0x00B6;
 
     private readonly TextBox _requestBox;
-    private readonly TextBox _answerBox;
-    private readonly Label _answerFooterLabel;
-    private readonly TextBox _planBox;
-    private readonly TextBox _statusBox;
-    private readonly TextBox _toolsBox;
+    private readonly WebBrowser _contentBrowser;
     private readonly Button _runButton;
     private readonly Label _runStateLabel;
     private readonly System.Windows.Forms.Timer _refreshTimer;
-    private readonly SplitContainer _mainSplitContainer;
-    private readonly TabControl _detailsTabs;
-    private readonly TabPage _statusTab;
-    private readonly CheckBox _autoRefreshStatusCheckBox;
-    private readonly Label _statusRefreshStateLabel;
     private readonly Panel _clarificationPanel;
     private readonly LinkLabel _clarificationToggle;
     private readonly ComboBox _intentComboBox;
     private readonly CheckedListBox _scopeListBox;
     private readonly ComboBox _outputModeComboBox;
     private readonly CheckBox _diagnosticsCheckBox;
-    private readonly TableLayoutPanel _composerRoot;
     private bool _isRunning;
     private bool _requestPlaceholderActive;
     private bool _clarificationExpanded;
     private bool _statusRefreshScheduled;
-    private bool _splitterInitialized;
-    private bool _splitterAdjustedByUser;
+
+    // Current content for HTML tabs
+    private string _answerHtml = "";
+    private string _answerFooter = "";
+    private string _planText = "";
+    private string _statusText = "";
+    private string _toolsText = "";
+    private string _activeTab = "answer";
 
     public TaskPaneControl()
     {
@@ -60,61 +49,46 @@ public sealed class TaskPaneControl : UserControl
         {
             AutoScaleMode = AutoScaleMode.Dpi;
             DoubleBuffered = true;
-            SetStyle(
-                ControlStyles.AllPaintingInWmPaint |
-                ControlStyles.OptimizedDoubleBuffer |
-                ControlStyles.ResizeRedraw |
-                ControlStyles.UserPaint,
-                true);
-            UpdateStyles();
-
             Dock = DockStyle.Fill;
             Margin = Padding.Empty;
             BackColor = Color.FromArgb(244, 246, 248);
 
+            // --- Header ---
             var headerLabel = new Label
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                Height = 32,
                 Margin = new Padding(0),
-                Padding = new Padding(14, 8, 14, 4),
+                Padding = new Padding(14, 6, 14, 2),
                 Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(24, 48, 76),
+                BackColor = BackColor,
                 Text = "ADZE"
             };
 
-            var requestLabel = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 20,
-                Margin = new Padding(0),
-                Padding = new Padding(0, 0, 0, 4),
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(34, 41, 47),
-                Text = "Request"
-            };
-
+            // --- Request box ---
             var requestBox = new TextBox
             {
                 Dock = DockStyle.Top,
                 Multiline = true,
-                Height = 78,
+                Height = 56,
                 Margin = new Padding(0),
                 BorderStyle = BorderStyle.FixedSingle,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 9F),
                 BackColor = Color.White,
                 ScrollBars = ScrollBars.Vertical,
                 AcceptsReturn = true,
-                AcceptsTab = false,
                 WordWrap = true
             };
             requestBox.Enter += (_, _) => RemoveRequestPlaceholder();
             requestBox.Leave += (_, _) => ApplyRequestPlaceholderIfNeeded();
 
+            // --- Run button + state ---
             var runButton = new Button
             {
                 Dock = DockStyle.Left,
-                Width = 126,
-                Height = 30,
+                Width = 110,
+                Height = 26,
                 Margin = new Padding(0),
                 FlatStyle = FlatStyle.System,
                 Text = "Run assistant"
@@ -136,100 +110,65 @@ public sealed class TaskPaneControl : UserControl
             var runStateLabel = new Label
             {
                 Dock = DockStyle.Fill,
-                Margin = new Padding(10, 0, 0, 0),
+                Margin = new Padding(8, 0, 0, 0),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8F),
                 ForeColor = Color.FromArgb(86, 96, 108),
                 Text = "Ready."
             };
 
-            var runRow = new TableLayoutPanel
+            var runRow = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 32,
-                Margin = new Padding(0, 10, 0, 0),
-                ColumnCount = 2,
-                RowCount = 1,
-                BackColor = Color.White
+                Height = 28,
+                Margin = new Padding(0),
+                Padding = new Padding(0, 2, 0, 2)
             };
-            runRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 126F));
-            runRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            runRow.Controls.Add(runButton, 0, 0);
-            runRow.Controls.Add(runStateLabel, 1, 0);
+            runRow.Controls.Add(runStateLabel);
+            runRow.Controls.Add(runButton);
 
-            // --- Clarification panel (collapsible, between request box and run button) ---
-
+            // --- Clarification panel ---
             var clarificationToggle = new LinkLabel
             {
                 Dock = DockStyle.Top,
-                Height = 20,
-                Margin = new Padding(0, 6, 0, 0),
-                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+                Height = 18,
+                Margin = new Padding(0, 4, 0, 0),
+                Font = new Font("Segoe UI", 7.5F),
                 LinkColor = Color.FromArgb(86, 96, 108),
                 ActiveLinkColor = Color.FromArgb(34, 41, 47),
                 Text = "Show options"
             };
             clarificationToggle.LinkClicked += (_, _) => ToggleClarification();
 
-            var intentLabel = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 16,
-                Margin = new Padding(0),
-                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(86, 96, 108),
-                Text = "Intent"
-            };
-
             var intentComboBox = new ComboBox
             {
                 Dock = DockStyle.Top,
-                Height = 24,
-                Margin = new Padding(0, 2, 0, 6),
+                Height = 22,
+                Margin = new Padding(0, 2, 0, 4),
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 8F)
             };
             intentComboBox.Items.AddRange(new object[] { "Inspect", "Diagnose", "Explain", "Compare" });
             intentComboBox.SelectedIndex = 0;
 
-            var scopeLabel = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 16,
-                Margin = new Padding(0),
-                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(86, 96, 108),
-                Text = "Focus on"
-            };
-
             var scopeListBox = new CheckedListBox
             {
                 Dock = DockStyle.Top,
-                Height = 84,
-                Margin = new Padding(0, 2, 0, 6),
+                Height = 64,
+                Margin = new Padding(0, 2, 0, 4),
                 BorderStyle = BorderStyle.FixedSingle,
                 CheckOnClick = true,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8F),
                 IntegralHeight = false
-            };
-
-            var outputLabel = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 16,
-                Margin = new Padding(0),
-                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(86, 96, 108),
-                Text = "Output"
             };
 
             var outputModeComboBox = new ComboBox
             {
                 Dock = DockStyle.Top,
-                Height = 24,
-                Margin = new Padding(0, 2, 0, 6),
+                Height = 22,
+                Margin = new Padding(0, 2, 0, 4),
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 8F)
             };
             outputModeComboBox.Items.AddRange(new object[] { "Brief", "Detailed", "Tabular" });
             outputModeComboBox.SelectedIndex = 0;
@@ -237,240 +176,72 @@ public sealed class TaskPaneControl : UserControl
             var diagnosticsCheckBox = new CheckBox
             {
                 Dock = DockStyle.Top,
-                Height = 20,
-                Margin = new Padding(0, 0, 0, 4),
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-                Text = "Include rebuild diagnostics"
+                Height = 18,
+                Margin = new Padding(0),
+                Font = new Font("Segoe UI", 8F),
+                Text = "Include diagnostics"
             };
 
             var clarificationInner = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 220,
-                Margin = new Padding(0),
-                Padding = new Padding(0, 4, 0, 0),
+                Height = 160,
                 Visible = false
             };
-            // Add in reverse dock order (last added = top)
             clarificationInner.Controls.Add(diagnosticsCheckBox);
             clarificationInner.Controls.Add(outputModeComboBox);
-            clarificationInner.Controls.Add(outputLabel);
             clarificationInner.Controls.Add(scopeListBox);
-            clarificationInner.Controls.Add(scopeLabel);
             clarificationInner.Controls.Add(intentComboBox);
-            clarificationInner.Controls.Add(intentLabel);
 
-            var clarificationPanel = new Panel
+            var clarificationOuter = new Panel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true
+            };
+            clarificationOuter.Controls.Add(clarificationInner);
+            clarificationOuter.Controls.Add(clarificationToggle);
+
+            // --- Composer panel (top area) ---
+            var composer = new Panel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                Margin = new Padding(0),
-                Padding = new Padding(0)
-            };
-            clarificationPanel.Controls.Add(clarificationInner);
-            clarificationPanel.Controls.Add(clarificationToggle);
-
-            // --- Composer panel ---
-
-            var composerPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(12, 0, 12, 10),
-                Padding = new Padding(12, 12, 12, 12),
+                Padding = new Padding(10, 4, 10, 6),
                 BackColor = Color.White
             };
-            composerPanel.Controls.Add(runRow);
-            composerPanel.Controls.Add(clarificationPanel);
-            composerPanel.Controls.Add(requestBox);
-            composerPanel.Controls.Add(requestLabel);
+            composer.Controls.Add(runRow);
+            composer.Controls.Add(clarificationOuter);
+            composer.Controls.Add(requestBox);
 
-            var answerTitleLabel = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 24,
-                Margin = new Padding(0),
-                Padding = new Padding(0, 0, 0, 6),
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(34, 41, 47),
-                Text = "Assistant Answer"
-            };
-
-            var answerBox = new TextBox
+            // --- Content browser (fills remaining space) ---
+            var contentBrowser = new WebBrowser
             {
                 Dock = DockStyle.Fill,
-                Multiline = true,
-                ReadOnly = true,
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.White,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                ScrollBars = ScrollBars.Vertical,
-                WordWrap = true,
-                Text = InitialAnswerText
+                AllowWebBrowserDrop = false,
+                IsWebBrowserContextMenuEnabled = true,
+                ScriptErrorsSuppressed = true,
+                WebBrowserShortcutsEnabled = true
             };
+            contentBrowser.Navigate("about:blank");
 
-            var answerFooterLabel = new Label
-            {
-                Dock = DockStyle.Bottom,
-                Height = 24,
-                Margin = new Padding(0),
-                Padding = new Padding(0, 6, 0, 0),
-                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(120, 128, 138),
-                Text = InitialAnswerFooterText
-            };
-
-            var answerPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0),
-                Padding = new Padding(14, 12, 14, 10),
-                BackColor = Color.White
-            };
-            answerPanel.Controls.Add(answerBox);
-            answerPanel.Controls.Add(answerFooterLabel);
-            answerPanel.Controls.Add(answerTitleLabel);
-
-            var planBox = CreateReadOnlyTextBox(new Font("Consolas", 9F), InitialPlanText, Color.White);
-            var planTab = new TabPage("Plan")
-            {
-                BackColor = Color.FromArgb(244, 246, 248)
-            };
-            planTab.Controls.Add(CreateTabContentPanel(planBox));
-
-            var statusBox = CreateReadOnlyTextBox(new Font("Consolas", 9F), InitialStatusText, Color.White);
-
-            var autoRefreshCheckBox = new CheckBox
-            {
-                Dock = DockStyle.Left,
-                Width = 108,
-                Margin = new Padding(0),
-                Checked = true,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-                Text = "Auto refresh"
-            };
-            autoRefreshCheckBox.CheckedChanged += (_, _) => UpdateStatusRefreshMode(forceRefresh: autoRefreshCheckBox.Checked);
-
-            var statusRefreshStateLabel = new Label
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(10, 0, 0, 0),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(120, 128, 138),
-                Text = "Auto refresh every 5s while the Status tab is active."
-            };
-
-            var manualRefreshButton = new Button
-            {
-                Dock = DockStyle.Right,
-                Width = 104,
-                Height = 28,
-                Margin = new Padding(0),
-                FlatStyle = FlatStyle.System,
-                Text = "Refresh now"
-            };
-            manualRefreshButton.Click += (_, _) => RefreshStatus(force: true);
-
-            var statusToolbar = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 30,
-                Margin = new Padding(0, 0, 0, 10),
-                ColumnCount = 3,
-                RowCount = 1,
-                BackColor = Color.White
-            };
-            statusToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108F));
-            statusToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            statusToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104F));
-            statusToolbar.Controls.Add(autoRefreshCheckBox, 0, 0);
-            statusToolbar.Controls.Add(statusRefreshStateLabel, 1, 0);
-            statusToolbar.Controls.Add(manualRefreshButton, 2, 0);
-
-            var statusTab = new TabPage("Status")
-            {
-                BackColor = Color.FromArgb(244, 246, 248)
-            };
-            statusTab.Controls.Add(CreateTabContentPanel(statusBox, statusToolbar));
-
-            var toolsBox = CreateReadOnlyTextBox(new Font("Segoe UI", 9F), InitialToolsText, Color.White);
-            var toolsTab = new TabPage("Tools")
-            {
-                BackColor = Color.FromArgb(244, 246, 248)
-            };
-            toolsTab.Controls.Add(CreateTabContentPanel(toolsBox));
-
-            var detailsTabs = new TabControl
-            {
-                Dock = DockStyle.Fill,
-                Margin = Padding.Empty,
-                Padding = new Point(12, 4)
-            };
-            detailsTabs.TabPages.Add(planTab);
-            detailsTabs.TabPages.Add(statusTab);
-            detailsTabs.TabPages.Add(toolsTab);
-            detailsTabs.SelectedIndexChanged += (_, _) => UpdateStatusRefreshMode(forceRefresh: detailsTabs.SelectedTab == statusTab);
-
-            var split = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                BorderStyle = BorderStyle.None,
-                SplitterWidth = 6,
-                Panel1MinSize = 220,
-                Panel2MinSize = 180
-            };
-            split.Panel1.Padding = new Padding(12, 0, 12, 8);
-            split.Panel2.Padding = new Padding(12, 0, 12, 12);
-            split.Panel1.BackColor = BackColor;
-            split.Panel2.BackColor = BackColor;
-            split.Panel1.Controls.Add(answerPanel);
-            split.Panel2.Controls.Add(detailsTabs);
-            split.SplitterMoved += (_, _) =>
-            {
-                _splitterAdjustedByUser = true;
-            };
-
-            var root = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty,
-                ColumnCount = 1,
-                RowCount = 3,
-                BackColor = BackColor
-            };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 156F));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            root.Controls.Add(headerLabel, 0, 0);
-            root.Controls.Add(composerPanel, 0, 1);
-            root.Controls.Add(split, 0, 2);
+            // --- Assemble ---
+            Controls.Add(contentBrowser);
+            Controls.Add(composer);
+            Controls.Add(headerLabel);
 
             _requestBox = requestBox;
-            _answerBox = answerBox;
-            _answerFooterLabel = answerFooterLabel;
-            _planBox = planBox;
-            _statusBox = statusBox;
-            _toolsBox = toolsBox;
+            _contentBrowser = contentBrowser;
             _runButton = runButton;
             _runStateLabel = runStateLabel;
             _refreshTimer = new System.Windows.Forms.Timer { Interval = StatusRefreshIntervalMilliseconds };
             _refreshTimer.Tick += (_, _) => RefreshStatus();
-            _mainSplitContainer = split;
-            _detailsTabs = detailsTabs;
-            _statusTab = statusTab;
-            _autoRefreshStatusCheckBox = autoRefreshCheckBox;
-            _statusRefreshStateLabel = statusRefreshStateLabel;
             _clarificationPanel = clarificationInner;
             _clarificationToggle = clarificationToggle;
             _intentComboBox = intentComboBox;
             _scopeListBox = scopeListBox;
             _outputModeComboBox = outputModeComboBox;
             _diagnosticsCheckBox = diagnosticsCheckBox;
-            _composerRoot = root;
 
-            Controls.Add(root);
             ApplyRequestPlaceholder();
         }
         catch (Exception ex)
@@ -484,12 +255,10 @@ public sealed class TaskPaneControl : UserControl
         }
     }
 
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    private static extern int SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
-
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
+        RenderContent();
         ScheduleDeferredStatusRefresh();
     }
 
@@ -499,12 +268,6 @@ public sealed class TaskPaneControl : UserControl
         base.OnHandleDestroyed(e);
     }
 
-    protected override void OnSizeChanged(EventArgs e)
-    {
-        base.OnSizeChanged(e);
-        ApplyResponsiveSplitLayout();
-    }
-
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -512,44 +275,12 @@ public sealed class TaskPaneControl : UserControl
             _refreshTimer.Stop();
             _refreshTimer.Dispose();
         }
-
         base.Dispose(disposing);
     }
 
-    private static TextBox CreateReadOnlyTextBox(Font font, string text, Color backColor)
-    {
-        return new TextBox
-        {
-            Dock = DockStyle.Fill,
-            Multiline = true,
-            ReadOnly = true,
-            BorderStyle = BorderStyle.None,
-            BackColor = backColor,
-            Font = font,
-            ScrollBars = ScrollBars.Vertical,
-            WordWrap = true,
-            Text = text
-        };
-    }
-
-    private static Panel CreateTabContentPanel(Control content, Control? toolbar = null)
-    {
-        var panel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            Padding = new Padding(12, 12, 12, 12),
-            BackColor = Color.White
-        };
-
-        panel.Controls.Add(content);
-        if (toolbar != null)
-        {
-            panel.Controls.Add(toolbar);
-        }
-
-        return panel;
-    }
+    // -----------------------------------------------------------------------
+    // Request / Placeholder
+    // -----------------------------------------------------------------------
 
     private void ApplyRequestPlaceholder()
     {
@@ -560,11 +291,7 @@ public sealed class TaskPaneControl : UserControl
 
     private void RemoveRequestPlaceholder()
     {
-        if (!_requestPlaceholderActive)
-        {
-            return;
-        }
-
+        if (!_requestPlaceholderActive) return;
         _requestPlaceholderActive = false;
         _requestBox.Clear();
         _requestBox.ForeColor = Color.FromArgb(34, 41, 47);
@@ -572,11 +299,7 @@ public sealed class TaskPaneControl : UserControl
 
     private void ApplyRequestPlaceholderIfNeeded()
     {
-        if (_requestPlaceholderActive || !string.IsNullOrWhiteSpace(_requestBox.Text))
-        {
-            return;
-        }
-
+        if (_requestPlaceholderActive || !string.IsNullOrWhiteSpace(_requestBox.Text)) return;
         ApplyRequestPlaceholder();
     }
 
@@ -584,21 +307,19 @@ public sealed class TaskPaneControl : UserControl
     {
         string rawText = _requestPlaceholderActive ? string.Empty : _requestBox.Text;
         string prefix = BuildClarificationPrefix();
-        return string.IsNullOrWhiteSpace(prefix)
-            ? rawText
-            : prefix + Environment.NewLine + rawText;
+        return string.IsNullOrWhiteSpace(prefix) ? rawText : prefix + Environment.NewLine + rawText;
     }
+
+    // -----------------------------------------------------------------------
+    // Clarification
+    // -----------------------------------------------------------------------
 
     private void ToggleClarification()
     {
         _clarificationExpanded = !_clarificationExpanded;
         _clarificationPanel.Visible = _clarificationExpanded;
         _clarificationToggle.Text = _clarificationExpanded ? "Hide options" : "Show options";
-
-        if (_clarificationExpanded)
-        {
-            PopulateScopeList();
-        }
+        if (_clarificationExpanded) PopulateScopeList();
     }
 
     private void PopulateScopeList()
@@ -610,60 +331,27 @@ public sealed class TaskPaneControl : UserControl
 
             if (context.Selection.Count > 0)
             {
-                string selectionPreview = string.Join(", ", context.Selection.Items.ConvertAll(item => item.Kind + ":" + item.Name));
-                _scopeListBox.Items.Add("Current selection: " + selectionPreview, true);
+                string preview = string.Join(", ", context.Selection.Items.ConvertAll(i => i.Kind + ":" + i.Name));
+                _scopeListBox.Items.Add("Selection: " + preview, true);
             }
 
             if (context.Document != null)
             {
-                foreach (var feature in context.FeatureTree.Features)
+                foreach (var f in context.FeatureTree.Features)
                 {
-                    if (_scopeListBox.Items.Count >= 20) break;
-                    if (feature.Kind == "OriginProfileFeature" || feature.Kind == "RefPlane") continue;
-                    _scopeListBox.Items.Add("Feature: " + feature.Name + " (" + feature.Kind + ")");
+                    if (_scopeListBox.Items.Count >= 15) break;
+                    if (f.Kind == "OriginProfileFeature" || f.Kind == "RefPlane") continue;
+                    _scopeListBox.Items.Add("Feature: " + f.Name);
                 }
-
-                foreach (var dim in context.Dimensions.Items)
+                foreach (var d in context.Dimensions.Items)
                 {
-                    if (_scopeListBox.Items.Count >= 20) break;
-                    _scopeListBox.Items.Add("Dimension: " + dim.FullName + " = " + dim.Value);
+                    if (_scopeListBox.Items.Count >= 15) break;
+                    _scopeListBox.Items.Add("Dim: " + d.FullName + " = " + d.Value);
                 }
-
-                foreach (var config in context.Configurations.Items)
-                {
-                    if (_scopeListBox.Items.Count >= 20) break;
-                    _scopeListBox.Items.Add("Configuration: " + config.Name);
-                }
-
-                if (string.Equals(context.Document.Type, "assembly", StringComparison.OrdinalIgnoreCase))
-                {
-                    foreach (var mate in context.Mates.Items)
-                    {
-                        if (_scopeListBox.Items.Count >= 20) break;
-                        _scopeListBox.Items.Add("Mate: " + mate.Name + " (" + mate.Kind + ")");
-                    }
-
-                    foreach (var refNode in context.ReferenceGraph.DirectItems)
-                    {
-                        if (_scopeListBox.Items.Count >= 20) break;
-                        _scopeListBox.Items.Add("Component: " + refNode.Name);
-                    }
-                }
-            }
-
-            bool showCompare = context.Configurations.Count > 1;
-            if (!showCompare && _intentComboBox.Items.Contains("Compare"))
-            {
-                _intentComboBox.Items.Remove("Compare");
-            }
-            else if (showCompare && !_intentComboBox.Items.Contains("Compare"))
-            {
-                _intentComboBox.Items.Add("Compare");
             }
 
             bool hasIssues = context.Diagnostics.Warnings.Count > 0 ||
-                             context.Diagnostics.MissingReferences.Count > 0 ||
-                             !string.Equals(context.Diagnostics.RebuildState, "clean", StringComparison.OrdinalIgnoreCase);
+                             context.Diagnostics.MissingReferences.Count > 0;
             _diagnosticsCheckBox.Checked = hasIssues;
         }
         catch (Exception ex)
@@ -674,88 +362,37 @@ public sealed class TaskPaneControl : UserControl
 
     private string BuildClarificationPrefix()
     {
-        if (!_clarificationExpanded)
-        {
-            return string.Empty;
-        }
+        if (!_clarificationExpanded) return string.Empty;
 
         var parts = new System.Collections.Generic.List<string>();
-
         string intent = _intentComboBox.SelectedItem?.ToString() ?? "Inspect";
         if (!string.Equals(intent, "Inspect", StringComparison.OrdinalIgnoreCase))
-        {
             parts.Add("intent=" + intent.ToLowerInvariant());
-        }
 
         var checkedItems = new System.Collections.Generic.List<string>();
         for (int i = 0; i < _scopeListBox.CheckedItems.Count; i++)
-        {
-            checkedItems.Add(_scopeListBox.CheckedItems[i]?.ToString() ?? string.Empty);
-        }
-
+            checkedItems.Add(_scopeListBox.CheckedItems[i]?.ToString() ?? "");
         if (checkedItems.Count > 0)
-        {
             parts.Add("scope=" + string.Join("; ", checkedItems));
-        }
 
-        string outputMode = _outputModeComboBox.SelectedItem?.ToString() ?? "Brief";
-        if (!string.Equals(outputMode, "Brief", StringComparison.OrdinalIgnoreCase))
-        {
-            parts.Add("output=" + outputMode.ToLowerInvariant());
-        }
+        string output = _outputModeComboBox.SelectedItem?.ToString() ?? "Brief";
+        if (!string.Equals(output, "Brief", StringComparison.OrdinalIgnoreCase))
+            parts.Add("output=" + output.ToLowerInvariant());
 
-        if (_diagnosticsCheckBox.Checked)
-        {
-            parts.Add("diagnostics=yes");
-        }
-
-        if (parts.Count == 0)
-        {
-            return string.Empty;
-        }
-
+        if (_diagnosticsCheckBox.Checked) parts.Add("diagnostics=yes");
+        if (parts.Count == 0) return string.Empty;
         return "[clarification] " + string.Join(", ", parts) + " [/clarification]";
     }
 
-    private void RefreshStatus(bool force = false)
-    {
-        if (_isRunning)
-        {
-            return;
-        }
-
-        if (!force && !ShouldAutoRefreshStatus())
-        {
-            return;
-        }
-
-        try
-        {
-            ApplyResponsiveSplitLayout();
-            ReplaceTextPreserveView(_statusBox, HostState.BuildStatusText(), preserveView: true);
-            UpdateStatusRefreshIndicator();
-        }
-        catch (Exception ex)
-        {
-            FileLogger.Error("Task Pane status refresh failed.", ex);
-            ReplaceTextPreserveView(
-                _statusBox,
-                "Status refresh failed." + Environment.NewLine + Environment.NewLine + ex.Message,
-                preserveView: false);
-            _statusRefreshStateLabel.Text = "Auto refresh paused after an error.";
-            _refreshTimer.Stop();
-        }
-    }
+    // -----------------------------------------------------------------------
+    // Run assistant
+    // -----------------------------------------------------------------------
 
     private void RunAssistant()
     {
-        if (_isRunning)
-        {
-            return;
-        }
+        if (_isRunning) return;
 
         AssistantRunPreparation? preparation = null;
-
         try
         {
             _isRunning = true;
@@ -764,7 +401,6 @@ public sealed class TaskPaneControl : UserControl
             _requestBox.Enabled = false;
             _runStateLabel.Text = "Running...";
             _refreshTimer.Stop();
-            UpdateStatusRefreshIndicator();
             Update();
 
             HostState.BeginRun();
@@ -773,7 +409,7 @@ public sealed class TaskPaneControl : UserControl
         catch (Exception ex)
         {
             ShowRunFailure(ex);
-            FinishAssistantRunUi();
+            FinishRun();
             return;
         }
 
@@ -782,7 +418,7 @@ public sealed class TaskPaneControl : UserControl
             try
             {
                 AssistantRunSnapshot snapshot = HostState.CompleteAssistantRun(preparation);
-                PostToUi(() => ApplyAssistantRunSnapshot(snapshot));
+                PostToUi(() => ApplySnapshot(snapshot));
             }
             catch (Exception ex)
             {
@@ -791,243 +427,368 @@ public sealed class TaskPaneControl : UserControl
             finally
             {
                 HostState.EndRun();
-                PostToUi(FinishAssistantRunUi);
+                PostToUi(FinishRun);
             }
         });
     }
 
-    private void ApplyAssistantRunSnapshot(AssistantRunSnapshot snapshot)
+    private void ApplySnapshot(AssistantRunSnapshot snapshot)
     {
-        _answerBox.Text = string.IsNullOrWhiteSpace(snapshot.AnswerText) ? InitialAnswerText : snapshot.AnswerText;
-        _answerFooterLabel.Text = string.IsNullOrWhiteSpace(snapshot.AnswerFooterText) ? InitialAnswerFooterText : snapshot.AnswerFooterText;
-        ReplaceTextPreserveView(_planBox, snapshot.PlanText, preserveView: false);
-        ReplaceTextPreserveView(_toolsBox, snapshot.ToolsText, preserveView: false);
+        _answerHtml = string.IsNullOrWhiteSpace(snapshot.AnswerText) ? "" : snapshot.AnswerText;
+        _answerFooter = snapshot.AnswerFooterText ?? "";
+        _planText = snapshot.PlanText ?? "";
+        _toolsText = snapshot.ToolsText ?? "";
         _runStateLabel.Text = BuildRunStateText(snapshot);
+        RenderContent();
     }
 
     private void ShowRunFailure(Exception ex)
     {
-        _answerBox.Text =
-            "The assistant run failed before a grounded answer could be produced." +
-            Environment.NewLine +
-            Environment.NewLine +
-            ex.Message;
-        _answerFooterLabel.Text = "No trace captured for the failed run.";
-        _runStateLabel.Text = "Run failed. Review the answer and status panels.";
+        _answerHtml = "The assistant run failed.\n\n" + ex.Message;
+        _answerFooter = "No trace captured.";
+        _runStateLabel.Text = "Run failed.";
+        RenderContent();
     }
 
-    private void FinishAssistantRunUi()
+    private void FinishRun()
     {
         _requestBox.Enabled = true;
         _runButton.Enabled = true;
         _runButton.Text = "Run assistant";
         _isRunning = false;
         ApplyRequestPlaceholderIfNeeded();
-        RefreshStatus(force: _detailsTabs.SelectedTab == _statusTab);
-        UpdateStatusRefreshMode(forceRefresh: false);
-    }
-
-    private void ScheduleDeferredStatusRefresh()
-    {
-        if (_statusRefreshScheduled || !IsHandleCreated || IsDisposed)
-        {
-            return;
-        }
-
-        _statusRefreshScheduled = true;
-        BeginInvoke((Action)(() =>
-        {
-            _statusRefreshScheduled = false;
-
-            if (!IsHandleCreated || IsDisposed)
-            {
-                return;
-            }
-
-            ApplyResponsiveSplitLayout(forceDefault: true);
-            RefreshStatus(force: true);
-            UpdateStatusRefreshMode(forceRefresh: false);
-        }));
-    }
-
-    private void UpdateStatusRefreshMode(bool forceRefresh)
-    {
-        if (!IsHandleCreated || IsDisposed)
-        {
-            return;
-        }
-
-        if (forceRefresh && _detailsTabs.SelectedTab == _statusTab)
-        {
-            RefreshStatus(force: true);
-        }
-
-        if (ShouldAutoRefreshStatus())
-        {
-            _refreshTimer.Start();
-        }
-        else
-        {
-            _refreshTimer.Stop();
-        }
-
-        UpdateStatusRefreshIndicator();
-    }
-
-    private bool ShouldAutoRefreshStatus()
-    {
-        return !_isRunning &&
-               _autoRefreshStatusCheckBox.Checked &&
-               _detailsTabs.SelectedTab == _statusTab;
-    }
-
-    private void UpdateStatusRefreshIndicator()
-    {
-        if (_isRunning)
-        {
-            _statusRefreshStateLabel.Text = "Status refresh paused while the assistant is running.";
-            return;
-        }
-
-        if (!_autoRefreshStatusCheckBox.Checked)
-        {
-            _statusRefreshStateLabel.Text = "Auto refresh paused.";
-            return;
-        }
-
-        if (_detailsTabs.SelectedTab == _statusTab)
-        {
-            _statusRefreshStateLabel.Text = "Auto refresh every 5s while visible.";
-            return;
-        }
-
-        _statusRefreshStateLabel.Text = "Auto refresh resumes when the Status tab is active.";
-    }
-
-    private void ApplyResponsiveSplitLayout(bool forceDefault = false)
-    {
-        if (_mainSplitContainer.IsDisposed)
-        {
-            return;
-        }
-
-        int availableHeight = _mainSplitContainer.ClientSize.Height;
-        if (availableHeight <= 0)
-        {
-            return;
-        }
-
-        int maxTopHeight = availableHeight - _mainSplitContainer.Panel2MinSize;
-        if (maxTopHeight <= 0)
-        {
-            return;
-        }
-
-        int nextSplitDistance;
-        if (!_splitterInitialized || (forceDefault && !_splitterAdjustedByUser))
-        {
-            nextSplitDistance = (int)Math.Round(availableHeight * 0.68);
-        }
-        else if (_splitterAdjustedByUser)
-        {
-            nextSplitDistance = _mainSplitContainer.SplitterDistance;
-        }
-        else
-        {
-            nextSplitDistance = (int)Math.Round(availableHeight * 0.68);
-        }
-
-        nextSplitDistance = Math.Max(_mainSplitContainer.Panel1MinSize, Math.Min(maxTopHeight, nextSplitDistance));
-        if (nextSplitDistance <= 0)
-        {
-            return;
-        }
-
-        if (_mainSplitContainer.SplitterDistance != nextSplitDistance)
-        {
-            _mainSplitContainer.SplitterDistance = nextSplitDistance;
-        }
-
-        _splitterInitialized = true;
-    }
-
-    private void ReplaceTextPreserveView(TextBox target, string text, bool preserveView)
-    {
-        if (string.Equals(target.Text, text, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        int selectionStart = target.SelectionStart;
-        int selectionLength = target.SelectionLength;
-        int firstVisibleLine = preserveView && target.IsHandleCreated
-            ? SendMessage(target.Handle, EmGetFirstVisibleLine, 0, 0)
-            : 0;
-
-        target.Text = text;
-
-        if (!preserveView || !target.IsHandleCreated)
-        {
-            return;
-        }
-
-        int clampedSelectionStart = Math.Min(selectionStart, target.TextLength);
-        int clampedSelectionLength = Math.Min(selectionLength, Math.Max(0, target.TextLength - clampedSelectionStart));
-        target.SelectionStart = clampedSelectionStart;
-        target.SelectionLength = clampedSelectionLength;
-
-        int currentFirstVisibleLine = SendMessage(target.Handle, EmGetFirstVisibleLine, 0, 0);
-        int lineDelta = firstVisibleLine - currentFirstVisibleLine;
-        if (lineDelta != 0)
-        {
-            SendMessage(target.Handle, EmLineScroll, 0, lineDelta);
-        }
-    }
-
-    private void PostToUi(Action action)
-    {
-        if (action == null || IsDisposed)
-        {
-            return;
-        }
-
-        try
-        {
-            if (!IsHandleCreated)
-            {
-                return;
-            }
-
-            BeginInvoke(action);
-        }
-        catch (InvalidOperationException)
-        {
-        }
+        ScheduleDeferredStatusRefresh();
     }
 
     private static string BuildRunStateText(AssistantRunSnapshot snapshot)
     {
-        if (string.Equals(snapshot.TurnStatus, "host_unavailable", StringComparison.OrdinalIgnoreCase))
+        string source = snapshot.AnswerSource ?? "";
+        var usage = snapshot.RunUsage;
+        if (usage != null && usage.TotalTokens > 0)
+            return source + " | " + usage.TotalTokens + " tokens";
+        return string.IsNullOrWhiteSpace(source) ? "Done." : source;
+    }
+
+    // -----------------------------------------------------------------------
+    // Status refresh
+    // -----------------------------------------------------------------------
+
+    private void RefreshStatus(bool force = false)
+    {
+        if (_isRunning) return;
+        try
         {
-            return "SOLIDWORKS is not connected. See the answer panel for recovery steps.";
+            _statusText = HostState.BuildStatusText();
+            if (_activeTab == "status") RenderContent();
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("Status refresh failed.", ex);
+            _refreshTimer.Stop();
+        }
+    }
+
+    private void ScheduleDeferredStatusRefresh()
+    {
+        if (_statusRefreshScheduled || !IsHandleCreated || IsDisposed) return;
+        _statusRefreshScheduled = true;
+        BeginInvoke((Action)(() =>
+        {
+            _statusRefreshScheduled = false;
+            if (!IsHandleCreated || IsDisposed) return;
+            RefreshStatus(force: true);
+            _refreshTimer.Start();
+        }));
+    }
+
+    // -----------------------------------------------------------------------
+    // HTML rendering — single WebBrowser for answer + tabs
+    // -----------------------------------------------------------------------
+
+    private void RenderContent()
+    {
+        try
+        {
+            string html = BuildFullPageHtml();
+            if (_contentBrowser.Document == null)
+                _contentBrowser.Navigate("about:blank");
+            _contentBrowser.DocumentText = html;
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("Failed to render content HTML.", ex);
+        }
+    }
+
+    private string BuildFullPageHtml()
+    {
+        string answerBody = string.IsNullOrWhiteSpace(_answerHtml)
+            ? "<p class=\"muted\">Open a document and ask a question. Adze will inspect the live session and ground an answer.</p>"
+            : ConvertTextToHtmlBody(_answerHtml);
+
+        string footerHtml = string.IsNullOrWhiteSpace(_answerFooter)
+            ? ""
+            : "<div class=\"footer\">" + HtmlEncode(_answerFooter) + "</div>";
+
+        string planBody = string.IsNullOrWhiteSpace(_planText)
+            ? "<p class=\"muted\">Plan details appear after a run.</p>"
+            : "<pre>" + HtmlEncode(_planText) + "</pre>";
+
+        string statusBody = string.IsNullOrWhiteSpace(_statusText)
+            ? "<p class=\"muted\">Status refreshes automatically.</p>"
+            : "<pre>" + HtmlEncode(_statusText) + "</pre>";
+
+        string toolsBody = string.IsNullOrWhiteSpace(_toolsText)
+            ? "<p class=\"muted\">Tool execution results appear after a run.</p>"
+            : "<pre>" + HtmlEncode(_toolsText) + "</pre>";
+
+        string TabClass(string name) => _activeTab == name ? "tab active" : "tab";
+
+        return @"<!DOCTYPE html>
+<html><head><meta http-equiv=""X-UA-Compatible"" content=""IE=edge"">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #22292F;
+    background: #F4F6F8;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+  }
+
+  /* --- Answer area --- */
+  .answer-area {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    background: #FFFFFF;
+    padding: 12px 14px 6px 14px;
+    margin: 0 0 1px 0;
+  }
+  h1 { font-size: 15px; font-weight: 600; color: #18304C; margin: 10px 0 5px 0; }
+  h2 { font-size: 14px; font-weight: 600; color: #18304C; margin: 8px 0 4px 0; }
+  h3 { font-size: 13px; font-weight: 600; color: #22292F; margin: 6px 0 3px 0; }
+  p { margin: 0 0 7px 0; }
+  strong, b { font-weight: 600; }
+  ul, ol { margin: 3px 0 7px 18px; }
+  li { margin: 1px 0; }
+  code {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    background: #F0F2F4;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  pre {
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    background: #F4F6F8;
+    padding: 8px 10px;
+    margin: 4px 0 8px 0;
+    border-radius: 3px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.4;
+  }
+  table { border-collapse: collapse; margin: 4px 0 8px 0; font-size: 12px; width: 100%; }
+  th, td { border: 1px solid #DDE1E6; padding: 3px 6px; text-align: left; }
+  th { background: #F4F6F8; font-weight: 600; }
+
+  /* --- Footer --- */
+  .footer {
+    font-size: 11px;
+    color: #78808A;
+    padding: 6px 14px 8px 14px;
+    background: #FFFFFF;
+    border-top: 1px solid #E8EAED;
+  }
+
+  /* --- Tab bar --- */
+  .tab-bar {
+    display: flex;
+    background: #EBEDF0;
+    border-top: 1px solid #DDE1E6;
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 6px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: #566370;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    -ms-user-select: none;
+  }
+  .tab:hover { color: #22292F; background: #E0E3E7; }
+  .tab.active {
+    color: #18304C;
+    font-weight: 600;
+    background: #FFFFFF;
+    border-bottom-color: #18304C;
+  }
+
+  /* --- Tab content --- */
+  .tab-content {
+    flex: 0 0 auto;
+    max-height: 40%;
+    overflow-y: auto;
+    background: #FFFFFF;
+    padding: 8px 12px;
+    display: none;
+  }
+  .tab-content.active { display: block; }
+
+  .muted { color: #78808A; font-style: italic; }
+</style>
+</head><body>
+<div class=""container"">
+  <div class=""answer-area"">" + answerBody + @"</div>
+  " + footerHtml + @"
+  <div class=""tab-bar"">
+    <div class=""" + TabClass("answer") + @""" onclick=""switchTab('answer')"">Answer</div>
+    <div class=""" + TabClass("plan") + @""" onclick=""switchTab('plan')"">Plan</div>
+    <div class=""" + TabClass("status") + @""" onclick=""switchTab('status')"">Status</div>
+    <div class=""" + TabClass("tools") + @""" onclick=""switchTab('tools')"">Tools</div>
+  </div>
+  <div id=""tc-answer"" class=""tab-content" + (_activeTab == "answer" ? "" : " active") + @"""></div>
+  <div id=""tc-plan"" class=""tab-content" + (_activeTab == "plan" ? " active" : "") + @""">" + planBody + @"</div>
+  <div id=""tc-status"" class=""tab-content" + (_activeTab == "status" ? " active" : "") + @""">" + statusBody + @"</div>
+  <div id=""tc-tools"" class=""tab-content" + (_activeTab == "tools" ? " active" : "") + @""">" + toolsBody + @"</div>
+</div>
+<script>
+function switchTab(name) {
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].className = 'tab';
+  var contents = document.querySelectorAll('.tab-content');
+  for (var i = 0; i < contents.length; i++) contents[i].className = 'tab-content';
+  var area = document.querySelector('.answer-area');
+  var footer = document.querySelector('.footer');
+
+  if (name === 'answer') {
+    tabs[0].className = 'tab active';
+    if (area) area.style.display = 'block';
+    if (footer) footer.style.display = 'block';
+  } else {
+    if (area) area.style.display = 'none';
+    if (footer) footer.style.display = 'none';
+    var idx = name === 'plan' ? 1 : name === 'status' ? 2 : 3;
+    tabs[idx].className = 'tab active';
+    document.getElementById('tc-' + name).className = 'tab-content active';
+  }
+}
+</script>
+</body></html>";
+    }
+
+    // -----------------------------------------------------------------------
+    // Markdown → HTML conversion
+    // -----------------------------------------------------------------------
+
+    private static string ConvertTextToHtmlBody(string text)
+    {
+        text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+        var sb = new System.Text.StringBuilder(text.Length * 2);
+        string[] lines = text.Split('\n');
+        bool inUl = false, inOl = false;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string trimmed = lines[i].Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                CloseList(sb, ref inUl, ref inOl);
+                continue;
+            }
+
+            if (trimmed.StartsWith("### "))
+            {
+                CloseList(sb, ref inUl, ref inOl);
+                sb.Append("<h3>").Append(Inline(HtmlEncode(trimmed.Substring(4)))).Append("</h3>");
+                continue;
+            }
+            if (trimmed.StartsWith("## "))
+            {
+                CloseList(sb, ref inUl, ref inOl);
+                sb.Append("<h2>").Append(Inline(HtmlEncode(trimmed.Substring(3)))).Append("</h2>");
+                continue;
+            }
+            if (trimmed.StartsWith("# "))
+            {
+                CloseList(sb, ref inUl, ref inOl);
+                sb.Append("<h1>").Append(Inline(HtmlEncode(trimmed.Substring(2)))).Append("</h1>");
+                continue;
+            }
+
+            if (trimmed.StartsWith("- ") || trimmed.StartsWith("* "))
+            {
+                if (inOl) { sb.Append("</ol>"); inOl = false; }
+                if (!inUl) { sb.Append("<ul>"); inUl = true; }
+                sb.Append("<li>").Append(Inline(HtmlEncode(trimmed.Substring(2)))).Append("</li>");
+                continue;
+            }
+
+            if (trimmed.Length >= 3 && char.IsDigit(trimmed[0]))
+            {
+                int dot = trimmed.IndexOf(". ", StringComparison.Ordinal);
+                if (dot > 0 && dot <= 3 && int.TryParse(trimmed.Substring(0, dot), out _))
+                {
+                    if (inUl) { sb.Append("</ul>"); inUl = false; }
+                    if (!inOl) { sb.Append("<ol>"); inOl = true; }
+                    sb.Append("<li>").Append(Inline(HtmlEncode(trimmed.Substring(dot + 2)))).Append("</li>");
+                    continue;
+                }
+            }
+
+            CloseList(sb, ref inUl, ref inOl);
+            sb.Append("<p>").Append(Inline(HtmlEncode(trimmed))).Append("</p>");
         }
 
-        if (string.Equals(snapshot.TurnStatus, "needs_document", StringComparison.OrdinalIgnoreCase))
-        {
-            return "No document is open. Open a part, assembly, or drawing and run again.";
-        }
+        CloseList(sb, ref inUl, ref inOl);
+        return sb.ToString();
+    }
 
-        string source = snapshot.AnswerSource;
-        if (!string.IsNullOrWhiteSpace(snapshot.AnswerModelId))
-        {
-            source += " (" + snapshot.AnswerModelId + ")";
-        }
+    private static void CloseList(System.Text.StringBuilder sb, ref bool inUl, ref bool inOl)
+    {
+        if (inUl) { sb.Append("</ul>"); inUl = false; }
+        if (inOl) { sb.Append("</ol>"); inOl = false; }
+    }
 
-        if (snapshot.RunUsage.TotalTokens > 0)
-        {
-            return "Last run: " + source + "  |  " + snapshot.RunUsage.TotalTokens + " tokens";
-        }
+    private static string Inline(string html)
+    {
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"`(.+?)`", "<code>$1</code>");
+        return html;
+    }
 
-        return "Last run: " + source + ".";
+    private static string HtmlEncode(string text)
+    {
+        return text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private void PostToUi(Action action)
+    {
+        if (InvokeRequired)
+            BeginInvoke(action);
+        else
+            action();
+    }
+
+    private string BuildStatusText()
+    {
+        return HostState.BuildStatusText();
     }
 }

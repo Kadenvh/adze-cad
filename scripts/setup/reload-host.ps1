@@ -9,6 +9,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
+# Load .env if present (API keys, feature gates)
+& (Join-Path $PSScriptRoot "load-env.ps1")
 $hostLog = Join-Path $env:LOCALAPPDATA "Adze\logs\host.log"
 $openScript = Join-Path $repoRoot 'scripts\setup\open-sample-document.ps1'
 $launchScript = Join-Path $repoRoot 'scripts\setup\launch-and-check-host.ps1'

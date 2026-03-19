@@ -109,7 +109,7 @@
 - [x] **Phase 1A:** Add pre-prompt clarification UI to Task Pane
 - [x] **Phase 1B:** Add conversation state and follow-up turn support
 - [x] **Phase 2:** Implement agentic tool loop with native API tool calling (OpenAIFormatAgentClient, AgentLoopRunner, AgentToolDispatcher, ToolDefinitionBuilder, HostState integration, cancel support)
-- [ ] **Phase 2 live test:** Run agentic loop with real API key in SOLIDWORKS to verify end-to-end
+- [x] **Phase 2 live test:** Agentic loop verified in SOLIDWORKS via OpenRouter — model called get_dimensions autonomously, synthesized grounded answer (1866 tokens, outcome=Success)
 - [x] **Phase 3:** Implement snapshot/diff verification layer (IStateSnapshotService, IStateDiffService, IVerificationPolicy, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder — 30 tests)
 - [x] **Phase 4 core:** Implement first-wave write tools (set_custom_property, set_dimension_value, suppress_feature, unsuppress_feature) with IWriteTool, WriteExecutionCoordinator, agent dispatch, feature gate — 36 tests
 - [ ] **Phase 4 UI:** Add WritePreview confirmation panel and write history/undo surface to TaskPaneControl
@@ -117,8 +117,13 @@
 - [x] **Phase 6 core:** Per-document memory (DocumentMemory, MemoryStore) and user preference storage — 12 tests
 - [ ] **Phase 6 retrieval:** OLE Structured Storage closed-file indexer (requires OpenMcdf NuGet)
 - [x] **Phase 7/8 partial:** Cost budget controls (CostBudgetSettings, BudgetStatus), FeatureGateRegistry — 11 tests
-- [ ] Decide whether answer evidence snippets belong in the Task Pane
-- [ ] Decide whether recipe suggestions should appear in the Task Pane
+- [x] Decide whether answer evidence snippets belong in the Task Pane → YES, via HTML answer panel (T9-01)
+- [x] Decide whether recipe suggestions should appear in the Task Pane → YES, accelerate T5-04/T9-03
+- [x] **Phase 2 live test (b):** Write tools verified — model called get_active_document → set_custom_property (preview), synthesized grounded answer (2881 tokens, 3 turns, outcome=Success)
+- [ ] **Phase 9 (ecosystem):** HTML answer panel replacing raw TextBox (T9-01) — highest UX priority
+- [ ] **Phase 9 (ecosystem):** "What's Wrong" diagnostic intent (T9-02)
+- [ ] **Phase 9 (ecosystem):** Conversational chat history in Task Pane (T9-05)
+- [ ] **Ecosystem research:** `documentation/plans/research-solidworks-ai-ecosystem.md` — AURA/LEO/Labs/competitors mapped
 
 ## Handoff Notes
 
@@ -131,5 +136,6 @@ If a new agent or session picks this up:
 5. The 7 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
 6. Phases 1A through 7/8 (core infrastructure) are implemented. 378 tests passing.
 7. Feature gates: `SOLIDWORKS_AI_AGENT_LOOP=true` (agentic loop), `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true` (write tools). See `FeatureGateRegistry` for all 5 gates.
-8. Next priorities: (a) live test agent loop + write tools in SOLIDWORKS, (b) add confirmation UI panel to TaskPaneControl (T4-09), (c) OLE closed-file indexer (T6-03, needs OpenMcdf NuGet), (d) local model support (T8-02), (e) final-answer streaming (T8-03).
+8. Next priorities: (a) live test write tools in SOLIDWORKS, (b) HTML answer panel — T9-01, (c) confirmation UI panel — T4-09, (d) conversational chat history — T9-05, (e) OLE closed-file indexer — T6-03.
 9. Key new infrastructure this session: write contracts + tools, snapshot/diff/verification, write execution coordinator, trust service, recipe capture from agent runs, per-document memory, cost budgets, feature gate registry.
+10. This session also: fixed SplitContainer init crash, fixed AgentLoopRunner consecutive error counting bug, fixed OpenAI endpoint /chat/completions normalization, added .env loader, added agent progress logging to host log, completed ecosystem competitive research (8 research briefs total now).
