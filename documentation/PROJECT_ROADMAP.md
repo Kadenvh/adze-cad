@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
-**Version:** 0.1.0  
-**Last Updated:** 2026-03-16
-**Status:** Agentic alpha with write tool infrastructure — 14 tools (10 read + 4 write), 378 tests, feature-gated write safety
+**Version:** 0.1.0
+**Last Updated:** 2026-03-18
+**Status:** Agentic alpha with conversational UI — 14 tools (10 read + 4 write), 378 tests, HTML chat interface with write confirmation
 
 ## Product Thesis
 
@@ -39,6 +39,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-15 | Agentic tool loop implemented (Phase 1A+1B+2): clarification UI, conversation state with truncation, OpenAIFormatAgentClient, AgentLoopRunner, AgentToolDispatcher, ToolDefinitionBuilder, host integration with cancel support. 275 tests (100 new). |
 | 0.1.0 | 2026-03-16 | Write tool safety infrastructure + first-wave write tools (Phase 3+4 core): IStateSnapshotService, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder, WriteExecutionCoordinator, SetCustomPropertyTool, SetDimensionValueTool, SuppressFeatureTool, UnsuppressFeatureTool. Feature-gated behind SOLIDWORKS_AI_FIRST_WAVE_WRITES. |
 | 0.1.0 | 2026-03-16 | Learning activation + memory + hardening (Phases 5-8 core): ITrustService, TrustService, AgentRecipeCaptureService, write tool achievements, TrustedBounded tier, DocumentMemory, MemoryStore, UserPreferenceMemory, CostBudgetSettings, BudgetStatus, FeatureGateRegistry. 378 tests (103 new this session). |
+| 0.1.0 | 2026-03-18 | Conversational UI (T9-01, T9-05, T4-09): HTML answer panel with WebBrowser control, chat-style conversation thread with user/assistant bubbles, write confirmation cards with Apply/Cancel and direct COM apply. Tab state sync via ObjectForScripting, status auto-refresh via InvokeScript. |
 
 ## Current Architecture
 
@@ -46,7 +47,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 
 | Layer | Current Implementation | Purpose |
 |------|-------------------------|---------|
-| Native host | In-process C# SOLIDWORKS add-in | Owns lifecycle, COM access, Task Pane UI, and tool execution |
+| Native host | In-process C# SOLIDWORKS add-in with WebBrowser-based conversational UI | Owns lifecycle, COM access, Task Pane, chat history, and write confirmation |
 | Context boundary | Shared C# contracts plus JSON schemas | Keeps host, broker, tools, traces, and scripts aligned |
 | Tool layer | 10 read-only grounding tools + 4 first-wave write tools | Exposes auditable inspection and governed modification over the active CAD session |
 | Broker layer | Hybrid deterministic + OpenAI/Anthropic planning | Produces structured turn state, tool recommendations, blockers, and recovery guidance |

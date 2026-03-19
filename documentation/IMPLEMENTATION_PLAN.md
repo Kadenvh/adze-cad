@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Created:** 2026-03-11
-**Last Updated:** 2026-03-16
+**Last Updated:** 2026-03-18
 **Current Phase:** Phase 9 ecosystem enhancements active. T9-01 (HTML panel), T9-05 (chat history), T4-09 (write confirmation) complete. Next: T9-02 (diagnostic intent), multi-turn agent context, Phase 6 retrieval (OLE indexer), live SOLIDWORKS testing.
 **Status:** Full conversational UI implemented: HTML answer panel with WebBrowser, chat-style conversation thread, write confirmation cards with Apply/Cancel. 378 tests passing. Remaining: diagnostic intent routing, agent loop multi-turn context, OLE closed-file indexer, write history/undo.
 
