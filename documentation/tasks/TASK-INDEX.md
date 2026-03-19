@@ -114,11 +114,13 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - Preview with cascade warning, Apply, Verify
 - 11 unit tests (7 suppress + 4 unsuppress)
 
-### T4-09: Add WritePreview panel to TaskPaneControl
-- [ ] Inline panel showing before/after values
-- [ ] Apply / Cancel / Edit buttons
-- [ ] Hidden by default, shown when WaitingForConfirmation
-- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
+### T4-09: Add WritePreview panel to TaskPaneControl ✓
+- [x] Inline confirmation card showing before/after values in chat thread
+- [x] Apply / Cancel buttons with JavaScript → C# bridge
+- [x] PendingWriteAction tracking in HostState with write-tracking executor
+- [x] Applied/Cancelled state rendering with result messages
+- [x] Direct COM apply for all 4 first-wave write tools
+- **Files:** `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`
 
 ### T4-10: Add write history / undo surface
 - [ ] Session history panel showing all writes
@@ -315,15 +317,16 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ## Phase 9: Ecosystem-Informed Enhancements (from research-solidworks-ai-ecosystem.md)
 
-### T9-01: HTML answer panel (replace raw TextBox)
-- [ ] Replace answer TextBox with WebBrowser control in TaskPaneControl
-- [ ] Render agent responses as formatted HTML (headers, bold, lists, tables)
-- [ ] Message-style layout: user question → assistant response
-- [ ] Subtle token/source/trace footer
-- [ ] Preserve scroll position on refresh
+### T9-01: HTML answer panel (replace raw TextBox) ✓
+- [x] Replace answer TextBox with WebBrowser control in TaskPaneControl
+- [x] Render agent responses as formatted HTML (headers, bold, lists, tables)
+- [x] Message-style layout: user question → assistant response
+- [x] Subtle token/source/trace footer per message
+- [x] Auto-scroll to bottom on new messages
+- [x] Tab state synced to C# via `window.external.SwitchTab()`
+- [x] Status auto-refresh via `InvokeScript` (no full page re-render)
 - **Why:** Every competitor (AURA, Autodesk Assistant, Siemens Copilot) renders polished conversational UI. Raw text is Adze's most visible gap.
 - **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
-- **Priority:** HIGH — highest UX impact for lowest effort
 
 ### T9-02: "What's Wrong" diagnostic intent
 - [ ] Add dedicated diagnostic intent to clarification UI
@@ -348,12 +351,14 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - **Reference:** research-solidworks-ai-ecosystem.md (Autodesk MCP adoption)
 - **Priority:** LOW now, HIGH strategic — Phase 10+
 
-### T9-05: Conversational chat history in Task Pane
-- [ ] Show conversation thread (multi-turn) instead of single Q&A
-- [ ] Agent conversation state already exists (AgentConversationState) — surface it in UI
-- [ ] Follow-up questions without re-entering full context
+### T9-05: Conversational chat history in Task Pane ✓
+- [x] Show conversation thread (multi-turn) instead of single Q&A
+- [x] ChatEntry tracking in HostState with document-aware clearing
+- [x] User/assistant bubble rendering with per-message footer
+- [x] Request box clears after run for follow-up input
+- [ ] Pass prior conversation context to agent loop for multi-turn awareness (deferred — visual history works now, model context linkage next)
 - **Why:** Every competitor has chat-style interaction. Adze has the backend (conversation state + truncation) but renders single-shot.
-- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
+- **Files:** `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`
 
 ### T9-06: .env file loader for scripts
 - [x] `scripts/setup/load-env.ps1` — loads `.env` into process environment

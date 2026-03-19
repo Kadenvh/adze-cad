@@ -32,10 +32,9 @@ public sealed class TaskPaneControl : UserControl
     private bool _requestPlaceholderActive;
     private bool _clarificationExpanded;
     private bool _statusRefreshScheduled;
+    private string? _lastErrorMessage;
 
     // Current content for HTML tabs
-    private string _answerHtml = "";
-    private string _answerFooter = "";
     private string _planText = "";
     private string _statusText = "";
     private string _toolsText = "";
@@ -93,19 +92,6 @@ public sealed class TaskPaneControl : UserControl
                 FlatStyle = FlatStyle.System,
                 Text = "Run assistant"
             };
-            runButton.Click += (_, _) =>
-            {
-                if (_isRunning)
-                {
-                    HostState.CancelRun();
-                    _runStateLabel.Text = "Cancelling...";
-                    _runButton.Enabled = false;
-                }
-                else
-                {
-                    RunAssistant();
-                }
-            };
 
             var runStateLabel = new Label
             {
@@ -115,6 +101,20 @@ public sealed class TaskPaneControl : UserControl
                 Font = new Font("Segoe UI", 8F),
                 ForeColor = Color.FromArgb(86, 96, 108),
                 Text = "Ready."
+            };
+
+            runButton.Click += (_, _) =>
+            {
+                if (_isRunning)
+                {
+                    HostState.CancelRun();
+                    runStateLabel.Text = "Cancelling...";
+                    runButton.Enabled = false;
+                }
+                else
+                {
+                    RunAssistant();
+                }
             };
 
             var runRow = new Panel
@@ -220,7 +220,8 @@ public sealed class TaskPaneControl : UserControl
                 AllowWebBrowserDrop = false,
                 IsWebBrowserContextMenuEnabled = true,
                 ScriptErrorsSuppressed = true,
-                WebBrowserShortcutsEnabled = true
+                WebBrowserShortcutsEnabled = true,
+                ObjectForScripting = this
             };
             contentBrowser.Navigate("about:blank");
 
@@ -434,8 +435,7 @@ public sealed class TaskPaneControl : UserControl
 
     private void ApplySnapshot(AssistantRunSnapshot snapshot)
     {
-        _answerHtml = string.IsNullOrWhiteSpace(snapshot.AnswerText) ? "" : snapshot.AnswerText;
-        _answerFooter = snapshot.AnswerFooterText ?? "";
+        _lastErrorMessage = null;
         _planText = snapshot.PlanText ?? "";
         _toolsText = snapshot.ToolsText ?? "";
         _runStateLabel.Text = BuildRunStateText(snapshot);
@@ -444,19 +444,19 @@ public sealed class TaskPaneControl : UserControl
 
     private void ShowRunFailure(Exception ex)
     {
-        _answerHtml = "The assistant run failed.\n\n" + ex.Message;
-        _answerFooter = "No trace captured.";
         _runStateLabel.Text = "Run failed.";
+        _lastErrorMessage = "The assistant run failed.\n\n" + ex.Message;
         RenderContent();
     }
 
     private void FinishRun()
     {
         _requestBox.Enabled = true;
+        _requestBox.Clear();
         _runButton.Enabled = true;
         _runButton.Text = "Run assistant";
         _isRunning = false;
-        ApplyRequestPlaceholderIfNeeded();
+        ApplyRequestPlaceholder();
         ScheduleDeferredStatusRefresh();
     }
 
@@ -479,7 +479,14 @@ public sealed class TaskPaneControl : UserControl
         try
         {
             _statusText = HostState.BuildStatusText();
-            if (_activeTab == "status") RenderContent();
+            if (_activeTab == "status")
+            {
+                string statusHtml = string.IsNullOrWhiteSpace(_statusText)
+                    ? "<p class=\"muted\">Status refreshes automatically.</p>"
+                    : "<pre>" + HtmlEncode(_statusText) + "</pre>";
+                _contentBrowser.Document?.InvokeScript("updateTabContent",
+                    new object[] { "tc-status", statusHtml });
+            }
         }
         catch (Exception ex)
         {
@@ -520,15 +527,116 @@ public sealed class TaskPaneControl : UserControl
         }
     }
 
+    private string BuildConversationHtml()
+    {
+        var history = HostState.GetChatHistory();
+        if (history.Count == 0 && string.IsNullOrEmpty(_lastErrorMessage))
+        {
+            return "<p class=\"muted\">Open a document and ask a question. Adze will inspect the live session and ground an answer.</p>";
+        }
+
+        var sb = new System.Text.StringBuilder();
+
+        foreach (var entry in history)
+        {
+            // User message
+            if (!string.IsNullOrWhiteSpace(entry.UserMessage))
+            {
+                sb.Append("<div class=\"chat-user\"><div class=\"chat-label\">You</div><div class=\"chat-bubble user-bubble\">");
+                sb.Append(HtmlEncode(entry.UserMessage));
+                sb.Append("</div></div>");
+            }
+
+            // Assistant message
+            if (!string.IsNullOrWhiteSpace(entry.AssistantMessage))
+            {
+                sb.Append("<div class=\"chat-assistant\"><div class=\"chat-label\">Adze</div><div class=\"chat-bubble assistant-bubble\">");
+                sb.Append(ConvertTextToHtmlBody(entry.AssistantMessage));
+                sb.Append("</div>");
+                if (!string.IsNullOrWhiteSpace(entry.Footer))
+                {
+                    sb.Append("<div class=\"chat-footer\">");
+                    sb.Append(HtmlEncode(entry.Footer));
+                    sb.Append("</div>");
+                }
+                sb.Append("</div>");
+            }
+        }
+
+        // Show error if last run failed
+        if (!string.IsNullOrEmpty(_lastErrorMessage))
+        {
+            sb.Append("<div class=\"chat-assistant\"><div class=\"chat-label\">Adze</div><div class=\"chat-bubble assistant-bubble error-bubble\">");
+            sb.Append(HtmlEncode(_lastErrorMessage!));
+            sb.Append("</div></div>");
+        }
+
+        // Show pending write confirmations
+        var pendingWrites = HostState.GetPendingWrites();
+        for (int i = 0; i < pendingWrites.Count; i++)
+        {
+            var pw = pendingWrites[i];
+            sb.Append(BuildWriteConfirmationCard(pw, i));
+        }
+
+        return sb.ToString();
+    }
+
+    private static string BuildWriteConfirmationCard(PendingWriteAction pw, int index)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<div class=\"write-card\">");
+
+        if (pw.Applied)
+        {
+            sb.Append("<div class=\"write-status applied\">Applied</div>");
+            sb.Append("<div class=\"write-summary\">" + HtmlEncode(pw.Preview.Summary) + "</div>");
+            if (!string.IsNullOrWhiteSpace(pw.ResultMessage))
+                sb.Append("<div class=\"write-result\">" + HtmlEncode(pw.ResultMessage!) + "</div>");
+        }
+        else if (pw.Cancelled)
+        {
+            sb.Append("<div class=\"write-status cancelled\">Cancelled</div>");
+            sb.Append("<div class=\"write-summary\">" + HtmlEncode(pw.Preview.Summary) + "</div>");
+        }
+        else
+        {
+            sb.Append("<div class=\"write-header\">Proposed Change</div>");
+            sb.Append("<div class=\"write-summary\">" + HtmlEncode(pw.Preview.Summary) + "</div>");
+
+            if (pw.Preview.Changes.Count > 0)
+            {
+                sb.Append("<table class=\"write-changes\">");
+                sb.Append("<tr><th>Target</th><th>Before</th><th>After</th></tr>");
+                foreach (var c in pw.Preview.Changes)
+                {
+                    sb.Append("<tr>");
+                    sb.Append("<td>" + HtmlEncode(c.TargetLabel) + "</td>");
+                    sb.Append("<td>" + HtmlEncode(c.BeforeValue) + "</td>");
+                    sb.Append("<td><strong>" + HtmlEncode(c.AfterValue) + "</strong></td>");
+                    sb.Append("</tr>");
+                }
+                sb.Append("</table>");
+            }
+
+            foreach (var w in pw.Preview.Warnings)
+            {
+                sb.Append("<div class=\"write-warning\">" + HtmlEncode(w) + "</div>");
+            }
+
+            sb.Append("<div class=\"write-actions\">");
+            sb.Append("<button class=\"btn-apply\" onclick=\"window.external.ApplyWrite(" + index + ")\">Apply</button>");
+            sb.Append("<button class=\"btn-cancel\" onclick=\"window.external.CancelWrite(" + index + ")\">Cancel</button>");
+            sb.Append("</div>");
+        }
+
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
     private string BuildFullPageHtml()
     {
-        string answerBody = string.IsNullOrWhiteSpace(_answerHtml)
-            ? "<p class=\"muted\">Open a document and ask a question. Adze will inspect the live session and ground an answer.</p>"
-            : ConvertTextToHtmlBody(_answerHtml);
-
-        string footerHtml = string.IsNullOrWhiteSpace(_answerFooter)
-            ? ""
-            : "<div class=\"footer\">" + HtmlEncode(_answerFooter) + "</div>";
+        string conversationHtml = BuildConversationHtml();
 
         string planBody = string.IsNullOrWhiteSpace(_planText)
             ? "<p class=\"muted\">Plan details appear after a run.</p>"
@@ -563,29 +671,65 @@ public sealed class TaskPaneControl : UserControl
     min-height: 100%;
   }
 
-  /* --- Answer area --- */
+  /* --- Chat area --- */
   .answer-area {
     flex: 1 1 auto;
     overflow-y: auto;
-    background: #FFFFFF;
-    padding: 12px 14px 6px 14px;
-    margin: 0 0 1px 0;
+    background: #F4F6F8;
+    padding: 8px 10px 6px 10px;
+    margin: 0;
   }
-  h1 { font-size: 15px; font-weight: 600; color: #18304C; margin: 10px 0 5px 0; }
-  h2 { font-size: 14px; font-weight: 600; color: #18304C; margin: 8px 0 4px 0; }
-  h3 { font-size: 13px; font-weight: 600; color: #22292F; margin: 6px 0 3px 0; }
-  p { margin: 0 0 7px 0; }
-  strong, b { font-weight: 600; }
-  ul, ol { margin: 3px 0 7px 18px; }
-  li { margin: 1px 0; }
-  code {
+  .chat-user, .chat-assistant { margin: 0 0 10px 0; }
+  .chat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #566370;
+    margin: 0 0 2px 4px;
+  }
+  .chat-bubble {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .user-bubble {
+    background: #E3EAF2;
+    color: #18304C;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .assistant-bubble {
+    background: #FFFFFF;
+    color: #22292F;
+    border: 1px solid #E8EAED;
+  }
+  .error-bubble {
+    background: #FFF5F5;
+    border-color: #E8BFBF;
+    color: #8B2020;
+  }
+  .chat-footer {
+    font-size: 10px;
+    color: #98A0A8;
+    margin: 2px 0 0 4px;
+  }
+
+  /* --- Markdown in assistant bubbles --- */
+  .assistant-bubble h1 { font-size: 15px; font-weight: 600; color: #18304C; margin: 10px 0 5px 0; }
+  .assistant-bubble h2 { font-size: 14px; font-weight: 600; color: #18304C; margin: 8px 0 4px 0; }
+  .assistant-bubble h3 { font-size: 13px; font-weight: 600; color: #22292F; margin: 6px 0 3px 0; }
+  .assistant-bubble p { margin: 0 0 7px 0; }
+  .assistant-bubble strong, .assistant-bubble b { font-weight: 600; }
+  .assistant-bubble ul, .assistant-bubble ol { margin: 3px 0 7px 18px; }
+  .assistant-bubble li { margin: 1px 0; }
+  .assistant-bubble code {
     font-family: Consolas, monospace;
     font-size: 12px;
     background: #F0F2F4;
     padding: 1px 4px;
     border-radius: 2px;
   }
-  pre {
+  .assistant-bubble pre {
     font-family: Consolas, monospace;
     font-size: 11px;
     background: #F4F6F8;
@@ -597,18 +741,9 @@ public sealed class TaskPaneControl : UserControl
     word-wrap: break-word;
     line-height: 1.4;
   }
-  table { border-collapse: collapse; margin: 4px 0 8px 0; font-size: 12px; width: 100%; }
-  th, td { border: 1px solid #DDE1E6; padding: 3px 6px; text-align: left; }
-  th { background: #F4F6F8; font-weight: 600; }
-
-  /* --- Footer --- */
-  .footer {
-    font-size: 11px;
-    color: #78808A;
-    padding: 6px 14px 8px 14px;
-    background: #FFFFFF;
-    border-top: 1px solid #E8EAED;
-  }
+  .assistant-bubble table { border-collapse: collapse; margin: 4px 0 8px 0; font-size: 12px; width: 100%; }
+  .assistant-bubble th, .assistant-bubble td { border: 1px solid #DDE1E6; padding: 3px 6px; text-align: left; }
+  .assistant-bubble th { background: #F4F6F8; font-weight: 600; }
 
   /* --- Tab bar --- */
   .tab-bar {
@@ -646,26 +781,109 @@ public sealed class TaskPaneControl : UserControl
     display: none;
   }
   .tab-content.active { display: block; }
+  .tab-content pre {
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    background: #F4F6F8;
+    padding: 8px 10px;
+    margin: 4px 0 8px 0;
+    border-radius: 3px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.4;
+  }
+
+  /* --- Write confirmation cards --- */
+  .write-card {
+    margin: 8px 0;
+    padding: 10px 12px;
+    background: #FFFDF5;
+    border: 1px solid #E8D9A0;
+    border-radius: 6px;
+  }
+  .write-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8B6914;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .write-summary { margin-bottom: 6px; }
+  .write-changes {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+    margin: 4px 0 6px 0;
+  }
+  .write-changes th, .write-changes td {
+    border: 1px solid #E8D9A0;
+    padding: 3px 6px;
+    text-align: left;
+  }
+  .write-changes th { background: #FFF8E1; font-weight: 600; }
+  .write-warning {
+    font-size: 11px;
+    color: #A66B00;
+    margin: 3px 0;
+    padding-left: 4px;
+    border-left: 2px solid #E8A500;
+  }
+  .write-actions { margin-top: 8px; }
+  .btn-apply {
+    padding: 4px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background: #2E7D32;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 6px;
+  }
+  .btn-apply:hover { background: #1B5E20; }
+  .btn-cancel {
+    padding: 4px 16px;
+    font-size: 12px;
+    color: #566370;
+    background: #EBEDF0;
+    border: 1px solid #DDE1E6;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .btn-cancel:hover { background: #DDE1E6; }
+  .write-status {
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .write-status.applied { color: #2E7D32; }
+  .write-status.cancelled { color: #78808A; }
+  .write-result {
+    font-size: 12px;
+    color: #2E7D32;
+    margin-top: 4px;
+  }
 
   .muted { color: #78808A; font-style: italic; }
 </style>
 </head><body>
 <div class=""container"">
-  <div class=""answer-area"">" + answerBody + @"</div>
-  " + footerHtml + @"
+  <div class=""answer-area"">" + conversationHtml + @"</div>
   <div class=""tab-bar"">
-    <div class=""" + TabClass("answer") + @""" onclick=""switchTab('answer')"">Answer</div>
+    <div class=""" + TabClass("answer") + @""" onclick=""switchTab('answer')"">Chat</div>
     <div class=""" + TabClass("plan") + @""" onclick=""switchTab('plan')"">Plan</div>
     <div class=""" + TabClass("status") + @""" onclick=""switchTab('status')"">Status</div>
     <div class=""" + TabClass("tools") + @""" onclick=""switchTab('tools')"">Tools</div>
   </div>
-  <div id=""tc-answer"" class=""tab-content" + (_activeTab == "answer" ? "" : " active") + @"""></div>
+  <div id=""tc-answer"" class=""tab-content""></div>
   <div id=""tc-plan"" class=""tab-content" + (_activeTab == "plan" ? " active" : "") + @""">" + planBody + @"</div>
   <div id=""tc-status"" class=""tab-content" + (_activeTab == "status" ? " active" : "") + @""">" + statusBody + @"</div>
   <div id=""tc-tools"" class=""tab-content" + (_activeTab == "tools" ? " active" : "") + @""">" + toolsBody + @"</div>
 </div>
 <script>
 function switchTab(name) {
+  window.external.SwitchTab(name);
   var tabs = document.querySelectorAll('.tab');
   for (var i = 0; i < tabs.length; i++) tabs[i].className = 'tab';
   var contents = document.querySelectorAll('.tab-content');
@@ -685,6 +903,15 @@ function switchTab(name) {
     document.getElementById('tc-' + name).className = 'tab-content active';
   }
 }
+function updateTabContent(tabId, html) {
+  var el = document.getElementById(tabId);
+  if (el) el.innerHTML = html;
+}
+function scrollToBottom() {
+  var area = document.querySelector('.answer-area');
+  if (area) area.scrollTop = area.scrollHeight;
+}
+scrollToBottom();
 </script>
 </body></html>";
     }
@@ -776,6 +1003,34 @@ function switchTab(name) {
     }
 
     // -----------------------------------------------------------------------
+    // JavaScript → C# bridge (called via window.external)
+    // -----------------------------------------------------------------------
+
+    public void SwitchTab(string tabName)
+    {
+        _activeTab = tabName ?? "answer";
+    }
+
+    public void ApplyWrite(int index)
+    {
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            string result = HostState.ApplyPendingWrite(index);
+            PostToUi(() =>
+            {
+                _runStateLabel.Text = result;
+                RenderContent();
+            });
+        });
+    }
+
+    public void CancelWrite(int index)
+    {
+        HostState.CancelPendingWrite(index);
+        RenderContent();
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
@@ -785,10 +1040,5 @@ function switchTab(name) {
             BeginInvoke(action);
         else
             action();
-    }
-
-    private string BuildStatusText()
-    {
-        return HostState.BuildStatusText();
     }
 }

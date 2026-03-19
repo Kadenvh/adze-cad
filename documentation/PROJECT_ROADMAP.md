@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0  
 **Last Updated:** 2026-03-16
-**Status:** Agentic alpha with write tool infrastructure — 14 tools (10 read + 4 write), 341 tests, feature-gated write safety
+**Status:** Agentic alpha with write tool infrastructure — 14 tools (10 read + 4 write), 378 tests, feature-gated write safety
 
 ## Product Thesis
 

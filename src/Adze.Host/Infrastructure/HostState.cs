@@ -29,6 +29,34 @@ internal sealed class AssistantRunPreparation
     public bool IsApplicationConnected { get; set; }
 }
 
+internal sealed class ChatEntry
+{
+    public string UserMessage { get; set; } = string.Empty;
+
+    public string AssistantMessage { get; set; } = string.Empty;
+
+    public string Source { get; set; } = string.Empty;
+
+    public string Footer { get; set; } = string.Empty;
+
+    public DateTimeOffset TimestampUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+
+internal sealed class PendingWriteAction
+{
+    public string ToolName { get; set; } = string.Empty;
+
+    public Dictionary<string, object?> Arguments { get; set; } = new();
+
+    public WritePreview Preview { get; set; } = new();
+
+    public bool Applied { get; set; }
+
+    public bool Cancelled { get; set; }
+
+    public string? ResultMessage { get; set; }
+}
+
 internal sealed class AssistantRunSnapshot
 {
     public string AnswerText { get; set; } = string.Empty;
@@ -58,6 +86,9 @@ internal static class HostState
     private static int _sessionRunCount;
     private static ModelUsage _sessionUsage = new();
     private static CancellationTokenSource? _currentRunCts;
+    private static readonly List<ChatEntry> _chatHistory = new();
+    private static readonly List<PendingWriteAction> _pendingWrites = new();
+    private static string? _chatDocumentKey;
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
 
@@ -92,6 +123,156 @@ internal static class HostState
         lock (Sync)
         {
             _application = application;
+        }
+    }
+
+    public static List<ChatEntry> GetChatHistory()
+    {
+        lock (Sync)
+        {
+            return new List<ChatEntry>(_chatHistory);
+        }
+    }
+
+    public static void ClearChatHistory()
+    {
+        lock (Sync)
+        {
+            _chatHistory.Clear();
+            _chatDocumentKey = null;
+        }
+    }
+
+    public static List<PendingWriteAction> GetPendingWrites()
+    {
+        lock (Sync)
+        {
+            return new List<PendingWriteAction>(_pendingWrites);
+        }
+    }
+
+    public static string ApplyPendingWrite(int index)
+    {
+        PendingWriteAction? action;
+        lock (Sync)
+        {
+            if (index < 0 || index >= _pendingWrites.Count)
+                return "Invalid write action index.";
+            action = _pendingWrites[index];
+            if (action.Applied || action.Cancelled)
+                return "This write action has already been " + (action.Applied ? "applied" : "cancelled") + ".";
+        }
+
+        try
+        {
+            // Apply the write tool directly via COM
+            var result = ApplyWriteToolDirect(action);
+            lock (Sync)
+            {
+                action.Applied = true;
+                action.ResultMessage = result;
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            string error = "Write failed: " + ex.Message;
+            lock (Sync)
+            {
+                action.ResultMessage = error;
+            }
+            FileLogger.Error("Pending write apply failed.", ex);
+            return error;
+        }
+    }
+
+    public static void CancelPendingWrite(int index)
+    {
+        lock (Sync)
+        {
+            if (index >= 0 && index < _pendingWrites.Count)
+            {
+                _pendingWrites[index].Cancelled = true;
+                _pendingWrites[index].ResultMessage = "Cancelled by user.";
+            }
+        }
+    }
+
+    private static string ApplyWriteToolDirect(PendingWriteAction action)
+    {
+        ISldWorks? application = GetApplicationSnapshot();
+        if (application == null)
+            return "SOLIDWORKS is not connected.";
+
+        dynamic? modelDoc = application.ActiveDoc;
+        if (modelDoc == null)
+            return "No active document.";
+
+        switch (action.ToolName)
+        {
+            case Contracts.Tooling.ToolNames.SetCustomProperty:
+            {
+                string propName = action.Arguments.TryGetValue("property_name", out var pn) ? pn?.ToString() ?? "" : "";
+                string propValue = action.Arguments.TryGetValue("property_value", out var pv) ? pv?.ToString() ?? "" : "";
+                string scope = action.Arguments.TryGetValue("scope", out var sc) ? sc?.ToString() ?? "document" : "document";
+
+                dynamic propMgr;
+                if (string.Equals(scope, "configuration", StringComparison.OrdinalIgnoreCase))
+                {
+                    string configName = action.Arguments.TryGetValue("configuration_name", out var cn) ? cn?.ToString() ?? "" : "";
+                    propMgr = modelDoc.Extension.CustomPropertyManager[configName];
+                }
+                else
+                {
+                    propMgr = modelDoc.Extension.CustomPropertyManager[""];
+                }
+
+                propMgr.Add3(propName, 30, propValue, 2); // 30=swCustomInfoText, 2=overwrite
+                return "Property '" + propName + "' set to '" + propValue + "'.";
+            }
+
+            case Contracts.Tooling.ToolNames.SetDimensionValue:
+            {
+                string dimFullName = action.Arguments.TryGetValue("dimension_full_name", out var df) ? df?.ToString() ?? "" : "";
+                double newValue = 0;
+                if (action.Arguments.TryGetValue("new_value", out var nv) && nv != null)
+                    double.TryParse(nv.ToString(), out newValue);
+
+                dynamic? dim = modelDoc.Parameter(dimFullName);
+                if (dim == null)
+                    return "Dimension '" + dimFullName + "' not found.";
+
+                dim.SystemValue = newValue / 1000.0; // Convert mm to meters
+                modelDoc.EditRebuild3();
+                return "Dimension '" + dimFullName + "' set to " + newValue + " mm.";
+            }
+
+            case Contracts.Tooling.ToolNames.SuppressFeature:
+            {
+                string featureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() ?? "" : "";
+                dynamic? feature = modelDoc.FeatureByName(featureName);
+                if (feature == null)
+                    return "Feature '" + featureName + "' not found.";
+
+                feature.SetSuppression2(0, 2, null); // 0=suppressed, 2=all configs
+                modelDoc.EditRebuild3();
+                return "Feature '" + featureName + "' suppressed.";
+            }
+
+            case Contracts.Tooling.ToolNames.UnsuppressFeature:
+            {
+                string featureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() ?? "" : "";
+                dynamic? feature = modelDoc.FeatureByName(featureName);
+                if (feature == null)
+                    return "Feature '" + featureName + "' not found.";
+
+                feature.SetSuppression2(1, 2, null); // 1=resolved, 2=all configs
+                modelDoc.EditRebuild3();
+                return "Feature '" + featureName + "' unsuppressed.";
+            }
+
+            default:
+                return "Unknown write tool: " + action.ToolName;
         }
     }
 
@@ -191,6 +372,19 @@ internal static class HostState
 
     private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected)
     {
+        // Clear chat history if the active document changed
+        string currentDocKey = context.Document?.Path ?? string.Empty;
+        lock (Sync)
+        {
+            if (!string.Equals(_chatDocumentKey, currentDocKey, StringComparison.OrdinalIgnoreCase))
+            {
+                _chatHistory.Clear();
+                _chatDocumentKey = currentDocKey;
+            }
+        }
+
+        AssistantRunSnapshot snapshot;
+
         // Try the agentic tool loop if enabled
         if (isApplicationConnected && AgentModelClientFactory.IsAgentLoopEnabled())
         {
@@ -198,12 +392,32 @@ internal static class HostState
             IAgentModelClient? agentClient = AgentModelClientFactory.Create(brokerSettings);
             if (agentClient != null)
             {
-                return RunAgenticAssistant(context, request, agentClient);
+                snapshot = RunAgenticAssistant(context, request, agentClient);
+            }
+            else
+            {
+                snapshot = RunClassicAssistant(context, request, isApplicationConnected);
             }
         }
+        else
+        {
+            snapshot = RunClassicAssistant(context, request, isApplicationConnected);
+        }
 
-        // Fallback to existing two-pass flow
-        return RunClassicAssistant(context, request, isApplicationConnected);
+        // Record in chat history
+        lock (Sync)
+        {
+            _chatHistory.Add(new ChatEntry
+            {
+                UserMessage = request,
+                AssistantMessage = snapshot.AnswerText,
+                Source = snapshot.AnswerSource,
+                Footer = snapshot.AnswerFooterText,
+                TimestampUtc = DateTimeOffset.UtcNow
+            });
+        }
+
+        return snapshot;
     }
 
     private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient)
@@ -228,14 +442,15 @@ internal static class HostState
             ct = _currentRunCts?.Token ?? CancellationToken.None;
         }
 
-        // Wrap the dispatcher to inject context
+        // Wrap the dispatcher to inject context and track writes
         var contextAwareExecutor = new ContextAwareToolExecutor(toolDispatcher, executionContext);
+        var writeTracker = new WriteTrackingToolExecutor(contextAwareExecutor);
 
         string systemPrompt = ContextPromptComposer.BuildAgentSystemPrompt();
 
         AgentLoopResult result = loopRunner.Run(
             agentClient,
-            contextAwareExecutor,
+            writeTracker,
             systemPrompt,
             request,
             toolDefinitions,
@@ -269,6 +484,18 @@ internal static class HostState
         string failureInfo = !string.IsNullOrWhiteSpace(result.FailureReason)
             ? " reason=" + result.FailureReason
             : string.Empty;
+
+        // Capture any write previews as pending actions
+        if (writeTracker.CapturedWrites.Count > 0)
+        {
+            lock (Sync)
+            {
+                _pendingWrites.Clear();
+                _pendingWrites.AddRange(writeTracker.CapturedWrites);
+            }
+
+            FileLogger.Info("Captured " + writeTracker.CapturedWrites.Count + " pending write action(s) for confirmation.");
+        }
 
         FileLogger.Info(
             "Agent run completed. outcome=" + result.Outcome +
@@ -420,6 +647,88 @@ internal static class HostState
         public AgentToolResult Execute(string toolName, System.Collections.Generic.Dictionary<string, object?> arguments, ToolExecutionContext context)
         {
             return _inner.Execute(toolName, arguments, _context);
+        }
+    }
+
+    private sealed class WriteTrackingToolExecutor : IToolExecutor
+    {
+        private static readonly HashSet<string> WriteToolNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            Contracts.Tooling.ToolNames.SetCustomProperty,
+            Contracts.Tooling.ToolNames.SetDimensionValue,
+            Contracts.Tooling.ToolNames.SuppressFeature,
+            Contracts.Tooling.ToolNames.UnsuppressFeature
+        };
+
+        private readonly IToolExecutor _inner;
+        public List<PendingWriteAction> CapturedWrites { get; } = new();
+
+        public WriteTrackingToolExecutor(IToolExecutor inner)
+        {
+            _inner = inner;
+        }
+
+        public AgentToolResult Execute(string toolName, Dictionary<string, object?> arguments, ToolExecutionContext context)
+        {
+            AgentToolResult result = _inner.Execute(toolName, arguments, context);
+
+            if (!result.IsError && WriteToolNames.Contains(toolName))
+            {
+                var preview = ExtractPreviewFromResult(result, toolName);
+                CapturedWrites.Add(new PendingWriteAction
+                {
+                    ToolName = toolName,
+                    Arguments = new Dictionary<string, object?>(arguments ?? new Dictionary<string, object?>()),
+                    Preview = preview
+                });
+            }
+
+            return result;
+        }
+
+        private static WritePreview ExtractPreviewFromResult(AgentToolResult result, string toolName)
+        {
+            var preview = new WritePreview { ToolName = toolName };
+            try
+            {
+                var serializer = new JavaScriptSerializer();
+                var parsed = serializer.Deserialize<Dictionary<string, object>>(result.OutputJson);
+                if (parsed != null && parsed.TryGetValue("summary", out object? summary))
+                    preview.Summary = summary?.ToString() ?? "";
+
+                if (parsed != null && parsed.TryGetValue("data", out object? dataObj) && dataObj is Dictionary<string, object> data)
+                {
+                    if (data.TryGetValue("changes", out object? changesObj) && changesObj is object[] changes)
+                    {
+                        foreach (var change in changes)
+                        {
+                            if (change is Dictionary<string, object> changeMap)
+                            {
+                                preview.Changes.Add(new WriteChangeItem
+                                {
+                                    TargetLabel = changeMap.TryGetValue("target", out var t) ? t?.ToString() ?? "" : "",
+                                    BeforeValue = changeMap.TryGetValue("before", out var b) ? b?.ToString() ?? "" : "",
+                                    AfterValue = changeMap.TryGetValue("after", out var a) ? a?.ToString() ?? "" : ""
+                                });
+                            }
+                        }
+                    }
+
+                    if (data.TryGetValue("warnings", out object? warningsObj) && warningsObj is object[] warnings)
+                    {
+                        foreach (var w in warnings)
+                        {
+                            if (w != null) preview.Warnings.Add(w.ToString() ?? "");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("Failed to extract write preview from tool result.", ex);
+                preview.Summary = "Write preview (details unavailable)";
+            }
+            return preview;
         }
     }
 
