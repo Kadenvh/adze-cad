@@ -168,6 +168,41 @@ internal static class HostState
         }
     }
 
+    public static List<string> ApplyAllPendingWrites()
+    {
+        var results = new List<string>();
+        List<PendingWriteAction> snapshot;
+        lock (Sync)
+        {
+            snapshot = new List<PendingWriteAction>(_pendingWrites);
+        }
+        for (int i = 0; i < snapshot.Count; i++)
+        {
+            if (snapshot[i].Applied || snapshot[i].Cancelled)
+                continue;
+            string result = ApplyPendingWrite(i);
+            results.Add(result);
+            if (result.StartsWith("Write failed"))
+                break; // stop on first failure
+        }
+        return results;
+    }
+
+    public static void CancelAllPendingWrites()
+    {
+        lock (Sync)
+        {
+            foreach (var pw in _pendingWrites)
+            {
+                if (!pw.Applied && !pw.Cancelled)
+                {
+                    pw.Cancelled = true;
+                    pw.ResultMessage = "Cancelled by user.";
+                }
+            }
+        }
+    }
+
     public static string ApplyPendingWrite(int index)
     {
         PendingWriteAction? action;
@@ -588,6 +623,10 @@ internal static class HostState
             : "The agent loop completed with outcome: " + result.Outcome + ".";
 
         string source = result.Outcome == AgentRunOutcome.Success ? "agent_loop" : "agent_fallback";
+        if (BrokerModelSettings.LoadFromEnvironment().IsLocalProvider)
+        {
+            source += " [Experimental]";
+        }
         string usageText = runUsage.TotalTokens > 0
             ? "    Tokens: " + runUsage.TotalTokens + " (prompt=" + runUsage.PromptTokens + " completion=" + runUsage.CompletionTokens + ")"
             : string.Empty;
@@ -714,6 +753,10 @@ internal static class HostState
         if (!string.IsNullOrWhiteSpace(synthesis.ModelId))
         {
             answerSourceText += " (" + synthesis.ModelId + ")";
+        }
+        if (settings.IsLocalProvider)
+        {
+            answerSourceText += " [Experimental]";
         }
 
         ModelUsage runUsage = synthesis.Usage ?? new ModelUsage();

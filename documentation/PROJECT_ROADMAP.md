@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
 **Version:** 0.1.0
-**Last Updated:** 2026-03-23
-**Status:** Agentic alpha with streaming synthesis (classic + agentic) + local model capability probing — 16 tools (11 read + 4 write + 1 retrieval), 492 tests, SSE streaming (both paths), health check UI, capability probing, recipe suggestions UI, Ollama/LM Studio providers
+**Last Updated:** 2026-03-21
+**Status:** Agentic alpha with production hardening — 16 tools (11 read + 4 write + 1 retrieval), 503 tests, SSE streaming (both paths), rate limiting, tool result truncation, write plan review UI, batch write execution, experimental label for local providers
 
 ## Product Thesis
 
@@ -44,6 +44,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-21 | Search tool wiring, recipe suggestions, local model support: SearchProjectFilesTool fully wired (T6-04) with feature gate. Recipe suggestions collapsible UI with Run/Promote (T5-04/T9-03). Ollama and LM Studio as experimental providers with longer default timeouts (T8-02). 430 tests (26 new). |
 | 0.1.0 | 2026-03-22 | Streaming synthesis, local model hardening: SSE streaming for final answer synthesis (T8-03) — SseStreamReader, IStreamingModelClient, live token streaming to WebBrowser via InvokeScript. LocalEndpointHealthCheck pings /v1/models for Ollama/LM Studio. Graceful degradation messaging for local model failures. TASK-INDEX.md completion markers reconciled. 467 tests (37 new). |
 | 0.1.0 | 2026-03-23 | Agentic streaming, health check UI, capability probing: IStreamingAgentModelClient + OpenAIFormatAgentClient.SendTurnStreaming for agentic loop final-turn streaming. Health check wired into Task Pane Status section with styled banners. ToolCallCapabilityProbe auto-detects local model tool-calling support and falls back to synthesis-only. 492 tests (25 new). |
+| 0.1.0 | 2026-03-21 | Production hardening and write plan review: RateLimitHelper (429 retry with Retry-After), MaxToolResultChars truncation in AgentLoopRunner, reference graph Limit parameter, experimental label for local providers, write plan review UI (Apply All / Cancel All), batch write execution, ApplyWrite COM threading fix. All 8 Task Pane features validated in live SOLIDWORKS. 503 tests (11 new). |
 
 ## Current Architecture
 
@@ -58,7 +59,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | Answer layer | Provider-routed synthesis over executed tool results with deterministic fallback | Produces a grounded natural-language answer without giving the model direct CAD access |
 | Write safety layer | Snapshot/diff/verification, WriteExecutionCoordinator, IWriteTool lifecycle | Ensures write tools follow preview/apply/verify/trace pattern |
 | Trace/progression layer | Snapshots, traces, recipe candidates, achievements, trust tiers, per-document memory | Governs reuse, learning, and progression without autonomous capability expansion |
-| Unit test layer | 492 NUnit 3 compiled tests across broker, tools (read + write + retrieval), trace, learning, memory, cost budgets, feature gates, local provider config, streaming, and capability probing | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
+| Unit test layer | 503 NUnit 3 compiled tests across broker, tools (read + write + retrieval), trace, learning, memory, cost budgets, feature gates, local provider config, streaming, capability probing, rate limiting, and tool result truncation | Provides fast regression coverage for pure logic without requiring SOLIDWORKS |
 | Live provider test layer | 6 NUnit 3 smoke tests against real provider APIs | Validates end-to-end model path with usage tracking under real network conditions |
 | Validation/ops layer | PowerShell validation scripts, JSON reports, support bundle collection | Makes the system diagnosable and regression-testable in the real Windows/SOLIDWORKS environment |
 

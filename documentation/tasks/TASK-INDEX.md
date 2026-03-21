@@ -225,18 +225,17 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ## Phase 7: Advanced Writes and Multi-Step Plans
 
-### T7-01: Multi-step plan review UI
-- [ ] Show full plan with per-step checkboxes
-- [ ] Apply All / Cancel Remaining buttons
-- [ ] Step status: Pending / Approved / Applied / Failed
-- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
-- **Reference:** `research-streaming-ux-patterns.md`
+### T7-01: Multi-step plan review UI ✓
+- [x] Show Write Plan header with step count when 2+ actionable pending writes
+- [x] Apply All / Cancel All buttons with JS bridge methods
+- [x] Step status: Applied / Cancelled tracked per PendingWriteAction
+- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`, `src/Adze.Host/Infrastructure/HostState.cs`
 
-### T7-02: Batch write execution
-- [ ] Execute approved steps sequentially
-- [ ] Each step follows full write lifecycle
-- [ ] Stop on first failure, report partial progress
-- **Files:** `src/Adze.Host/Runtime/`
+### T7-02: Batch write execution ✓
+- [x] Execute approved steps sequentially via `ApplyAllPendingWrites()`
+- [x] Each step follows full write lifecycle (via `ApplyPendingWrite` → `ApplyWriteToolDirect`)
+- [x] Stop on first failure, report partial progress in write history
+- **Files:** `src/Adze.Host/Infrastructure/HostState.cs`
 
 ### T7-03: Advanced write tools (gated by Gate G)
 - [ ] Component insertion: `AssemblyDoc.AddComponent5()`
@@ -268,7 +267,7 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Longer default timeouts: 60s broker, 90s synthesis
 - [x] Custom model/endpoint via `SOLIDWORKS_AI_OLLAMA_MODEL`, `SOLIDWORKS_AI_LMSTUDIO_MODEL`, etc.
 - [x] Capability gate probing before enabling tool calling (T8-02b) — `ToolCallCapabilityProbe`, 13 tests
-- [ ] Label as experimental in UI (deferred — T8-02c)
+- [x] Label as experimental in UI (T8-02c) — `[Experimental]` in answer footer + health banner guidance
 - [x] 10 unit tests
 - **Reference:** `research-local-model-feasibility.md`
 
@@ -296,16 +295,16 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Wire health check into Task Pane Status section — `HostState.RunLocalHealthCheckAsync()`, styled health banners (ready/warning/error), actionable guidance messages
 - [x] Capability gate probing (T8-02b) — `ToolCallCapabilityProbe` sends minimal tool-calling request, caches per provider+model, `AgentModelClientFactory` falls back to synthesis-only when unsupported. 13 tests.
 
-### T8-04: Large assembly performance
+### T8-04: Large assembly performance (partial ✓)
 - [ ] Lazy tool execution (don't execute all tools upfront)
 - [ ] Paginated results for large feature trees, dimension lists
-- [ ] Tool result truncation limits
+- [x] Tool result truncation limits — `AgentLoopRunner` enforces `MaxToolResultChars` (default 8192). `GetReferenceGraphTool` `Limit` parameter (default 100). 4 tests.
 - [ ] Progressive context loading
 
-### T8-05: Rate limiting and retry
-- [ ] Exponential backoff for API failures
+### T8-05: Rate limiting and retry ✓
+- [x] Retry with backoff for 429 responses — `RateLimitHelper` with `Retry-After` header parsing (capped 15s), max 1 retry
 - [ ] Request queuing during rate limit windows
-- [ ] Provider-specific rate limit detection
+- [x] Provider-specific rate limit detection — `RateLimitHelper.IsRateLimited()` checks HTTP 429 status. 7 tests.
 
 ### T8-06: Advanced telemetry
 - [ ] Track which tools are called most

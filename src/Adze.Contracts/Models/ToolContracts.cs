@@ -85,6 +85,8 @@ public sealed class GetReferenceGraphParameters
     public int Depth { get; set; } = 1;
 
     public bool IncludeExternalReferences { get; set; } = true;
+
+    public int Limit { get; set; } = 100;
 }
 
 // ── Write tool parameters (Phase 4) ──

@@ -825,6 +825,85 @@ public sealed class AgentLoopRunnerTests
         Assert.That(result.Outcome, Is.EqualTo(AgentRunOutcome.Failed));
         Assert.That(result.FailureReason, Does.Contain("Max consecutive errors"));
     }
+
+    // --- Tool result truncation ---
+
+    [Test]
+    public void Run_LargeToolResult_IsTruncated()
+    {
+        _settings.MaxToolResultChars = 100;
+
+        var modelClient = new StubAgentModelClient();
+        modelClient.EnqueueResponse(new AgentTurnResponse
+        {
+            Success = true,
+            StopReason = AgentStopReason.ToolUse,
+            ToolCalls = new List<AgentToolCall>
+            {
+                new AgentToolCall { Id = "tc1", Name = "get_dimensions", Arguments = new Dictionary<string, object?>() }
+            },
+            Usage = new ModelUsage { TotalTokens = 50 }
+        });
+        modelClient.EnqueueResponse(new AgentTurnResponse
+        {
+            Success = true,
+            StopReason = AgentStopReason.EndTurn,
+            TextContent = "Done.",
+            Usage = new ModelUsage { TotalTokens = 30 }
+        });
+
+        var toolExecutor = new StubToolExecutor();
+        string largeOutput = new string('x', 500);
+        toolExecutor.RegisterResult("get_dimensions", largeOutput);
+
+        AgentLoopResult result = _runner.Run(
+            modelClient, toolExecutor,
+            "system", "user",
+            new List<AgentToolDefinition>(), _settings,
+            CancellationToken.None, null);
+
+        Assert.That(result.Outcome, Is.EqualTo(AgentRunOutcome.Success));
+        Assert.That(result.ExecutedTools.Count, Is.EqualTo(1));
+        Assert.That(result.ExecutedTools[0].OutputJson.Length, Is.LessThan(500));
+        Assert.That(result.ExecutedTools[0].OutputJson, Does.Contain("truncated"));
+    }
+
+    [Test]
+    public void Run_SmallToolResult_IsNotTruncated()
+    {
+        _settings.MaxToolResultChars = 1000;
+
+        var modelClient = new StubAgentModelClient();
+        modelClient.EnqueueResponse(new AgentTurnResponse
+        {
+            Success = true,
+            StopReason = AgentStopReason.ToolUse,
+            ToolCalls = new List<AgentToolCall>
+            {
+                new AgentToolCall { Id = "tc1", Name = "get_dimensions", Arguments = new Dictionary<string, object?>() }
+            },
+            Usage = new ModelUsage { TotalTokens = 50 }
+        });
+        modelClient.EnqueueResponse(new AgentTurnResponse
+        {
+            Success = true,
+            StopReason = AgentStopReason.EndTurn,
+            TextContent = "Done.",
+            Usage = new ModelUsage { TotalTokens = 30 }
+        });
+
+        var toolExecutor = new StubToolExecutor();
+        toolExecutor.RegisterResult("get_dimensions", "{\"count\":5}");
+
+        AgentLoopResult result = _runner.Run(
+            modelClient, toolExecutor,
+            "system", "user",
+            new List<AgentToolDefinition>(), _settings,
+            CancellationToken.None, null);
+
+        Assert.That(result.ExecutedTools[0].OutputJson, Is.EqualTo("{\"count\":5}"));
+        Assert.That(result.ExecutedTools[0].OutputJson, Does.Not.Contain("truncated"));
+    }
 }
 
 /// <summary>

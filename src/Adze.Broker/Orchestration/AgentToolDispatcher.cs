@@ -284,6 +284,8 @@ public sealed class AgentToolDispatcher : IToolExecutor
             parameters.Depth = depth;
         if (TryGetBool(args, "include_external_references", out bool includeExternal))
             parameters.IncludeExternalReferences = includeExternal;
+        if (TryGetInt(args, "limit", out int limit))
+            parameters.Limit = limit;
         return parameters;
     }
 

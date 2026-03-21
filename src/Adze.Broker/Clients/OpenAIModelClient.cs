@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Linq;
+using System.Threading;
 using Adze.Broker.Abstractions;
 using Adze.Broker.Configuration;
 using Adze.Broker.Models;
@@ -155,6 +156,9 @@ public sealed class OpenAIModelClient : IStreamingModelClient
             };
         }
 
+        const int maxRetries = 1;
+        for (int attempt = 0; ; attempt++)
+        {
         try
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -234,8 +238,22 @@ public sealed class OpenAIModelClient : IStreamingModelClient
                 Usage = streamResult.Usage
             };
         }
+        catch (WebException ex) when (RateLimitHelper.IsRateLimited(ex) && attempt < maxRetries)
+        {
+            RateLimitHelper.WaitForRetry(ex);
+            continue;
+        }
         catch (WebException ex)
         {
+            if (RateLimitHelper.IsRateLimited(ex))
+            {
+                return new AssistantSynthesisResult
+                {
+                    Provider = _settings.Provider,
+                    Model = _settings.Model,
+                    FailureReason = RateLimitHelper.FormatRateLimitMessage(ex, 0)
+                };
+            }
             string responseText = ReadResponseBody(ex.Response);
             return new AssistantSynthesisResult
             {
@@ -254,6 +272,7 @@ public sealed class OpenAIModelClient : IStreamingModelClient
                 FailureReason = ex.Message
             };
         }
+        } // end retry loop
     }
 
     private TextCompletionResult ExecuteTextPrompt(
@@ -262,6 +281,9 @@ public sealed class OpenAIModelClient : IStreamingModelClient
         int maxTokens,
         int timeoutMilliseconds)
     {
+        const int maxRetries = 1;
+        for (int attempt = 0; ; attempt++)
+        {
         try
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -325,8 +347,20 @@ public sealed class OpenAIModelClient : IStreamingModelClient
                 Usage = usage
             };
         }
+        catch (WebException ex) when (RateLimitHelper.IsRateLimited(ex) && attempt < maxRetries)
+        {
+            RateLimitHelper.WaitForRetry(ex);
+            continue;
+        }
         catch (WebException ex)
         {
+            if (RateLimitHelper.IsRateLimited(ex))
+            {
+                return new TextCompletionResult
+                {
+                    FailureReason = RateLimitHelper.FormatRateLimitMessage(ex, 0)
+                };
+            }
             string responseText = ReadResponseBody(ex.Response);
             return new TextCompletionResult
             {
@@ -341,6 +375,7 @@ public sealed class OpenAIModelClient : IStreamingModelClient
                 FailureReason = ex.Message
             };
         }
+        } // end retry loop
     }
 
     private static bool TryParseAssistantText(string responseText, out string assistantText, out string failure)

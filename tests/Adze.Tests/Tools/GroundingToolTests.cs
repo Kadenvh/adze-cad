@@ -437,4 +437,27 @@ public sealed class GroundingToolTests
         Assert.That(result.Success, Is.True);
         Assert.That(result.Data["available_count"], Is.EqualTo(0));
     }
+
+    [Test]
+    public void GetReferenceGraph_LimitClipsResults()
+    {
+        SessionContext context = SessionContextFactory.CreateWithAssembly();
+        context.ReferenceGraph.TransitiveItems = new List<ReferenceNode>();
+        for (int i = 0; i < 200; i++)
+            context.ReferenceGraph.TransitiveItems.Add(new ReferenceNode { Name = "Part" + i + ".SLDPRT", Path = @"C:\test\Part" + i + ".SLDPRT", ExistsOnDisk = true });
+
+        ToolResult result = _catalog.ReferenceGraph.Execute(context, new GetReferenceGraphParameters { Depth = 2, Limit = 10 });
+
+        Assert.That(result.Data["returned_count"], Is.EqualTo(10));
+        var items = result.Data["items"] as List<Dictionary<string, object?>>;
+        Assert.That(items, Is.Not.Null);
+        Assert.That(items!.Count, Is.EqualTo(10));
+    }
+
+    [Test]
+    public void GetReferenceGraph_DefaultLimit_Is100()
+    {
+        var parameters = new GetReferenceGraphParameters();
+        Assert.That(parameters.Limit, Is.EqualTo(100));
+    }
 }

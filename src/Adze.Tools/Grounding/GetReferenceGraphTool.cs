@@ -31,8 +31,9 @@ public sealed class GetReferenceGraphTool : IReadOnlyTool<GetReferenceGraphParam
             ? context.ReferenceGraph.TransitiveItems
             : context.ReferenceGraph.DirectItems;
 
+        int limit = parameters.Limit > 0 ? parameters.Limit : 100;
         var items = new List<Dictionary<string, object?>>();
-        foreach (ReferenceNode item in sourceItems)
+        foreach (ReferenceNode item in sourceItems.Take(limit))
         {
             var serialized = new Dictionary<string, object?>
             {

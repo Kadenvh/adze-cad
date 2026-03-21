@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using Adze.Broker.Abstractions;
 using Adze.Broker.Configuration;
 using Adze.Broker.Models;
@@ -32,6 +33,9 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
         List<AgentToolDefinition> toolDefinitions,
         AgentModelSettings settings)
     {
+        const int maxRetries = 1;
+        for (int attempt = 0; ; attempt++)
+        {
         try
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -94,8 +98,24 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
 
             return ParseResponse(responseText, usage);
         }
+        catch (WebException ex) when (RateLimitHelper.IsRateLimited(ex) && attempt < maxRetries)
+        {
+            RateLimitHelper.WaitForRetry(ex);
+            continue;
+        }
         catch (WebException ex)
         {
+            if (RateLimitHelper.IsRateLimited(ex))
+            {
+                return new AgentTurnResponse
+                {
+                    Success = false,
+                    StopReason = AgentStopReason.Error,
+                    FailureReason = RateLimitHelper.FormatRateLimitMessage(ex, 0),
+                    Provider = _settings.Provider,
+                    Model = _settings.Model
+                };
+            }
             string responseText = ReadResponseBody(ex.Response);
             string failureReason = ParseErrorResponse(responseText, ex);
 
@@ -119,6 +139,7 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
                 Model = _settings.Model
             };
         }
+        } // end retry loop
     }
 
     public AgentTurnResponse SendTurnStreaming(
@@ -128,6 +149,9 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
         AgentModelSettings settings,
         Action<string> onTextChunk)
     {
+        const int maxRetries = 1;
+        for (int attempt = 0; ; attempt++)
+        {
         try
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -189,8 +213,24 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
 
             return ReadStreamingAgentResponse(reader, onTextChunk);
         }
+        catch (WebException ex) when (RateLimitHelper.IsRateLimited(ex) && attempt < maxRetries)
+        {
+            RateLimitHelper.WaitForRetry(ex);
+            continue;
+        }
         catch (WebException ex)
         {
+            if (RateLimitHelper.IsRateLimited(ex))
+            {
+                return new AgentTurnResponse
+                {
+                    Success = false,
+                    StopReason = AgentStopReason.Error,
+                    FailureReason = RateLimitHelper.FormatRateLimitMessage(ex, 0),
+                    Provider = _settings.Provider,
+                    Model = _settings.Model
+                };
+            }
             string responseText = ReadResponseBody(ex.Response);
             string failureReason = ParseErrorResponse(responseText, ex);
 
@@ -214,6 +254,7 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
                 Model = _settings.Model
             };
         }
+        } // end retry loop
     }
 
     public object BuildUserMessage(string content)

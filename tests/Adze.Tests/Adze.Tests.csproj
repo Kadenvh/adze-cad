@@ -104,6 +104,7 @@
     <Compile Include="Broker\LocalEndpointHealthCheckTests.cs" />
     <Compile Include="Broker\StreamingAgentTests.cs" />
     <Compile Include="Broker\ToolCallCapabilityProbeTests.cs" />
+    <Compile Include="Broker\RateLimitHelperTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

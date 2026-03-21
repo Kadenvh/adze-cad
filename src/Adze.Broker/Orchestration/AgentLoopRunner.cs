@@ -238,6 +238,15 @@ public sealed class AgentLoopRunner : IAgentLoopRunner
                         toolResult.ToolName = toolCall.Name;
                     }
 
+                    // Truncate oversized tool results to stay within context budget.
+                    if (settings.MaxToolResultChars > 0 &&
+                        toolResult.OutputJson != null &&
+                        toolResult.OutputJson.Length > settings.MaxToolResultChars)
+                    {
+                        toolResult.OutputJson = toolResult.OutputJson.Substring(0, settings.MaxToolResultChars) +
+                            "\n... [truncated — " + toolResult.OutputJson.Length + " chars total]";
+                    }
+
                     turnToolResults.Add(toolResult);
                     executedTools.Add(toolResult);
                 }

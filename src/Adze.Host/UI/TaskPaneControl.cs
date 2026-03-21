@@ -609,6 +609,20 @@ public sealed class TaskPaneControl : UserControl
 
         // Show pending write confirmations
         var pendingWrites = HostState.GetPendingWrites();
+        int actionableCount = 0;
+        foreach (var pw in pendingWrites)
+        {
+            if (!pw.Applied && !pw.Cancelled)
+                actionableCount++;
+        }
+        if (actionableCount > 1)
+        {
+            sb.Append("<div class=\"plan-header\">Write Plan (" + pendingWrites.Count + " steps)</div>");
+            sb.Append("<div class=\"plan-actions\">");
+            sb.Append("<button class=\"btn-apply\" onclick=\"window.external.ApplyAllWrites()\">Apply All</button>");
+            sb.Append("<button class=\"btn-cancel\" onclick=\"window.external.CancelAllWrites()\">Cancel All</button>");
+            sb.Append("</div>");
+        }
         for (int i = 0; i < pendingWrites.Count; i++)
         {
             var pw = pendingWrites[i];
@@ -763,6 +777,9 @@ public sealed class TaskPaneControl : UserControl
         string guidance = string.Empty;
         switch (result.Status)
         {
+            case Adze.Broker.Clients.LocalHealthStatus.Ready:
+                guidance = "<div class=\"health-guidance\">Local model support is experimental.</div>";
+                break;
             case Adze.Broker.Clients.LocalHealthStatus.Unreachable:
                 guidance = message.IndexOf("ollama", StringComparison.OrdinalIgnoreCase) >= 0
                     ? "<div class=\"health-guidance\">Start the server: <code>ollama serve</code></div>"
@@ -943,6 +960,11 @@ public sealed class TaskPaneControl : UserControl
   .history-summary { color: #22292F; }
   .history-result { color: #2E7D32; font-size: 11px; }
   .history-time { color: #98A0A8; font-size: 10px; }
+
+  /* --- Write plan header --- */
+  .plan-header { font-size: 13px; font-weight: 600; color: #18304C; padding: 8px 0 4px 0; }
+  .plan-actions { margin: 0 0 6px 0; }
+  .plan-actions .btn-apply, .plan-actions .btn-cancel { margin-right: 6px; }
 
   /* --- Write confirmation cards --- */
   .write-card {
@@ -1221,20 +1243,31 @@ scrollToBottom();
 
     public void ApplyWrite(int index)
     {
-        ThreadPool.QueueUserWorkItem(_ =>
-        {
-            string result = HostState.ApplyPendingWrite(index);
-            PostToUi(() =>
-            {
-                _runStateLabel.Text = result;
-                RenderContent();
-            });
-        });
+        // COM writes must run on the UI thread (STA) — not a background thread.
+        string result = HostState.ApplyPendingWrite(index);
+        _runStateLabel.Text = result;
+        RenderContent();
     }
 
     public void CancelWrite(int index)
     {
         HostState.CancelPendingWrite(index);
+        RenderContent();
+    }
+
+    public void ApplyAllWrites()
+    {
+        var results = HostState.ApplyAllPendingWrites();
+        _runStateLabel.Text = results.Count > 0
+            ? "Applied " + results.Count + " write(s)."
+            : "No pending writes to apply.";
+        RenderContent();
+    }
+
+    public void CancelAllWrites()
+    {
+        HostState.CancelAllPendingWrites();
+        _runStateLabel.Text = "All pending writes cancelled.";
         RenderContent();
     }
 
