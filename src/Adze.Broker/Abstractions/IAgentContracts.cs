@@ -20,6 +20,21 @@ public interface IAgentModelClient
     List<object> BuildToolResultMessages(List<AgentToolResult> results);
 }
 
+/// <summary>
+/// Optional extension for agent model clients that support SSE streaming.
+/// When the model returns text content, chunks stream via onTextChunk as they arrive.
+/// When the model returns tool calls, chunks are buffered internally — no text callback fires.
+/// </summary>
+public interface IStreamingAgentModelClient : IAgentModelClient
+{
+    AgentTurnResponse SendTurnStreaming(
+        string systemPrompt,
+        List<object> conversationHistory,
+        List<AgentToolDefinition> toolDefinitions,
+        AgentModelSettings settings,
+        Action<string> onTextChunk);
+}
+
 public interface IToolExecutor
 {
     AgentToolResult Execute(

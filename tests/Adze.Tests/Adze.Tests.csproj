@@ -102,6 +102,7 @@
     <Compile Include="Tools\SearchProjectFilesToolTests.cs" />
     <Compile Include="Broker\SseStreamReaderTests.cs" />
     <Compile Include="Broker\LocalEndpointHealthCheckTests.cs" />
+    <Compile Include="Broker\StreamingAgentTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

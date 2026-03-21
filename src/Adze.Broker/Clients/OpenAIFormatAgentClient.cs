@@ -17,7 +17,7 @@ namespace Adze.Broker.Clients;
 /// Implements the agentic loop contract: send a turn with tool definitions,
 /// parse tool calls or text responses, and build messages for conversation history.
 /// </summary>
-public sealed class OpenAIFormatAgentClient : IAgentModelClient
+public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
 {
     private readonly BrokerModelSettings _settings;
 
@@ -93,6 +93,101 @@ public sealed class OpenAIFormatAgentClient : IAgentModelClient
             ModelUsage usage = ModelResponseParser.ParseUsage(responseText);
 
             return ParseResponse(responseText, usage);
+        }
+        catch (WebException ex)
+        {
+            string responseText = ReadResponseBody(ex.Response);
+            string failureReason = ParseErrorResponse(responseText, ex);
+
+            return new AgentTurnResponse
+            {
+                Success = false,
+                StopReason = AgentStopReason.Error,
+                FailureReason = failureReason,
+                Provider = _settings.Provider,
+                Model = _settings.Model
+            };
+        }
+        catch (Exception ex)
+        {
+            return new AgentTurnResponse
+            {
+                Success = false,
+                StopReason = AgentStopReason.Error,
+                FailureReason = ex.Message,
+                Provider = _settings.Provider,
+                Model = _settings.Model
+            };
+        }
+    }
+
+    public AgentTurnResponse SendTurnStreaming(
+        string systemPrompt,
+        List<object> conversationHistory,
+        List<AgentToolDefinition> toolDefinitions,
+        AgentModelSettings settings,
+        Action<string> onTextChunk)
+    {
+        try
+        {
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+
+            var serializer = ModelResponseParser.CreateSerializer();
+
+            var messages = new List<object>();
+
+            if (!string.IsNullOrWhiteSpace(systemPrompt))
+            {
+                messages.Add(new Dictionary<string, object?>
+                {
+                    ["role"] = "system",
+                    ["content"] = systemPrompt
+                });
+            }
+
+            messages.AddRange(conversationHistory);
+
+            var requestPayload = new Dictionary<string, object?>
+            {
+                ["model"] = _settings.Model,
+                ["messages"] = messages,
+                ["max_tokens"] = settings.MaxTokens,
+                ["temperature"] = settings.Temperature,
+                ["stream"] = true,
+                ["stream_options"] = new Dictionary<string, object?> { ["include_usage"] = true }
+            };
+
+            if (toolDefinitions.Count > 0)
+            {
+                requestPayload["tools"] = BuildToolDefinitions(toolDefinitions);
+            }
+
+            if (settings.DisableParallelToolCalls && toolDefinitions.Count > 0)
+            {
+                requestPayload["parallel_tool_calls"] = false;
+            }
+
+            string requestBody = serializer.Serialize(requestPayload);
+
+            var request = (HttpWebRequest)WebRequest.Create(_settings.Endpoint);
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.Accept = "text/event-stream";
+            request.Timeout = settings.TimeoutMilliseconds;
+            request.ReadWriteTimeout = settings.TimeoutMilliseconds;
+            request.Headers[HttpRequestHeader.Authorization] = "Bearer " + _settings.ApiKey;
+
+            byte[] payloadBytes = Encoding.UTF8.GetBytes(requestBody);
+            using (Stream requestStream = request.GetRequestStream())
+            {
+                requestStream.Write(payloadBytes, 0, payloadBytes.Length);
+            }
+
+            using var response = (HttpWebResponse)request.GetResponse();
+            using var responseStream = response.GetResponseStream();
+            using var reader = new StreamReader(responseStream ?? Stream.Null, Encoding.UTF8);
+
+            return ReadStreamingAgentResponse(reader, onTextChunk);
         }
         catch (WebException ex)
         {
@@ -477,6 +572,276 @@ public sealed class OpenAIFormatAgentClient : IAgentModelClient
         // Fallback: try Convert.ToString for unexpected types
         string fallbackText = Convert.ToString(contentValue) ?? string.Empty;
         return fallbackText.Trim();
+    }
+
+    /// <summary>
+    /// Reads an SSE stream from the model, detecting whether the response contains
+    /// tool calls or text content. Text content streams via onTextChunk; tool calls
+    /// are buffered and reassembled into an AgentTurnResponse.
+    /// </summary>
+    private AgentTurnResponse ReadStreamingAgentResponse(
+        StreamReader reader,
+        Action<string> onTextChunk)
+    {
+        var serializer = ModelResponseParser.CreateSerializer();
+        var fullText = new StringBuilder();
+        string? finishReason = null;
+        ModelUsage usage = new();
+
+        // Tool call accumulation: index → (id, name, arguments)
+        bool isToolCallResponse = false;
+        bool modeDetected = false;
+        var toolCallAccumulators = new Dictionary<int, StreamingToolCallAccumulator>();
+
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            if (!line.StartsWith("data: ", StringComparison.Ordinal))
+                continue;
+
+            string data = line.Substring(6);
+
+            if (string.Equals(data, "[DONE]", StringComparison.Ordinal))
+                break;
+
+            // Parse the chunk JSON
+            object? payload;
+            try
+            {
+                payload = serializer.DeserializeObject(data);
+            }
+            catch
+            {
+                continue; // Skip malformed JSON
+            }
+
+            if (payload is not IDictionary<string, object> root)
+                continue;
+
+            // Extract usage from final chunk
+            if (root.TryGetValue("usage", out object? usageValue) &&
+                usageValue is IDictionary<string, object> usageDict)
+            {
+                usage = new ModelUsage
+                {
+                    PromptTokens = TryGetInt(usageDict, "prompt_tokens"),
+                    CompletionTokens = TryGetInt(usageDict, "completion_tokens"),
+                    TotalTokens = TryGetInt(usageDict, "total_tokens")
+                };
+            }
+
+            if (!root.TryGetValue("choices", out object? choicesValue) ||
+                choicesValue is not object[] choices ||
+                choices.Length == 0 ||
+                choices[0] is not IDictionary<string, object> firstChoice)
+            {
+                continue;
+            }
+
+            // Extract finish_reason
+            if (firstChoice.TryGetValue("finish_reason", out object? frValue) && frValue != null)
+            {
+                string fr = Convert.ToString(frValue) ?? string.Empty;
+                if (!string.IsNullOrEmpty(fr))
+                    finishReason = fr;
+            }
+
+            if (!firstChoice.TryGetValue("delta", out object? deltaValue) ||
+                deltaValue is not IDictionary<string, object> delta)
+            {
+                continue;
+            }
+
+            // Detect mode from first meaningful delta
+            if (!modeDetected)
+            {
+                if (delta.ContainsKey("tool_calls"))
+                {
+                    isToolCallResponse = true;
+                    modeDetected = true;
+                }
+                else if (delta.ContainsKey("content"))
+                {
+                    isToolCallResponse = false;
+                    modeDetected = true;
+                }
+                // First chunk may only have "role" — skip and detect on next chunk
+            }
+
+            if (isToolCallResponse)
+            {
+                // Accumulate tool call deltas
+                if (delta.TryGetValue("tool_calls", out object? tcValue) && tcValue is object[] toolCallDeltas)
+                {
+                    foreach (object? tcItem in toolCallDeltas)
+                    {
+                        if (tcItem is not IDictionary<string, object> tcDelta)
+                            continue;
+
+                        int index = tcDelta.TryGetValue("index", out object? idxVal) && idxVal != null
+                            ? Convert.ToInt32(idxVal)
+                            : 0;
+
+                        if (!toolCallAccumulators.TryGetValue(index, out StreamingToolCallAccumulator? acc))
+                        {
+                            acc = new StreamingToolCallAccumulator();
+                            toolCallAccumulators[index] = acc;
+                        }
+
+                        if (tcDelta.TryGetValue("id", out object? idVal) && idVal != null)
+                        {
+                            string id = Convert.ToString(idVal) ?? string.Empty;
+                            if (!string.IsNullOrEmpty(id))
+                                acc.Id = id;
+                        }
+
+                        if (tcDelta.TryGetValue("function", out object? fnVal) &&
+                            fnVal is IDictionary<string, object> fnDelta)
+                        {
+                            if (fnDelta.TryGetValue("name", out object? nameVal) && nameVal != null)
+                            {
+                                string name = Convert.ToString(nameVal) ?? string.Empty;
+                                if (!string.IsNullOrEmpty(name))
+                                    acc.Name = name;
+                            }
+
+                            if (fnDelta.TryGetValue("arguments", out object? argsVal) && argsVal != null)
+                            {
+                                acc.Arguments.Append(Convert.ToString(argsVal) ?? string.Empty);
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Stream text content via SseStreamReader.ParseChunk (reuse tested parser)
+                SseChunkResult chunk = SseStreamReader.ParseChunk(data);
+                if (!string.IsNullOrEmpty(chunk.ContentDelta))
+                {
+                    fullText.Append(chunk.ContentDelta);
+                    onTextChunk(chunk.ContentDelta);
+                }
+            }
+        }
+
+        // Build the response
+        if (isToolCallResponse)
+        {
+            return BuildStreamingToolCallResponse(toolCallAccumulators, finishReason, usage, serializer);
+        }
+
+        // Text response
+        AgentStopReason stopReason = string.Equals(finishReason, "length", StringComparison.OrdinalIgnoreCase)
+            ? AgentStopReason.MaxTokens
+            : AgentStopReason.EndTurn;
+
+        return new AgentTurnResponse
+        {
+            Success = true,
+            StopReason = stopReason,
+            TextContent = fullText.ToString(),
+            Provider = _settings.Provider,
+            Model = _settings.Model,
+            Usage = usage
+        };
+    }
+
+    private AgentTurnResponse BuildStreamingToolCallResponse(
+        Dictionary<int, StreamingToolCallAccumulator> accumulators,
+        string? finishReason,
+        ModelUsage usage,
+        System.Web.Script.Serialization.JavaScriptSerializer serializer)
+    {
+        var toolCalls = new List<AgentToolCall>();
+
+        foreach (KeyValuePair<int, StreamingToolCallAccumulator> kvp in accumulators)
+        {
+            StreamingToolCallAccumulator acc = kvp.Value;
+            if (string.IsNullOrWhiteSpace(acc.Id))
+                continue;
+
+            string argumentsJson = acc.Arguments.ToString();
+            Dictionary<string, object?> arguments = ParseArgumentsJson(serializer, argumentsJson);
+
+            toolCalls.Add(new AgentToolCall
+            {
+                Id = acc.Id,
+                Name = acc.Name,
+                Arguments = arguments,
+                ArgumentsJson = argumentsJson
+            });
+        }
+
+        if (toolCalls.Count == 0)
+        {
+            return new AgentTurnResponse
+            {
+                Success = false,
+                StopReason = AgentStopReason.Error,
+                FailureReason = "Streaming response indicated tool_calls but no valid tool calls were accumulated.",
+                Provider = _settings.Provider,
+                Model = _settings.Model,
+                Usage = usage
+            };
+        }
+
+        // Build raw assistant message for conversation history echo-back
+        var rawToolCalls = new List<object>();
+        foreach (AgentToolCall tc in toolCalls)
+        {
+            rawToolCalls.Add(new Dictionary<string, object?>
+            {
+                ["id"] = tc.Id,
+                ["type"] = "function",
+                ["function"] = new Dictionary<string, object?>
+                {
+                    ["name"] = tc.Name,
+                    ["arguments"] = tc.ArgumentsJson
+                }
+            });
+        }
+
+        object rawAssistantMessage = new Dictionary<string, object?>
+        {
+            ["role"] = "assistant",
+            ["content"] = null,
+            ["tool_calls"] = rawToolCalls
+        };
+
+        return new AgentTurnResponse
+        {
+            Success = true,
+            StopReason = AgentStopReason.ToolUse,
+            ToolCalls = toolCalls,
+            Provider = _settings.Provider,
+            Model = _settings.Model,
+            Usage = usage,
+            RawAssistantMessage = rawAssistantMessage
+        };
+    }
+
+    private static int TryGetInt(IDictionary<string, object> dict, string key)
+    {
+        if (dict.TryGetValue(key, out object? value) && value != null)
+        {
+            if (value is int intVal) return intVal;
+            if (int.TryParse(Convert.ToString(value), out int parsed)) return parsed;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Accumulates streaming SSE deltas for a single tool call.
+    /// </summary>
+    private sealed class StreamingToolCallAccumulator
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public StringBuilder Arguments { get; } = new();
     }
 
     private static string ParseErrorResponse(string responseText, WebException ex)

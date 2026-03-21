@@ -43,6 +43,26 @@ public sealed class AgentLoopRunner : IAgentLoopRunner
         Action<AgentProgressUpdate>? onProgress,
         List<object>? priorConversation)
     {
+        return Run(modelClient, toolExecutor, systemPrompt, userRequest, toolDefinitions, settings, cancellationToken, onProgress, priorConversation, null);
+    }
+
+    /// <summary>
+    /// Runs the agent loop with optional streaming support. When onTextChunk is non-null and the
+    /// model client implements IStreamingAgentModelClient, the final text turn streams tokens via
+    /// the callback as they arrive. Tool-calling turns are always fully buffered.
+    /// </summary>
+    public AgentLoopResult Run(
+        IAgentModelClient modelClient,
+        IToolExecutor toolExecutor,
+        string systemPrompt,
+        string userRequest,
+        List<AgentToolDefinition> toolDefinitions,
+        AgentModelSettings settings,
+        CancellationToken cancellationToken,
+        Action<AgentProgressUpdate>? onProgress,
+        List<object>? priorConversation,
+        Action<string>? onTextChunk)
+    {
         if (modelClient == null) throw new ArgumentNullException(nameof(modelClient));
         if (toolExecutor == null) throw new ArgumentNullException(nameof(toolExecutor));
         if (settings == null) throw new ArgumentNullException(nameof(settings));
@@ -86,7 +106,26 @@ public sealed class AgentLoopRunner : IAgentLoopRunner
             AgentTurnResponse response;
             try
             {
-                response = modelClient.SendTurn(systemPrompt ?? string.Empty, conversationHistory, toolDefinitions ?? new List<AgentToolDefinition>(), settings);
+                // Use streaming when the client supports it and a text callback is provided.
+                // Tool-calling turns are buffered internally by the streaming client — only
+                // the final text turn actually streams tokens to the callback.
+                if (onTextChunk != null && modelClient is IStreamingAgentModelClient streamingClient)
+                {
+                    response = streamingClient.SendTurnStreaming(
+                        systemPrompt ?? string.Empty,
+                        conversationHistory,
+                        toolDefinitions ?? new List<AgentToolDefinition>(),
+                        settings,
+                        onTextChunk);
+                }
+                else
+                {
+                    response = modelClient.SendTurn(
+                        systemPrompt ?? string.Empty,
+                        conversationHistory,
+                        toolDefinitions ?? new List<AgentToolDefinition>(),
+                        settings);
+                }
             }
             catch (OperationCanceledException)
             {

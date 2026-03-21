@@ -459,7 +459,10 @@ internal static class HostState
             IAgentModelClient? agentClient = AgentModelClientFactory.Create(brokerSettings);
             if (agentClient != null)
             {
-                snapshot = RunAgenticAssistant(context, request, agentClient);
+                Action<string>? agentStreamCallback = onStreamChunk != null && FeatureGateRegistry.IsEnabled(FeatureGateRegistry.StreamFinalText)
+                    ? onStreamChunk
+                    : null;
+                snapshot = RunAgenticAssistant(context, request, agentClient, agentStreamCallback);
             }
             else
             {
@@ -487,7 +490,7 @@ internal static class HostState
         return snapshot;
     }
 
-    private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient)
+    private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient, Action<string>? onStreamChunk = null)
     {
         AgentModelSettings agentSettings = AgentModelSettings.LoadFromEnvironment();
         bool includeRetrieval = FeatureGateRegistry.IsEnabled(FeatureGateRegistry.Retrieval);
@@ -538,7 +541,8 @@ internal static class HostState
             agentSettings,
             ct,
             progress => FileLogger.Info("Agent: " + progress.Kind + " — " + progress.Message),
-            priorConversation);
+            priorConversation,
+            onStreamChunk);
 
         string intent = "agent_run: " + request;
         RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(intent, new List<Contracts.Models.ToolResult>(), UserId);
