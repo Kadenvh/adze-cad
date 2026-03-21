@@ -25,6 +25,24 @@ public sealed class AgentLoopRunner : IAgentLoopRunner
         CancellationToken cancellationToken,
         Action<AgentProgressUpdate>? onProgress)
     {
+        return Run(modelClient, toolExecutor, systemPrompt, userRequest, toolDefinitions, settings, cancellationToken, onProgress, null);
+    }
+
+    /// <summary>
+    /// Runs the agent loop with optional prior conversation context for multi-turn awareness.
+    /// Prior messages are prepended to the conversation history before the current user request.
+    /// </summary>
+    public AgentLoopResult Run(
+        IAgentModelClient modelClient,
+        IToolExecutor toolExecutor,
+        string systemPrompt,
+        string userRequest,
+        List<AgentToolDefinition> toolDefinitions,
+        AgentModelSettings settings,
+        CancellationToken cancellationToken,
+        Action<AgentProgressUpdate>? onProgress,
+        List<object>? priorConversation)
+    {
         if (modelClient == null) throw new ArgumentNullException(nameof(modelClient));
         if (toolExecutor == null) throw new ArgumentNullException(nameof(toolExecutor));
         if (settings == null) throw new ArgumentNullException(nameof(settings));
@@ -33,6 +51,12 @@ public sealed class AgentLoopRunner : IAgentLoopRunner
         var aggregateUsage = new ModelUsage();
         var conversationHistory = new List<object>();
         int consecutiveErrors = 0;
+
+        // Seed with prior conversation context (multi-turn history)
+        if (priorConversation != null && priorConversation.Count > 0)
+        {
+            conversationHistory.AddRange(priorConversation);
+        }
 
         // Seed the conversation with the user message.
         object userMessage = modelClient.BuildUserMessage(userRequest ?? string.Empty);

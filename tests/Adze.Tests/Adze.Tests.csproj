@@ -64,6 +64,10 @@
       <Project>{D12E7A9F-7EE6-45F3-9111-693E4949AA89}</Project>
       <Name>Adze.Trace</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Adze.Index\Adze.Index.csproj">
+      <Project>{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}</Project>
+      <Name>Adze.Index</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -92,6 +96,9 @@
     <Compile Include="Trace\ModelJsonMapperTests.cs" />
     <Compile Include="Tools\GroundingToolTests.cs" />
     <Compile Include="Tools\WriteToolTests.cs" />
+    <Compile Include="Broker\DiagnosticIntentTests.cs" />
+    <Compile Include="Broker\MultiTurnContextTests.cs" />
+    <Compile Include="Index\OleIndexerTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

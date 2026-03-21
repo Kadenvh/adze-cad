@@ -479,14 +479,15 @@ public sealed class TaskPaneControl : UserControl
         try
         {
             _statusText = HostState.BuildStatusText();
-            if (_activeTab == "status")
+            string statusHtml = string.IsNullOrWhiteSpace(_statusText)
+                ? "<pre>Status refreshes when expanded.</pre>"
+                : "<pre>" + HtmlEncode(_statusText) + "</pre>";
+            try
             {
-                string statusHtml = string.IsNullOrWhiteSpace(_statusText)
-                    ? "<p class=\"muted\">Status refreshes automatically.</p>"
-                    : "<pre>" + HtmlEncode(_statusText) + "</pre>";
-                _contentBrowser.Document?.InvokeScript("updateTabContent",
-                    new object[] { "tc-status", statusHtml });
+                _contentBrowser.Document?.InvokeScript("updateSectionContent",
+                    new object[] { "status-body", statusHtml });
             }
+            catch { /* Section may not exist yet */ }
         }
         catch (Exception ex)
         {
@@ -634,26 +635,63 @@ public sealed class TaskPaneControl : UserControl
         return sb.ToString();
     }
 
+    private string BuildWriteHistoryHtml()
+    {
+        var history = HostState.GetWriteHistory();
+        if (history.Count == 0) return string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append(BuildCollapsibleHeader("write-history", "Write History (" + history.Count + ")", false));
+        sb.Append("<div id=\"write-history-body\" class=\"section-body\" style=\"display:none\">");
+        foreach (var entry in history)
+        {
+            sb.Append("<div class=\"history-entry\">");
+            sb.Append("<span class=\"history-tool\">" + HtmlEncode(entry.ToolName) + "</span> ");
+            sb.Append("<span class=\"history-summary\">" + HtmlEncode(entry.Summary) + "</span>");
+            sb.Append("<div class=\"history-result\">" + HtmlEncode(entry.ResultMessage) + "</div>");
+            sb.Append("<div class=\"history-time\">" + entry.AppliedUtc.ToString("HH:mm:ss") + "</div>");
+            sb.Append("</div>");
+        }
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
+    private static string BuildCollapsibleHeader(string id, string label, bool open)
+    {
+        string arrow = open ? "&#9662;" : "&#9656;";
+        return "<div class=\"section-header\" onclick=\"toggleSection('" + id + "-body', this)\">" +
+               "<span class=\"section-arrow\">" + arrow + "</span> " + HtmlEncode(label) + "</div>";
+    }
+
     private string BuildFullPageHtml()
     {
         string conversationHtml = BuildConversationHtml();
+        string writeHistoryHtml = BuildWriteHistoryHtml();
 
-        string planBody = string.IsNullOrWhiteSpace(_planText)
-            ? "<p class=\"muted\">Plan details appear after a run.</p>"
-            : "<pre>" + HtmlEncode(_planText) + "</pre>";
+        string planSection = string.Empty;
+        if (!string.IsNullOrWhiteSpace(_planText))
+        {
+            planSection = BuildCollapsibleHeader("plan", "Plan", false) +
+                "<div id=\"plan-body\" class=\"section-body\" style=\"display:none\"><pre>" +
+                HtmlEncode(_planText) + "</pre></div>";
+        }
 
-        string statusBody = string.IsNullOrWhiteSpace(_statusText)
-            ? "<p class=\"muted\">Status refreshes automatically.</p>"
-            : "<pre>" + HtmlEncode(_statusText) + "</pre>";
+        string toolsLabel = "Tools Log";
+        string toolsSection = string.Empty;
+        if (!string.IsNullOrWhiteSpace(_toolsText))
+        {
+            toolsSection = BuildCollapsibleHeader("tools", toolsLabel, false) +
+                "<div id=\"tools-body\" class=\"section-body\" style=\"display:none\"><pre>" +
+                HtmlEncode(_toolsText) + "</pre></div>";
+        }
 
-        string toolsBody = string.IsNullOrWhiteSpace(_toolsText)
-            ? "<p class=\"muted\">Tool execution results appear after a run.</p>"
-            : "<pre>" + HtmlEncode(_toolsText) + "</pre>";
-
-        string TabClass(string name) => _activeTab == name ? "tab active" : "tab";
+        string statusSection = BuildCollapsibleHeader("status", "Status", false) +
+            "<div id=\"status-body\" class=\"section-body\" style=\"display:none\"><pre>" +
+            HtmlEncode(string.IsNullOrWhiteSpace(_statusText) ? "Status refreshes when expanded." : _statusText) +
+            "</pre></div>";
 
         return @"<!DOCTYPE html>
-<html><head><meta http-equiv=""X-UA-Compatible"" content=""IE=edge"">
+<html><head><meta http-equiv=""X-UA-Compatible"" content=""IE=edge"" />
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -663,22 +701,10 @@ public sealed class TaskPaneControl : UserControl
     line-height: 1.5;
     color: #22292F;
     background: #F4F6F8;
-  }
-  .container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 100%;
+    overflow-y: auto;
   }
 
   /* --- Chat area --- */
-  .answer-area {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    background: #F4F6F8;
-    padding: 8px 10px 6px 10px;
-    margin: 0;
-  }
   .chat-user, .chat-assistant { margin: 0 0 10px 0; }
   .chat-label {
     font-size: 11px;
@@ -745,54 +771,50 @@ public sealed class TaskPaneControl : UserControl
   .assistant-bubble th, .assistant-bubble td { border: 1px solid #DDE1E6; padding: 3px 6px; text-align: left; }
   .assistant-bubble th { background: #F4F6F8; font-weight: 600; }
 
-  /* --- Tab bar --- */
-  .tab-bar {
-    display: flex;
-    background: #EBEDF0;
+  /* --- Collapsible sections --- */
+  .sections-area {
     border-top: 1px solid #DDE1E6;
-    flex-shrink: 0;
+    background: #EBEDF0;
   }
-  .tab {
-    flex: 1;
-    padding: 6px 0;
-    text-align: center;
+  .section-header {
+    padding: 7px 12px;
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 600;
     color: #566370;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
+    border-bottom: 1px solid #DDE1E6;
     -ms-user-select: none;
   }
-  .tab:hover { color: #22292F; background: #E0E3E7; }
-  .tab.active {
-    color: #18304C;
-    font-weight: 600;
-    background: #FFFFFF;
-    border-bottom-color: #18304C;
-  }
-
-  /* --- Tab content --- */
-  .tab-content {
-    flex: 0 0 auto;
-    max-height: 40%;
-    overflow-y: auto;
+  .section-header:hover { color: #22292F; background: #E0E3E7; }
+  .section-arrow { font-size: 10px; }
+  .section-body {
     background: #FFFFFF;
     padding: 8px 12px;
-    display: none;
+    border-bottom: 1px solid #DDE1E6;
+    max-height: 300px;
+    overflow-y: auto;
   }
-  .tab-content.active { display: block; }
-  .tab-content pre {
+  .section-body pre {
     font-family: Consolas, monospace;
     font-size: 11px;
     background: #F4F6F8;
     padding: 8px 10px;
-    margin: 4px 0 8px 0;
+    margin: 4px 0;
     border-radius: 3px;
-    overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
     line-height: 1.4;
   }
+  .history-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid #F0F2F4;
+    font-size: 12px;
+  }
+  .history-entry:last-child { border-bottom: none; }
+  .history-tool { font-family: Consolas, monospace; font-size: 11px; color: #18304C; font-weight: 600; }
+  .history-summary { color: #22292F; }
+  .history-result { color: #2E7D32; font-size: 11px; }
+  .history-time { color: #98A0A8; font-size: 10px; }
 
   /* --- Write confirmation cards --- */
   .write-card {
@@ -866,50 +888,35 @@ public sealed class TaskPaneControl : UserControl
   }
 
   .muted { color: #78808A; font-style: italic; }
+  .content-area { padding: 8px 10px 6px 10px; }
 </style>
 </head><body>
-<div class=""container"">
-  <div class=""answer-area"">" + conversationHtml + @"</div>
-  <div class=""tab-bar"">
-    <div class=""" + TabClass("answer") + @""" onclick=""switchTab('answer')"">Chat</div>
-    <div class=""" + TabClass("plan") + @""" onclick=""switchTab('plan')"">Plan</div>
-    <div class=""" + TabClass("status") + @""" onclick=""switchTab('status')"">Status</div>
-    <div class=""" + TabClass("tools") + @""" onclick=""switchTab('tools')"">Tools</div>
-  </div>
-  <div id=""tc-answer"" class=""tab-content""></div>
-  <div id=""tc-plan"" class=""tab-content" + (_activeTab == "plan" ? " active" : "") + @""">" + planBody + @"</div>
-  <div id=""tc-status"" class=""tab-content" + (_activeTab == "status" ? " active" : "") + @""">" + statusBody + @"</div>
-  <div id=""tc-tools"" class=""tab-content" + (_activeTab == "tools" ? " active" : "") + @""">" + toolsBody + @"</div>
+<div class=""content-area"">" + conversationHtml + @"</div>
+<div class=""sections-area"">"
+    + writeHistoryHtml
+    + planSection
+    + toolsSection
+    + statusSection + @"
 </div>
 <script>
-function switchTab(name) {
-  window.external.SwitchTab(name);
-  var tabs = document.querySelectorAll('.tab');
-  for (var i = 0; i < tabs.length; i++) tabs[i].className = 'tab';
-  var contents = document.querySelectorAll('.tab-content');
-  for (var i = 0; i < contents.length; i++) contents[i].className = 'tab-content';
-  var area = document.querySelector('.answer-area');
-  var footer = document.querySelector('.footer');
-
-  if (name === 'answer') {
-    tabs[0].className = 'tab active';
-    if (area) area.style.display = 'block';
-    if (footer) footer.style.display = 'block';
+function toggleSection(bodyId, headerEl) {
+  var body = document.getElementById(bodyId);
+  if (!body) return;
+  var arrow = headerEl.querySelector('.section-arrow');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    if (arrow) arrow.innerHTML = '&#9662;';
   } else {
-    if (area) area.style.display = 'none';
-    if (footer) footer.style.display = 'none';
-    var idx = name === 'plan' ? 1 : name === 'status' ? 2 : 3;
-    tabs[idx].className = 'tab active';
-    document.getElementById('tc-' + name).className = 'tab-content active';
+    body.style.display = 'none';
+    if (arrow) arrow.innerHTML = '&#9656;';
   }
 }
-function updateTabContent(tabId, html) {
-  var el = document.getElementById(tabId);
+function updateSectionContent(sectionId, html) {
+  var el = document.getElementById(sectionId);
   if (el) el.innerHTML = html;
 }
 function scrollToBottom() {
-  var area = document.querySelector('.answer-area');
-  if (area) area.scrollTop = area.scrollHeight;
+  window.scrollTo(0, document.body.scrollHeight);
 }
 scrollToBottom();
 </script>

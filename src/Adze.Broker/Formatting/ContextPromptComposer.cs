@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Text;
 using Adze.Broker.Models;
@@ -96,23 +97,55 @@ public static class ContextPromptComposer
 
     public static string BuildAgentSystemPrompt()
     {
-        return
+        return BuildAgentSystemPrompt(null);
+    }
+
+    public static string BuildAgentSystemPrompt(string? intent)
+    {
+        string basePrompt =
             "You are Adze, a grounded SOLIDWORKS assistant with access to inspection tools. " +
             "Use the provided tools to gather evidence before answering. " +
             "Call tools to inspect the active document, then synthesize a grounded answer from the results. " +
             "Do not invent geometry, dimensions, mates, properties, references, or failure causes. " +
             "If information is partial or unavailable, say so directly. " +
             "Be concise and specific. Reference actual values from tool results.";
+
+        if (string.Equals(intent, "diagnostics_review", StringComparison.OrdinalIgnoreCase))
+        {
+            basePrompt +=
+                " The user wants diagnostic analysis. Prioritize calling get_rebuild_diagnostics first, " +
+                "then get_feature_tree_slice and get_dimensions for structural context. " +
+                "Focus your answer on identifying root causes of warnings, rebuild failures, missing references, " +
+                "or structural issues. Organize findings by severity. " +
+                "If no issues are found, confirm the document is healthy.";
+        }
+
+        return basePrompt;
     }
 
     private static string BuildSynthesisSystemPrompt()
     {
-        return
+        return BuildSynthesisSystemPrompt(null);
+    }
+
+    internal static string BuildSynthesisSystemPrompt(string? intent)
+    {
+        string basePrompt =
             "You are a grounded SOLIDWORKS assistant. " +
             "Write a concise plain-text answer for the user using only the provided session context, broker guidance, and executed tool results. " +
             "Do not invent geometry, dimensions, mates, properties, references, or failure causes that are not present in the provided data. " +
             "If the turn is blocked or no document is open, explain the blocker clearly and use the provided recovery suggestions. " +
             "If the available results are partial, say so directly. Return plain text only and do not use markdown fences or JSON.";
+
+        if (string.Equals(intent, "diagnostics_review", StringComparison.OrdinalIgnoreCase))
+        {
+            basePrompt +=
+                " The user is asking for diagnostic analysis. Focus on root causes of warnings, rebuild failures, " +
+                "and missing references. Organize findings by severity (errors first, then warnings, then informational). " +
+                "If the document is healthy with no issues, confirm that clearly.";
+        }
+
+        return basePrompt;
     }
 
     private static string BuildSynthesisUserPrompt(

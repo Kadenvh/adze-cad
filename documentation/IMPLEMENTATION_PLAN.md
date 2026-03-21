@@ -2,9 +2,9 @@
 
 **Version:** 0.1.0
 **Created:** 2026-03-11
-**Last Updated:** 2026-03-18
-**Current Phase:** Phase 9 ecosystem enhancements active. T9-01 (HTML panel), T9-05 (chat history), T4-09 (write confirmation) complete. Next: T9-02 (diagnostic intent), multi-turn agent context, Phase 6 retrieval (OLE indexer), live SOLIDWORKS testing.
-**Status:** Full conversational UI implemented: HTML answer panel with WebBrowser, chat-style conversation thread, write confirmation cards with Apply/Cancel. 378 tests passing. Remaining: diagnostic intent routing, agent loop multi-turn context, OLE closed-file indexer, write history/undo.
+**Last Updated:** 2026-03-20
+**Current Phase:** T9-02, multi-turn context, T6-03 OLE indexer, T4-10 write history, and UI redesign complete. Next: SearchProjectFilesTool wiring (T6-04), recipe suggestions (T5-04), live SOLIDWORKS testing, local models (T8-02).
+**Status:** Collapsible-sections UI with diagnostic intent, multi-turn agent context, write history, and OLE closed-file indexer. 404 tests passing. 7 projects (6 production + 1 test). Remaining: search tool dispatch wiring, recipe suggestions UI, live SOLIDWORKS testing, local model support.
 
 ## Current Working Baseline
 
@@ -14,7 +14,7 @@
 - hybrid broker with OpenAI/Anthropic/OpenRouter provider routing and deterministic fallback
 - model-backed final answer synthesis with deterministic fallback
 - per-run and session-level token usage monitoring (API response → answer footer → Status tab)
-- 378 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- 404 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
 - **agentic tool loop** (Phase 2): `OpenAIFormatAgentClient`, `AgentLoopRunner`, `AgentToolDispatcher`, `ToolDefinitionBuilder`, `AgentModelClientFactory`. Feature-gated behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Existing single-turn path remains default fallback.
 - **write tool safety infrastructure** (Phase 3): `IStateSnapshotService`, `IStateDiffService`, `IVerificationPolicy`, `StateDiffService`, `DefaultVerificationPolicy`, `WriteTraceRecordBuilder`. All contracts and pure logic implementations with 30 tests.
 - **first-wave write tools** (Phase 4 core): `SetCustomPropertyTool`, `SetDimensionValueTool`, `SuppressFeatureTool`, `UnsuppressFeatureTool`. Full `IWriteTool<TParams>` implementations with preview/apply/verify/undo lifecycle. `WriteExecutionCoordinator` orchestrates the 8-step write lifecycle. Agent dispatch integration with feature gate `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true`. 36 tests.
@@ -115,13 +115,13 @@
 - [x] **Phase 4 UI:** WritePreview confirmation card in chat thread with Apply/Cancel buttons, PendingWriteAction tracking, direct COM apply (T4-09)
 - [x] **Phase 5:** Learning activation — ITrustService, TrustService, AgentRecipeCaptureService, write tool achievements, TrustedBounded tier progression — 14 tests
 - [x] **Phase 6 core:** Per-document memory (DocumentMemory, MemoryStore) and user preference storage — 12 tests
-- [ ] **Phase 6 retrieval:** OLE Structured Storage closed-file indexer (requires OpenMcdf NuGet)
+- [x] **Phase 6 retrieval:** OLE Structured Storage closed-file indexer — Adze.Index project with OpenMcdf, OlePropertyReader, ClosedFileIndexer, ClosedFileSearchService, 13 tests
 - [x] **Phase 7/8 partial:** Cost budget controls (CostBudgetSettings, BudgetStatus), FeatureGateRegistry — 11 tests
 - [x] Decide whether answer evidence snippets belong in the Task Pane → YES, via HTML answer panel (T9-01)
 - [x] Decide whether recipe suggestions should appear in the Task Pane → YES, accelerate T5-04/T9-03
 - [x] **Phase 2 live test (b):** Write tools verified — model called get_active_document → set_custom_property (preview), synthesized grounded answer (2881 tokens, 3 turns, outcome=Success)
 - [x] **Phase 9 (ecosystem):** HTML answer panel with WebBrowser control, tab sync, InvokeScript status refresh (T9-01)
-- [ ] **Phase 9 (ecosystem):** "What's Wrong" diagnostic intent (T9-02)
+- [x] **Phase 9 (ecosystem):** "What's Wrong" diagnostic intent — clarification prefix parsing, keyword expansion, diagnostic tool boosting, intent-aware prompts (T9-02)
 - [x] **Phase 9 (ecosystem):** Conversational chat history — ChatEntry tracking, user/assistant bubbles, document-aware clearing (T9-05)
 - [x] **Ecosystem research:** `documentation/plans/research-solidworks-ai-ecosystem.md` — AURA/LEO/Labs/competitors mapped
 
@@ -133,9 +133,10 @@ If a new agent or session picks this up:
 2. Read `documentation/plans/END-GOAL-FINAL.md` for the complete agentic vision (700 lines).
 3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown (now with completion markers).
 4. Read `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` for C# interface contracts.
-5. The 7 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
-6. Phases 1A through 7/8 (core infrastructure) are implemented. 378 tests passing.
+5. The 8 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
+6. Phases 1A through 9 (core + ecosystem) are implemented. 404 tests passing. 7 projects (6 production + 1 test).
 7. Feature gates: `SOLIDWORKS_AI_AGENT_LOOP=true` (agentic loop), `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true` (write tools). See `FeatureGateRegistry` for all 5 gates.
-8. Next priorities: (a) live test write confirmation flow in SOLIDWORKS, (b) "What's Wrong" diagnostic intent — T9-02, (c) multi-turn agent context — pass chat history to agent loop, (d) OLE closed-file indexer — T6-03, (e) write history/undo surface — T4-10.
-9. Key new infrastructure this session (2026-03-18): HTML answer panel (WebBrowser + tab sync + InvokeScript), conversational chat history (ChatEntry + document-aware clearing), write confirmation cards (PendingWriteAction + Apply/Cancel + direct COM apply), write-tracking executor wrapper.
-10. Prior session: write contracts + tools, snapshot/diff/verification, write execution coordinator, trust service, recipe capture, per-document memory, cost budgets, feature gate registry.
+8. Next priorities: (a) wire `SearchProjectFilesTool` into ToolCatalog/AgentToolDispatcher — T6-04, (b) recipe suggestions in UI — T5-04/T9-03, (c) live SOLIDWORKS test of all new features, (d) local model support — T8-02.
+9. Key new infrastructure this session (2026-03-20): diagnostic intent routing (T9-02), multi-turn agent context (prior conversation seeding), OLE closed-file indexer (Adze.Index project with OpenMcdf), write history persistence (CompletedWriteEntry), collapsible-sections UI redesign (replaced tab bar).
+10. Prior session (2026-03-18): HTML answer panel, conversational chat history, write confirmation cards.
+11. Earlier: write contracts + tools, snapshot/diff/verification, write execution coordinator, trust service, recipe capture, per-document memory, cost budgets, feature gate registry.

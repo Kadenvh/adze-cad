@@ -10,6 +10,9 @@ using Adze.Broker.Configuration;
 using Adze.Broker.Formatting;
 using Adze.Broker.Models;
 using Adze.Broker.Orchestration;
+using AgentConversationState = Adze.Broker.Models.AgentConversationState;
+using ConversationMessage = Adze.Broker.Models.ConversationMessage;
+using ConversationRole = Adze.Broker.Models.ConversationRole;
 using ModelUsage = Adze.Broker.Models.ModelUsage;
 using Adze.Contracts.Models;
 using Adze.Host.Services;
@@ -57,6 +60,17 @@ internal sealed class PendingWriteAction
     public string? ResultMessage { get; set; }
 }
 
+internal sealed class CompletedWriteEntry
+{
+    public string ToolName { get; set; } = string.Empty;
+
+    public string Summary { get; set; } = string.Empty;
+
+    public string ResultMessage { get; set; } = string.Empty;
+
+    public DateTimeOffset AppliedUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+
 internal sealed class AssistantRunSnapshot
 {
     public string AnswerText { get; set; } = string.Empty;
@@ -88,6 +102,7 @@ internal static class HostState
     private static CancellationTokenSource? _currentRunCts;
     private static readonly List<ChatEntry> _chatHistory = new();
     private static readonly List<PendingWriteAction> _pendingWrites = new();
+    private static readonly List<CompletedWriteEntry> _writeHistory = new();
     private static string? _chatDocumentKey;
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
@@ -171,6 +186,13 @@ internal static class HostState
             {
                 action.Applied = true;
                 action.ResultMessage = result;
+                _writeHistory.Add(new CompletedWriteEntry
+                {
+                    ToolName = action.ToolName,
+                    Summary = action.Preview?.Summary ?? action.ToolName,
+                    ResultMessage = result,
+                    AppliedUtc = DateTimeOffset.UtcNow
+                });
             }
             return result;
         }
@@ -195,6 +217,22 @@ internal static class HostState
                 _pendingWrites[index].Cancelled = true;
                 _pendingWrites[index].ResultMessage = "Cancelled by user.";
             }
+        }
+    }
+
+    public static List<CompletedWriteEntry> GetWriteHistory()
+    {
+        lock (Sync)
+        {
+            return new List<CompletedWriteEntry>(_writeHistory);
+        }
+    }
+
+    public static void ClearWriteHistory()
+    {
+        lock (Sync)
+        {
+            _writeHistory.Clear();
         }
     }
 
@@ -446,7 +484,18 @@ internal static class HostState
         var contextAwareExecutor = new ContextAwareToolExecutor(toolDispatcher, executionContext);
         var writeTracker = new WriteTrackingToolExecutor(contextAwareExecutor);
 
-        string systemPrompt = ContextPromptComposer.BuildAgentSystemPrompt();
+        // Extract diagnostic intent from clarification prefix
+        string? clarificationIntent = KeywordBrokerOrchestrator.ExtractClarificationIntent(request);
+        string? detectedIntent = null;
+        if (string.Equals(clarificationIntent, "diagnose", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clarificationIntent, "diagnostic", StringComparison.OrdinalIgnoreCase))
+        {
+            detectedIntent = "diagnostics_review";
+        }
+        string systemPrompt = ContextPromptComposer.BuildAgentSystemPrompt(detectedIntent);
+
+        // Build multi-turn context from chat history
+        List<object>? priorConversation = BuildPriorConversation(agentClient);
 
         AgentLoopResult result = loopRunner.Run(
             agentClient,
@@ -456,7 +505,8 @@ internal static class HostState
             toolDefinitions,
             agentSettings,
             ct,
-            progress => FileLogger.Info("Agent: " + progress.Kind + " — " + progress.Message));
+            progress => FileLogger.Info("Agent: " + progress.Kind + " — " + progress.Message),
+            priorConversation);
 
         string intent = "agent_run: " + request;
         RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(intent, new List<Contracts.Models.ToolResult>(), UserId);
@@ -631,6 +681,68 @@ internal static class HostState
             TurnStatus = report.Response.TurnStatus,
             RunUsage = runUsage
         };
+    }
+
+    /// <summary>
+    /// Converts recent chat history into OpenAI-format message objects for multi-turn context.
+    /// Uses ConversationTruncator to keep within token budget.
+    /// </summary>
+    private static List<object>? BuildPriorConversation(IAgentModelClient agentClient)
+    {
+        List<ChatEntry> history;
+        lock (Sync)
+        {
+            if (_chatHistory.Count == 0) return null;
+            history = new List<ChatEntry>(_chatHistory);
+        }
+
+        // Convert to ConversationMessage for truncation
+        var state = new AgentConversationState
+        {
+            SessionId = "current",
+            DocumentKey = _chatDocumentKey ?? string.Empty
+        };
+
+        foreach (ChatEntry entry in history)
+        {
+            state.Messages.Add(new ConversationMessage
+            {
+                Role = ConversationRole.User,
+                Text = entry.UserMessage,
+                TimestampUtc = entry.TimestampUtc
+            });
+            state.Messages.Add(new ConversationMessage
+            {
+                Role = ConversationRole.Assistant,
+                Text = entry.AssistantMessage,
+                TimestampUtc = entry.TimestampUtc
+            });
+        }
+
+        // Truncate to keep context manageable (max 20 messages = ~10 turns)
+        var policy = new TruncationPolicy
+        {
+            ProtectSystemMessage = false,
+            ProtectInitialUserIntent = true,
+            ProtectedRecentTurns = 6
+        };
+        AgentConversationState truncated = ConversationTruncator.Truncate(state, 20, policy);
+
+        if (truncated.Messages.Count == 0) return null;
+
+        // Convert to OpenAI-format message objects
+        var messages = new List<object>();
+        foreach (ConversationMessage msg in truncated.Messages)
+        {
+            string role = msg.Role == ConversationRole.User ? "user" : "assistant";
+            messages.Add(new Dictionary<string, object?>
+            {
+                ["role"] = role,
+                ["content"] = msg.Text
+            });
+        }
+
+        return messages;
     }
 
     private sealed class ContextAwareToolExecutor : IToolExecutor

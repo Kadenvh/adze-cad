@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
 **Version:** 0.1.0
-**Last Updated:** 2026-03-18
-**Status:** Agentic alpha with conversational UI — 14 tools (10 read + 4 write), 378 tests, HTML chat interface with write confirmation
+**Last Updated:** 2026-03-20
+**Status:** Agentic alpha with collapsible UI — 15 tools (10 read + 4 write + 1 index), 404 tests, multi-turn context, diagnostic intent, write history, OLE indexer
 
 ## Product Thesis
 
@@ -40,6 +40,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-16 | Write tool safety infrastructure + first-wave write tools (Phase 3+4 core): IStateSnapshotService, StateDiffService, DefaultVerificationPolicy, WriteTraceRecordBuilder, WriteExecutionCoordinator, SetCustomPropertyTool, SetDimensionValueTool, SuppressFeatureTool, UnsuppressFeatureTool. Feature-gated behind SOLIDWORKS_AI_FIRST_WAVE_WRITES. |
 | 0.1.0 | 2026-03-16 | Learning activation + memory + hardening (Phases 5-8 core): ITrustService, TrustService, AgentRecipeCaptureService, write tool achievements, TrustedBounded tier, DocumentMemory, MemoryStore, UserPreferenceMemory, CostBudgetSettings, BudgetStatus, FeatureGateRegistry. 378 tests (103 new this session). |
 | 0.1.0 | 2026-03-18 | Conversational UI (T9-01, T9-05, T4-09): HTML answer panel with WebBrowser control, chat-style conversation thread with user/assistant bubbles, write confirmation cards with Apply/Cancel and direct COM apply. Tab state sync via ObjectForScripting, status auto-refresh via InvokeScript. |
+| 0.1.0 | 2026-03-20 | Diagnostic intent, multi-turn context, OLE indexer, write history, UI redesign: T9-02 "What's Wrong" intent routing with clarification prefix parsing and prompt tuning. Multi-turn agent context via ConversationTruncator. Adze.Index project (OlePropertyReader, ClosedFileIndexer, ClosedFileSearchService). Write history persistence. Collapsible-sections UI replacing tab bar. 404 tests (26 new). |
 
 ## Current Architecture
 

@@ -179,6 +179,17 @@ public sealed class KeywordBrokerOrchestrator : IBrokerOrchestrator
         bool requestedSpecificInspection)
     {
         string documentType = context.Document?.Type ?? "unknown";
+        string intent = InferIntent(normalizedRequest, context);
+
+        // Diagnostic intent gets aggressive tool boosting
+        if (string.Equals(intent, "diagnostics_review", StringComparison.OrdinalIgnoreCase))
+        {
+            AddCandidate(candidates, ToolNames.GetRebuildDiagnostics, 10, "Diagnostic intent: rebuild diagnostics are the primary evidence source.");
+            AddCandidate(candidates, ToolNames.GetFeatureTreeSlice, 6, "Diagnostic intent: feature tree provides structural context for failure analysis.");
+            AddCandidate(candidates, ToolNames.GetDimensions, 4, "Diagnostic intent: dimension state may relate to rebuild failures.");
+            AddCandidate(candidates, ToolNames.GetReferenceGraph, 3, "Diagnostic intent: broken references are a common failure cause.");
+        }
+
         if (string.Equals(documentType, "assembly", StringComparison.OrdinalIgnoreCase))
         {
             AddCandidate(candidates, ToolNames.GetReferenceGraph, 2, "Assembly context benefits from dependency grounding.");
@@ -353,6 +364,14 @@ public sealed class KeywordBrokerOrchestrator : IBrokerOrchestrator
 
     private static string InferIntent(string input, SessionContext context)
     {
+        // Check for structured clarification prefix first
+        string? prefixIntent = ExtractClarificationIntent(input);
+        if (string.Equals(prefixIntent, "diagnose", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(prefixIntent, "diagnostic", StringComparison.OrdinalIgnoreCase))
+        {
+            return "diagnostics_review";
+        }
+
         if (ContainsAny(input, "selection", "selected", "highlight"))
         {
             return "selection_review";
@@ -378,12 +397,43 @@ public sealed class KeywordBrokerOrchestrator : IBrokerOrchestrator
             return "property_review";
         }
 
-        if (ContainsAny(input, "diagnostic", "diagnostics", "warning", "warnings", "rebuild", "error"))
+        if (ContainsAny(input, "diagnostic", "diagnostics", "warning", "warnings", "rebuild", "error",
+            "what's wrong", "whats wrong", "problem", "issue", "broken", "fail", "failed"))
         {
             return "diagnostics_review";
         }
 
         return context.Document == null ? "needs_document" : "general_grounding";
+    }
+
+    /// <summary>
+    /// Extracts the intent value from a [clarification] prefix block if present.
+    /// Returns null if no prefix or no intent key found.
+    /// </summary>
+    public static string? ExtractClarificationIntent(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return null;
+
+        int start = input.IndexOf("[clarification]", StringComparison.OrdinalIgnoreCase);
+        if (start < 0) return null;
+
+        int end = input.IndexOf("[/clarification]", start, StringComparison.OrdinalIgnoreCase);
+        if (end < 0) return null;
+
+        string block = input.Substring(start + "[clarification]".Length, end - start - "[clarification]".Length);
+
+        // Parse "intent=value" from comma-separated key=value pairs
+        string[] pairs = block.Split(',');
+        foreach (string pair in pairs)
+        {
+            string trimmed = pair.Trim();
+            if (trimmed.StartsWith("intent=", StringComparison.OrdinalIgnoreCase))
+            {
+                return trimmed.Substring("intent=".Length).Trim();
+            }
+        }
+
+        return null;
     }
 
     private static double CalculateConfidence(IReadOnlyCollection<BrokerToolRecommendation> recommendations)

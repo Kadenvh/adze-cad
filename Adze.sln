@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Adze.Broker", "src\Adze.Bro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Adze.Host", "src\Adze.Host\Adze.Host.csproj", "{B7F93753-6E26-4D58-9B54-353B8321F7B7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Adze.Index", "src\Adze.Index\Adze.Index.csproj", "{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Adze.Tests", "tests\Adze.Tests\Adze.Tests.csproj", "{F1E2D3C4-B5A6-7890-ABCD-EF1234567890}"
 EndProject
 Global
@@ -40,6 +42,10 @@ Global
 		{B7F93753-6E26-4D58-9B54-353B8321F7B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7F93753-6E26-4D58-9B54-353B8321F7B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7F93753-6E26-4D58-9B54-353B8321F7B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F1E2D3C4-B5A6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F1E2D3C4-B5A6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1E2D3C4-B5A6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -18,4 +18,7 @@ public static class ToolNames
     public const string SetDimensionValue = "set_dimension_value";
     public const string SuppressFeature = "suppress_feature";
     public const string UnsuppressFeature = "unsuppress_feature";
+
+    // Index/retrieval tools (Phase 6)
+    public const string SearchProjectFiles = "search_project_files";
 }

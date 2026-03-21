@@ -5,10 +5,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</ProjectGuid>
+    <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Adze.Contracts</RootNamespace>
-    <AssemblyName>Adze.Contracts</AssemblyName>
+    <RootNamespace>Adze.Index</RootNamespace>
+    <AssemblyName>Adze.Index</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -41,25 +41,26 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="OpenMcdf">
+      <HintPath>..\..\packages\OpenMcdf.2.3.1\lib\net40\OpenMcdf.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adze.Contracts\Adze.Contracts.csproj">
+      <Project>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</Project>
+      <Name>Adze.Contracts</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Enums\ActionClass.cs" />
-    <Compile Include="Enums\ApprovalState.cs" />
-    <Compile Include="Enums\ToolUnlockTier.cs" />
-    <Compile Include="Models\BenchmarkDefinitions.cs" />
-    <Compile Include="Models\GroundingSnapshotRecord.cs" />
-    <Compile Include="Models\ProgressionState.cs" />
-    <Compile Include="Models\RecipeCandidate.cs" />
-    <Compile Include="Models\SessionContext.cs" />
-    <Compile Include="Models\ToolContracts.cs" />
-    <Compile Include="Models\TraceEvent.cs" />
-    <Compile Include="Abstractions\ITrustService.cs" />
-    <Compile Include="Abstractions\IWriteServices.cs" />
-    <Compile Include="Models\WriteContracts.cs" />
-    <Compile Include="Models\IndexContracts.cs" />
-    <Compile Include="Tooling\ToolNames.cs" />
+    <Compile Include="OlePropertyReader.cs" />
+    <Compile Include="OlePropertySetParser.cs" />
+    <Compile Include="ClosedFileIndexer.cs" />
+    <Compile Include="ClosedFileSearchService.cs" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
