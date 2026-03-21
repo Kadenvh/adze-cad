@@ -394,6 +394,7 @@ public sealed class TaskPaneControl : UserControl
         if (_isRunning) return;
 
         AssistantRunPreparation? preparation = null;
+        string userText = string.Empty;
         try
         {
             _isRunning = true;
@@ -404,8 +405,9 @@ public sealed class TaskPaneControl : UserControl
             _refreshTimer.Stop();
             Update();
 
+            userText = GetRequestText();
             HostState.BeginRun();
-            preparation = HostState.PrepareAssistantRun(GetRequestText());
+            preparation = HostState.PrepareAssistantRun(userText);
         }
         catch (Exception ex)
         {
@@ -414,11 +416,30 @@ public sealed class TaskPaneControl : UserControl
             return;
         }
 
+        // Prepare streaming: add user bubble + streaming target before the background run
+        string capturedUserText = userText;
+        string userBubbleHtml = "<div class=\"chat-user\"><div class=\"chat-label\">You</div>" +
+            "<div class=\"chat-bubble user-bubble\">" + HtmlEncode(capturedUserText) + "</div></div>";
+        try
+        {
+            _contentBrowser.Document?.InvokeScript("startStreaming", new object[] { userBubbleHtml });
+        }
+        catch
+        {
+            // If InvokeScript fails (page not ready), streaming will degrade gracefully
+        }
+
         ThreadPool.QueueUserWorkItem(_ =>
         {
             try
             {
-                AssistantRunSnapshot snapshot = HostState.CompleteAssistantRun(preparation);
+                Action<string> streamCallback = chunk =>
+                {
+                    try { PostToUi(() => AppendStreamChunk(chunk)); }
+                    catch { /* swallow UI errors during streaming */ }
+                };
+
+                AssistantRunSnapshot snapshot = HostState.CompleteAssistantRun(preparation, streamCallback);
                 PostToUi(() => ApplySnapshot(snapshot));
             }
             catch (Exception ex)
@@ -431,6 +452,18 @@ public sealed class TaskPaneControl : UserControl
                 PostToUi(FinishRun);
             }
         });
+    }
+
+    private void AppendStreamChunk(string text)
+    {
+        try
+        {
+            _contentBrowser.Document?.InvokeScript("appendStreamChunk", new object[] { text });
+        }
+        catch
+        {
+            // Swallow errors — streaming is best-effort
+        }
     }
 
     private void ApplySnapshot(AssistantRunSnapshot snapshot)
@@ -978,7 +1011,7 @@ public sealed class TaskPaneControl : UserControl
   .content-area { padding: 8px 10px 6px 10px; }
 </style>
 </head><body>
-<div class=""content-area"">" + conversationHtml + @"</div>
+<div id=""chat-area"" class=""content-area"">" + conversationHtml + @"</div>
 <div class=""sections-area"">"
     + recipeHtml
     + writeHistoryHtml
@@ -1005,6 +1038,24 @@ function updateSectionContent(sectionId, html) {
 }
 function scrollToBottom() {
   window.scrollTo(0, document.body.scrollHeight);
+}
+function startStreaming(userHtml) {
+  var chat = document.getElementById('chat-area');
+  if (!chat) return;
+  chat.innerHTML = chat.innerHTML + userHtml +
+    '<div class=""chat-assistant""><div class=""chat-label"">Adze</div>' +
+    '<div class=""chat-bubble assistant-bubble"">' +
+    '<pre id=""stream-target"" style=""margin:0;padding:0;background:transparent;' +
+    'font-family:inherit;font-size:inherit;white-space:pre-wrap;word-wrap:break-word""></pre>' +
+    '</div></div>';
+  scrollToBottom();
+}
+function appendStreamChunk(text) {
+  var target = document.getElementById('stream-target');
+  if (target) {
+    target.appendChild(document.createTextNode(text));
+    scrollToBottom();
+  }
 }
 scrollToBottom();
 </script>

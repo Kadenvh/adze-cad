@@ -11,7 +11,7 @@ using Adze.Broker.Models;
 
 namespace Adze.Broker.Clients;
 
-public sealed class OpenAIModelClient : IModelClient
+public sealed class OpenAIModelClient : IStreamingModelClient
 {
     private sealed class TextCompletionResult
     {
@@ -139,6 +139,121 @@ public sealed class OpenAIModelClient : IModelClient
             ResponseText = completion.AssistantText.Trim(),
             Usage = completion.Usage
         };
+    }
+
+    public AssistantSynthesisResult SynthesizeStreaming(
+        AssistantSynthesisPrompt prompt,
+        Action<string> onTextChunk)
+    {
+        if (!_settings.IsUsable())
+        {
+            return new AssistantSynthesisResult
+            {
+                Provider = _settings.Provider,
+                Model = _settings.Model,
+                FailureReason = "Model settings are incomplete."
+            };
+        }
+
+        try
+        {
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+
+            string requestBody = ModelResponseParser.CreateSerializer().Serialize(new Dictionary<string, object?>
+            {
+                ["model"] = _settings.Model,
+                ["messages"] = new object[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["role"] = "system",
+                        ["content"] = prompt.SystemPrompt
+                    },
+                    new Dictionary<string, object?>
+                    {
+                        ["role"] = "user",
+                        ["content"] = prompt.UserPrompt
+                    }
+                },
+                ["max_tokens"] = _settings.SynthesisMaxTokens,
+                ["temperature"] = _settings.Temperature,
+                ["stream"] = true,
+                ["stream_options"] = new Dictionary<string, object?>
+                {
+                    ["include_usage"] = true
+                }
+            });
+
+            var request = (HttpWebRequest)WebRequest.Create(_settings.Endpoint);
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.Accept = "text/event-stream";
+            request.Timeout = _settings.SynthesisTimeoutMilliseconds;
+            request.ReadWriteTimeout = _settings.SynthesisTimeoutMilliseconds;
+            request.Headers[HttpRequestHeader.Authorization] = "Bearer " + _settings.ApiKey;
+
+            byte[] payloadBytes = Encoding.UTF8.GetBytes(requestBody);
+            using (Stream requestStream = request.GetRequestStream())
+            {
+                requestStream.Write(payloadBytes, 0, payloadBytes.Length);
+            }
+
+            using var response = (HttpWebResponse)request.GetResponse();
+            using var responseStream = response.GetResponseStream();
+
+            if (responseStream == null)
+            {
+                return new AssistantSynthesisResult
+                {
+                    Provider = _settings.Provider,
+                    Model = _settings.Model,
+                    FailureReason = "Response stream was null."
+                };
+            }
+
+            SseStreamResult streamResult = SseStreamReader.ReadStream(responseStream, onTextChunk);
+
+            if (string.IsNullOrWhiteSpace(streamResult.FullText))
+            {
+                return new AssistantSynthesisResult
+                {
+                    Provider = _settings.Provider,
+                    Model = _settings.Model,
+                    FailureReason = "Streaming synthesis returned no text.",
+                    Usage = streamResult.Usage
+                };
+            }
+
+            return new AssistantSynthesisResult
+            {
+                Success = true,
+                Provider = _settings.Provider,
+                Model = _settings.Model,
+                RawResponseText = streamResult.FullText,
+                ResponseText = streamResult.FullText.Trim(),
+                Usage = streamResult.Usage
+            };
+        }
+        catch (WebException ex)
+        {
+            string responseText = ReadResponseBody(ex.Response);
+            return new AssistantSynthesisResult
+            {
+                Provider = _settings.Provider,
+                Model = _settings.Model,
+                RawResponseText = responseText,
+                FailureReason = ParseErrorResponse(responseText, ex)
+            };
+        }
+        catch (Exception ex)
+        {
+            return new AssistantSynthesisResult
+            {
+                Provider = _settings.Provider,
+                Model = _settings.Model,
+                FailureReason = ex.Message
+            };
+        }
     }
 
     private TextCompletionResult ExecuteTextPrompt(

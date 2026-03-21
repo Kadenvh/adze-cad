@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
 **Version:** 0.1.0
-**Last Updated:** 2026-03-21
-**Status:** Agentic alpha with local model support — 16 tools (11 read + 4 write + 1 retrieval), 430 tests, recipe suggestions UI, Ollama/LM Studio providers
+**Last Updated:** 2026-03-22
+**Status:** Agentic alpha with streaming synthesis + local model hardening — 16 tools (11 read + 4 write + 1 retrieval), 467 tests, SSE streaming, health checks, recipe suggestions UI, Ollama/LM Studio providers
 
 ## Product Thesis
 
@@ -42,6 +42,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-18 | Conversational UI (T9-01, T9-05, T4-09): HTML answer panel with WebBrowser control, chat-style conversation thread with user/assistant bubbles, write confirmation cards with Apply/Cancel and direct COM apply. Tab state sync via ObjectForScripting, status auto-refresh via InvokeScript. |
 | 0.1.0 | 2026-03-20 | Diagnostic intent, multi-turn context, OLE indexer, write history, UI redesign: T9-02 "What's Wrong" intent routing with clarification prefix parsing and prompt tuning. Multi-turn agent context via ConversationTruncator. Adze.Index project (OlePropertyReader, ClosedFileIndexer, ClosedFileSearchService). Write history persistence. Collapsible-sections UI replacing tab bar. 404 tests (26 new). |
 | 0.1.0 | 2026-03-21 | Search tool wiring, recipe suggestions, local model support: SearchProjectFilesTool fully wired (T6-04) with feature gate. Recipe suggestions collapsible UI with Run/Promote (T5-04/T9-03). Ollama and LM Studio as experimental providers with longer default timeouts (T8-02). 430 tests (26 new). |
+| 0.1.0 | 2026-03-22 | Streaming synthesis, local model hardening: SSE streaming for final answer synthesis (T8-03) — SseStreamReader, IStreamingModelClient, live token streaming to WebBrowser via InvokeScript. LocalEndpointHealthCheck pings /v1/models for Ollama/LM Studio. Graceful degradation messaging for local model failures. TASK-INDEX.md completion markers reconciled. 467 tests (37 new). |
 
 ## Current Architecture
 

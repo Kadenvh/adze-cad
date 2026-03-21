@@ -2,9 +2,9 @@
 
 **Version:** 0.1.0
 **Created:** 2026-03-11
-**Last Updated:** 2026-03-21
-**Current Phase:** T6-04 search tool wired, T5-04/T9-03 recipe suggestions UI, T8-02 local model support complete. Next: live SOLIDWORKS testing, TASK-INDEX.md completion markers, streaming UX (T7-01).
-**Status:** Full tool surface (11 read + 4 write + 1 retrieval), recipe suggestions UI, local model support (Ollama/LM Studio). 430 tests passing. 7 projects (6 production + 1 test). Remaining: live SOLIDWORKS validation, streaming, production hardening.
+**Last Updated:** 2026-03-22
+**Current Phase:** T8-03 streaming UX complete, local endpoint health check + graceful degradation done, TASK-INDEX markers current. Next: live SOLIDWORKS testing, agentic final-turn streaming, capability gate probing, health check UI wiring.
+**Status:** Full tool surface (11 read + 4 write + 1 retrieval), SSE streaming synthesis, recipe suggestions UI, local model support with health check. 467 tests passing. 7 projects (6 production + 1 test). Remaining: live SOLIDWORKS validation, agentic streaming, production hardening polish.
 
 ## Current Working Baseline
 
@@ -14,7 +14,7 @@
 - hybrid broker with OpenAI/Anthropic/OpenRouter/Ollama/LM Studio provider routing and deterministic fallback
 - model-backed final answer synthesis with deterministic fallback
 - per-run and session-level token usage monitoring (API response → answer footer → Status tab)
-- 430 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- 467 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
 - **agentic tool loop** (Phase 2): `OpenAIFormatAgentClient`, `AgentLoopRunner`, `AgentToolDispatcher`, `ToolDefinitionBuilder`, `AgentModelClientFactory`. Feature-gated behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Existing single-turn path remains default fallback.
 - **write tool safety infrastructure** (Phase 3): `IStateSnapshotService`, `IStateDiffService`, `IVerificationPolicy`, `StateDiffService`, `DefaultVerificationPolicy`, `WriteTraceRecordBuilder`. All contracts and pure logic implementations with 30 tests.
 - **first-wave write tools** (Phase 4 core): `SetCustomPropertyTool`, `SetDimensionValueTool`, `SuppressFeatureTool`, `UnsuppressFeatureTool`. Full `IWriteTool<TParams>` implementations with preview/apply/verify/undo lifecycle. `WriteExecutionCoordinator` orchestrates the 8-step write lifecycle. Agent dispatch integration with feature gate `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true`. 36 tests.
@@ -127,6 +127,9 @@
 - [x] **Phase 6 dispatch (T6-04):** `SearchProjectFilesTool` wired into ToolCatalog, AgentToolDispatcher, ToolDefinitionBuilder. Feature-gated behind `SOLIDWORKS_AI_RETRIEVAL=true`. 13 tests.
 - [x] **Phase 5/9 (T5-04/T9-03):** Recipe suggestions collapsible section in Task Pane — shows promoted + review-ready recipes with Run/Promote buttons. `AgentRecipeCaptureService.ListReviewReady()`. 3 tests.
 - [x] **Phase 8 (T8-02):** Local model support — Ollama and LM Studio as experimental providers. Routes through OpenAI client. Longer default timeouts. `IsLocalProvider`/`UsesOpenAIFormat`. 10 tests.
+- [x] **Phase 8 (T8-03):** Final-answer streaming — `SseStreamReader`, `IStreamingModelClient`, `OpenAIModelClient.SynthesizeStreaming`, TaskPaneControl streaming JS. Feature-gated behind `SOLIDWORKS_AI_STREAM_FINAL_TEXT=true`. 19 tests.
+- [x] **Phase 8 (hardening):** Local endpoint health check (`LocalEndpointHealthCheck`, pings `/v1/models`), graceful degradation messaging for local model failures. 18 tests.
+- [x] **TASK-INDEX.md:** Updated 8+ stale completion markers (T4-10, T5-04, T6-03, T6-04, T8-02, T9-02, T9-03, T9-05 multi-turn).
 
 ## Handoff Notes
 
@@ -137,10 +140,11 @@ If a new agent or session picks this up:
 3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown.
 4. Read `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` for C# interface contracts.
 5. The 8 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
-6. Phases 1A through 9 are implemented. 430 tests passing. 7 projects (6 production + 1 test). 16 tools (11 read + 4 write + 1 retrieval).
-7. Feature gates: `SOLIDWORKS_AI_AGENT_LOOP=true` (agentic loop), `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true` (write tools), `SOLIDWORKS_AI_RETRIEVAL=true` (search tool). See `FeatureGateRegistry` for all 5 gates.
-8. Local models: set `SOLIDWORKS_AI_PROVIDER=ollama` or `lmstudio` to use local inference. Experimental — best for synthesis only. See `research-local-model-feasibility.md`.
-9. Next priorities: (a) live SOLIDWORKS testing of all features, (b) update TASK-INDEX.md completion markers for T6-04, T5-04, T9-03, T8-02, (c) streaming UX (T7-01), (d) production hardening.
-10. Key new infrastructure this session (2026-03-21): SearchProjectFilesTool (T6-04), recipe suggestions UI (T5-04/T9-03), local model support (T8-02 — Ollama/LM Studio).
-11. Prior session (2026-03-20): diagnostic intent (T9-02), multi-turn context, OLE indexer (T6-03), write history (T4-10), collapsible UI redesign.
-12. Earlier sessions: HTML answer panel, chat history, write confirmation cards, write tools + safety, trust/recipe/memory, cost budgets, feature gates.
+6. Phases 1A through 9 are implemented. 467 tests passing. 7 projects (6 production + 1 test). 16 tools (11 read + 4 write + 1 retrieval).
+7. Feature gates: `SOLIDWORKS_AI_AGENT_LOOP=true` (agentic loop), `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true` (write tools), `SOLIDWORKS_AI_RETRIEVAL=true` (search tool), `SOLIDWORKS_AI_STREAM_FINAL_TEXT=true` (streaming synthesis). See `FeatureGateRegistry` for all 5 gates.
+8. Local models: set `SOLIDWORKS_AI_PROVIDER=ollama` or `lmstudio` to use local inference. Experimental — best for synthesis only. `LocalEndpointHealthCheck.Check()` verifies server readiness. See `research-local-model-feasibility.md`.
+9. Next priorities: (a) live SOLIDWORKS testing of all features, (b) agentic loop final-turn streaming (T8-03 deferred item), (c) wire health check into Task Pane Status section, (d) capability gate probing before enabling tool calling for local models (T8-02b).
+10. Key new infrastructure this session (2026-03-22): SSE streaming (T8-03), `LocalEndpointHealthCheck`, graceful degradation messaging, TASK-INDEX completion markers.
+11. Prior session (2026-03-21): SearchProjectFilesTool (T6-04), recipe suggestions UI (T5-04/T9-03), local model support (T8-02 — Ollama/LM Studio).
+12. Prior session (2026-03-20): diagnostic intent (T9-02), multi-turn context, OLE indexer (T6-03), write history (T4-10), collapsible UI redesign.
+13. Earlier sessions: HTML answer panel, chat history, write confirmation cards, write tools + safety, trust/recipe/memory, cost budgets, feature gates.

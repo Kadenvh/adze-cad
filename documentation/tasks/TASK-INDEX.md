@@ -1,6 +1,6 @@
 # Adze Task Index
 
-**Last Updated:** 2026-03-18
+**Last Updated:** 2026-03-22
 **Source:** END-GOAL-FINAL.md + IMPLEMENTATION-BLUEPRINT.md + 7 research briefs + 4 discovery briefs
 
 This is the comprehensive task breakdown for the full agentic implementation. Tasks are organized by phase, with dependencies, acceptance criteria, and references to supporting research.
@@ -122,10 +122,11 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Direct COM apply for all 4 first-wave write tools
 - **Files:** `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`
 
-### T4-10: Add write history / undo surface
-- [ ] Session history panel showing all writes
-- [ ] Individual Undo buttons per write
-- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
+### T4-10: Add write history / undo surface ✓
+- [x] Session history panel showing all writes (collapsible Write History section)
+- [x] `CompletedWriteEntry` tracking, auto-record on apply, `GetWriteHistory()`/`ClearWriteHistory()`
+- [ ] Individual Undo buttons per write (deferred — undo grouping via `StartRecordingUndoObject` future work)
+- **Files:** `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`
 
 ### T4-11: Unit tests for write tools ✓ (36 tests total)
 
@@ -167,10 +168,12 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - TrustedBounded requires Reviewed + all first-wave writes completed
 - 5 unit tests
 
-### T5-04: Surface recipes in Task Pane
-- [ ] "Suggested recipes" section when relevant recipes match current context
-- [ ] One-click execution of promoted recipes
-- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
+### T5-04: Surface recipes in Task Pane ✓
+- [x] "Suggested Recipes" collapsible section with recipe cards (title, state, reliability %, tool tags)
+- [x] One-click execution via `RunRecipe()` JS bridge — populates request box and auto-runs
+- [x] `PromoteRecipe()` JS bridge — promotes review-ready to promoted
+- [x] `AgentRecipeCaptureService.ListReviewReady()` + `HostState.GetSuggestedRecipes()`
+- **Files:** `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`, `src/Adze.Trace/Recipes/AgentRecipeCaptureService.cs`
 
 ### T5-05: Achievement tracking from real usage ✓
 - Write tool achievements added to ProgressionEngine: first_property_write, first_dimension_write, first_feature_suppression, first_wave_writes_completed
@@ -178,7 +181,7 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ---
 
-## Phase 6: Retrieval and Cross-Session Memory (core ✓)
+## Phase 6: Retrieval and Cross-Session Memory ✓
 
 ### T6-01: Implement per-document memory ✓
 - `DocumentMemory` + `MemoryStore` in `Adze.Trace/Memory/`
@@ -192,20 +195,25 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - Save/load under `%LOCALAPPDATA%\Adze\state\user-preferences.json`
 - 4 unit tests
 
-### T6-03: Implement Adze.Index project (OLE reader)
-- [ ] New project or namespace for closed-file indexing
-- [ ] Use OpenMcdf (MIT, pure .NET) to read OLE Structured Storage
-- [ ] Extract: custom properties, summary info, file metadata from .SLDPRT/.SLDASM/.SLDDRW
-- [ ] Performance target: ~1-5ms per file, 500 files < 5 seconds
-- [ ] Index stored under `%LOCALAPPDATA%\Adze\index\`
-- **Files:** New `src/Adze.Index/` project or `src/Adze.Tools/Index/`
+### T6-03: Implement Adze.Index project (OLE reader) ✓
+- [x] New `src/Adze.Index/` project with OpenMcdf NuGet (MIT, pure .NET)
+- [x] `OlePropertyReader` — reads SOLIDWORKS files without COM via OLE Structured Storage
+- [x] `OlePropertySetParser` — parses property set streams
+- [x] `ClosedFileIndexer` — scans folders and persists JSON index under `%LOCALAPPDATA%\Adze\index\`
+- [x] `ClosedFileSearchService` — queries by property/keyword/type/path
+- [x] Extract: custom properties, summary info, file metadata from .SLDPRT/.SLDASM/.SLDDRW
+- [x] 13 unit tests
+- **Files:** `src/Adze.Index/`
 - **Reference:** `research-closed-file-retrieval.md`
 
-### T6-04: Implement search_project_files grounding tool
-- [ ] New read tool: search indexed files by property values
-- [ ] Filter by file type, path pattern, property name/value
-- [ ] Return matching file paths with relevant properties
-- **Files:** `src/Adze.Tools/`
+### T6-04: Implement search_project_files grounding tool ✓
+- [x] `SearchProjectFilesTool` in `src/Adze.Tools/Grounding/` implementing `IReadOnlyTool<SearchProjectFilesParameters>`
+- [x] `SearchProjectFilesParameters` in `Adze.Contracts/Models/IndexContracts.cs`
+- [x] Wired into `ToolCatalog`, `AgentToolDispatcher`, `ToolDefinitionBuilder.BuildRetrievalToolDefinitions()`
+- [x] Feature-gated behind `SOLIDWORKS_AI_RETRIEVAL=true`
+- [x] Filter by file type, path pattern, property name/value, keyword
+- [x] 13 unit tests
+- **Files:** `src/Adze.Tools/Grounding/SearchProjectFilesTool.cs`, `src/Adze.Broker/Orchestration/AgentToolDispatcher.cs`, `src/Adze.Broker/Formatting/ToolDefinitionBuilder.cs`
 
 ### T6-05: Optional Document Manager API enhancement
 - [ ] When swdocumentmgr.dll and license key available
@@ -252,19 +260,41 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [ ] Warning UI when approaching budget limit
 - 6 unit tests
 
-### T8-02: Local model support (experimental)
-- [ ] Add Ollama/LM Studio as provider options
-- [ ] Route through existing OpenAI-compatible client
-- [ ] 6 automated capability gate tests before enabling tool calling
-- [ ] Minimum: Qwen 2.5 32B for tool selection
-- [ ] Label as experimental in UI
+### T8-02: Local model support (experimental) ✓
+- [x] Ollama (`SOLIDWORKS_AI_PROVIDER=ollama`) and LM Studio (`SOLIDWORKS_AI_PROVIDER=lmstudio`) as providers
+- [x] Routes through existing `OpenAIModelClient` via `UsesOpenAIFormat` property
+- [x] `BrokerModelSettings.IsLocalProvider`, `IsLocalProviderName()`, `NormalizeProvider()` extended
+- [x] Default endpoints: `localhost:11434` (Ollama), `localhost:1234` (LM Studio)
+- [x] Longer default timeouts: 60s broker, 90s synthesis
+- [x] Custom model/endpoint via `SOLIDWORKS_AI_OLLAMA_MODEL`, `SOLIDWORKS_AI_LMSTUDIO_MODEL`, etc.
+- [ ] 6 automated capability gate tests before enabling tool calling (deferred — T8-02b)
+- [ ] Label as experimental in UI (deferred — T8-02c)
+- [x] 10 unit tests
 - **Reference:** `research-local-model-feasibility.md`
 
-### T8-03: Final-answer streaming
-- [ ] SSE parsing for final text responses
-- [ ] Stream tokens to answer panel as they arrive
-- [ ] Tool call turns remain fully buffered
-- **Reference:** `research-tool-calling-abstraction.md`
+### T8-03: Final-answer streaming ✓
+- [x] `SseStreamReader` utility: parses SSE `data:` lines, extracts `choices[0].delta.content`, handles `[DONE]`, malformed JSON, usage in final chunk
+- [x] `IStreamingModelClient` interface extending `IModelClient` with `SynthesizeStreaming(prompt, onTextChunk)`
+- [x] `OpenAIModelClient.SynthesizeStreaming` — sends `stream:true` + `stream_options.include_usage`, reads SSE via `SseStreamReader`
+- [x] `GroundingSynthesisService.Build` overload with `Action<string>? onTextChunk` — routes to streaming when client supports it
+- [x] `HostState.CompleteAssistantRun` accepts `Action<string>? onStreamChunk`, gates on `SOLIDWORKS_AI_STREAM_FINAL_TEXT`
+- [x] `TaskPaneControl`: `startStreaming(userHtml)` JS adds user bubble + `<pre id="stream-target">`, `appendStreamChunk(text)` appends via `createTextNode`, auto-scroll. `ApplySnapshot` re-renders final markdown.
+- [x] Tool call turns remain fully buffered (streaming only on synthesis/final text pass)
+- [x] Feature-gated behind `SOLIDWORKS_AI_STREAM_FINAL_TEXT=true`
+- [x] 19 unit tests for SSE parsing + streaming infrastructure
+- [ ] Agentic loop final-turn streaming (deferred — same SSE parser, separate wiring in `OpenAIFormatAgentClient`)
+- **Reference:** `research-streaming-ux-patterns.md`, `research-local-model-feasibility.md` section 3
+
+### T8-NEW: Local endpoint health check and graceful degradation ✓
+- [x] `LocalEndpointHealthCheck` — pings `GET /v1/models` for Ollama/LM Studio. Returns `LocalHealthStatus` (Ready, Reachable, NoModels, ModelNotFound, Unreachable, Error)
+- [x] `BuildModelsUrl()` — derives `/v1/models` URL from chat completions endpoint
+- [x] `LocalHealthResult.IsHealthy` — true only when `Ready`
+- [x] `GroundingSynthesisService` — local provider failures produce clear "Local model (provider) response was unusable — used deterministic planner" message
+- [x] Cloud provider failures remain unchanged
+- [x] 13 health check tests + 5 synthesis degradation tests
+- **Files:** `src/Adze.Broker/Clients/LocalEndpointHealthCheck.cs`, `src/Adze.Broker/Orchestration/GroundingSynthesisService.cs`
+- [ ] Wire health check into Task Pane Status section (deferred — display at startup)
+- [ ] Capability gate probing before enabling tool calling (deferred — T8-02b)
 
 ### T8-04: Large assembly performance
 - [ ] Lazy tool execution (don't execute all tools upfront)
@@ -328,18 +358,19 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - **Why:** Every competitor (AURA, Autodesk Assistant, Siemens Copilot) renders polished conversational UI. Raw text is Adze's most visible gap.
 - **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
 
-### T9-02: "What's Wrong" diagnostic intent
-- [ ] Add dedicated diagnostic intent to clarification UI
-- [ ] When triggered, agent prioritizes: get_rebuild_diagnostics, get_feature_tree_slice, get_dimensions
-- [ ] Prompt tuning for root-cause analysis output style
-- **Why:** SOLIDWORKS Labs "What's Wrong (Beta)" validates this as a high-value use case. Adze already has the tools — just needs intent routing.
-- **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`, `src/Adze.Broker/Formatting/ContextPromptComposer.cs`
-- **Priority:** MEDIUM — low effort, leverages existing infrastructure
+### T9-02: "What's Wrong" diagnostic intent ✓
+- [x] Clarification prefix parsing via `ExtractClarificationIntent()` — detects "diagnose"/"diagnostic"
+- [x] Expanded keyword detection: "what's wrong", "broken", "failed", etc.
+- [x] Diagnostic tool boosting: prioritizes `get_rebuild_diagnostics`, `get_feature_tree_slice`, `get_dimensions`
+- [x] Intent-aware agent and synthesis prompts via `ContextPromptComposer.BuildAgentSystemPrompt(detectedIntent)`
+- **Why:** SOLIDWORKS Labs "What's Wrong (Beta)" validates this as a high-value use case.
+- **Files:** `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Broker/Formatting/ContextPromptComposer.cs`, `src/Adze.Broker/Orchestration/KeywordBrokerOrchestrator.cs`
 
-### T9-03: Accelerate recipe suggestions in Task Pane (was T5-04)
-- [ ] "Suggested recipes" section when relevant recipes match current context
-- [ ] One-click execution of promoted recipes
-- **Why:** SOLIDWORKS Labs "Command Predictor" validates predictive assistance. Adze's recipe system is architecturally richer. Surface it.
+### T9-03: Accelerate recipe suggestions in Task Pane (was T5-04) ✓
+- [x] Collapsible "Suggested Recipes" section with recipe cards
+- [x] Run/Promote buttons via JS bridge (`RunRecipe`, `PromoteRecipe`)
+- [x] Merged with T5-04 implementation
+- **Why:** SOLIDWORKS Labs "Command Predictor" validates predictive assistance. Adze's recipe system is architecturally richer.
 - **Reference:** T5-04, research-solidworks-ai-ecosystem.md (Command Predictor comparison)
 - **Files:** `src/Adze.Host/UI/TaskPaneControl.cs`
 
@@ -356,7 +387,7 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] ChatEntry tracking in HostState with document-aware clearing
 - [x] User/assistant bubble rendering with per-message footer
 - [x] Request box clears after run for follow-up input
-- [ ] Pass prior conversation context to agent loop for multi-turn awareness (deferred — visual history works now, model context linkage next)
+- [x] Pass prior conversation context to agent loop via `BuildPriorConversation()` → `ConversationTruncator` (max 20 messages, 6 protected recent) → OpenAI-format messages
 - **Why:** Every competitor has chat-style interaction. Adze has the backend (conversation state + truncation) but renders single-shot.
 - **Files:** `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`
 

@@ -100,6 +100,8 @@
     <Compile Include="Broker\MultiTurnContextTests.cs" />
     <Compile Include="Index\OleIndexerTests.cs" />
     <Compile Include="Tools\SearchProjectFilesToolTests.cs" />
+    <Compile Include="Broker\SseStreamReaderTests.cs" />
+    <Compile Include="Broker\LocalEndpointHealthCheckTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

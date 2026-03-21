@@ -241,6 +241,107 @@ public sealed class GroundingSynthesisServiceTests
         };
     }
 
+    // --- Local model graceful degradation tests ---
+
+    [Test]
+    public void Build_LocalProviderFailure_IncludesLocalModelMessage()
+    {
+        GroundingExecutionReport report = CreateReport();
+        var client = new SynthesisStubModelClient(new AssistantSynthesisResult
+        {
+            Success = false,
+            Provider = "ollama",
+            Model = "qwen2.5:32b",
+            FailureReason = "Malformed JSON response"
+        });
+
+        GroundingSynthesisOutcome outcome = GroundingSynthesisService.Build(report, "{}", "[]", client);
+
+        Assert.That(outcome.Source, Is.EqualTo("deterministic_fallback"));
+        Assert.That(outcome.FailureReason, Does.Contain("Local model"));
+        Assert.That(outcome.FailureReason, Does.Contain("ollama"));
+        Assert.That(outcome.FailureReason, Does.Contain("deterministic planner"));
+    }
+
+    [Test]
+    public void Build_LocalProviderEmptyResponse_IncludesLocalModelMessage()
+    {
+        GroundingExecutionReport report = CreateReport();
+        var client = new SynthesisStubModelClient(new AssistantSynthesisResult
+        {
+            Success = true,
+            Provider = "lmstudio",
+            Model = "qwen2.5-32b",
+            ResponseText = ""
+        });
+
+        GroundingSynthesisOutcome outcome = GroundingSynthesisService.Build(report, "{}", "[]", client);
+
+        Assert.That(outcome.Source, Is.EqualTo("deterministic_fallback"));
+        Assert.That(outcome.FailureReason, Does.Contain("Local model"));
+        Assert.That(outcome.FailureReason, Does.Contain("lmstudio"));
+    }
+
+    [Test]
+    public void Build_CloudProviderFailure_NoLocalModelMessage()
+    {
+        GroundingExecutionReport report = CreateReport();
+        var client = new SynthesisStubModelClient(new AssistantSynthesisResult
+        {
+            Success = false,
+            Provider = "openai",
+            Model = "gpt-4o",
+            FailureReason = "Rate limit exceeded"
+        });
+
+        GroundingSynthesisOutcome outcome = GroundingSynthesisService.Build(report, "{}", "[]", client);
+
+        Assert.That(outcome.Source, Is.EqualTo("deterministic_fallback"));
+        Assert.That(outcome.FailureReason, Does.Not.Contain("Local model"));
+        Assert.That(outcome.FailureReason, Does.Contain("Rate limit exceeded"));
+    }
+
+    // --- Streaming integration tests ---
+
+    [Test]
+    public void Build_WithStreamCallback_NonStreamingClient_FallsBackToNonStreaming()
+    {
+        GroundingExecutionReport report = CreateReport();
+        var client = new SynthesisStubModelClient(new AssistantSynthesisResult
+        {
+            Success = true,
+            Provider = "openai",
+            Model = "gpt-4o",
+            ResponseText = "Test answer"
+        });
+
+        var chunks = new System.Collections.Generic.List<string>();
+        GroundingSynthesisOutcome outcome = GroundingSynthesisService.Build(
+            report, "{}", "[]", client,
+            chunk => chunks.Add(chunk));
+
+        Assert.That(outcome.AnswerText, Is.EqualTo("Test answer"));
+        Assert.That(chunks.Count, Is.EqualTo(0)); // Non-streaming client, no chunks
+    }
+
+    [Test]
+    public void Build_WithNullStreamCallback_UsesNonStreaming()
+    {
+        GroundingExecutionReport report = CreateReport();
+        var client = new SynthesisStubModelClient(new AssistantSynthesisResult
+        {
+            Success = true,
+            Provider = "anthropic",
+            Model = "claude-sonnet",
+            ResponseText = "Anthropic answer"
+        });
+
+        GroundingSynthesisOutcome outcome = GroundingSynthesisService.Build(
+            report, "{}", "[]", client, null);
+
+        Assert.That(outcome.AnswerText, Is.EqualTo("Anthropic answer"));
+    }
+
     private sealed class SynthesisStubModelClient : IModelClient
     {
         private readonly AssistantSynthesisResult _synthesisResult;

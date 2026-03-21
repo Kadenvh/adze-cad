@@ -68,6 +68,8 @@
     <Compile Include="Clients\AgentModelClientFactory.cs" />
     <Compile Include="Clients\OpenAIFormatAgentClient.cs" />
     <Compile Include="Clients\OpenAIModelClient.cs" />
+    <Compile Include="Clients\SseStreamReader.cs" />
+    <Compile Include="Clients\LocalEndpointHealthCheck.cs" />
     <Compile Include="Configuration\AgentModelSettings.cs" />
     <Compile Include="Configuration\BrokerModelSettings.cs" />
     <Compile Include="Configuration\CostBudgetSettings.cs" />

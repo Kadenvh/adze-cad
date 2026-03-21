@@ -379,12 +379,17 @@ internal static class HostState
 
     public static AssistantRunSnapshot CompleteAssistantRun(AssistantRunPreparation preparation)
     {
+        return CompleteAssistantRun(preparation, null);
+    }
+
+    public static AssistantRunSnapshot CompleteAssistantRun(AssistantRunPreparation preparation, Action<string>? onStreamChunk)
+    {
         if (preparation == null)
         {
             throw new ArgumentNullException(nameof(preparation));
         }
 
-        return RunAssistantUnsafe(preparation.Context, preparation.Request, preparation.IsApplicationConnected);
+        return RunAssistantUnsafe(preparation.Context, preparation.Request, preparation.IsApplicationConnected, onStreamChunk);
     }
 
     public static void LogSnapshot(string reason)
@@ -429,6 +434,11 @@ internal static class HostState
 
     private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected)
     {
+        return RunAssistantUnsafe(context, request, isApplicationConnected, null);
+    }
+
+    private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected, Action<string>? onStreamChunk)
+    {
         // Clear chat history if the active document changed
         string currentDocKey = context.Document?.Path ?? string.Empty;
         lock (Sync)
@@ -453,12 +463,12 @@ internal static class HostState
             }
             else
             {
-                snapshot = RunClassicAssistant(context, request, isApplicationConnected);
+                snapshot = RunClassicAssistant(context, request, isApplicationConnected, onStreamChunk);
             }
         }
         else
         {
-            snapshot = RunClassicAssistant(context, request, isApplicationConnected);
+            snapshot = RunClassicAssistant(context, request, isApplicationConnected, onStreamChunk);
         }
 
         // Record in chat history
@@ -620,6 +630,11 @@ internal static class HostState
 
     private static AssistantRunSnapshot RunClassicAssistant(SessionContext context, string request, bool isApplicationConnected)
     {
+        return RunClassicAssistant(context, request, isApplicationConnected, null);
+    }
+
+    private static AssistantRunSnapshot RunClassicAssistant(SessionContext context, string request, bool isApplicationConnected, Action<string>? onStreamChunk)
+    {
         GroundingExecutionReport report = GroundingExecutionService.Execute(context, request, isApplicationConnected);
         string intent = "assistant_run: " + report.Request;
         RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(intent, report.ToolResults, UserId);
@@ -644,7 +659,12 @@ internal static class HostState
         string toolResultsJson = serializer.Serialize(report.ToolResults.Select(ModelJsonMapper.ToJson).ToArray());
         BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
         IModelClient? modelClient = settings.IsUsable() ? ModelClientFactory.Create(settings) : null;
-        GroundingSynthesisOutcome synthesis = GroundingSynthesisService.Build(report, contextJson, toolResultsJson, modelClient);
+
+        // Use streaming when the feature gate is enabled and a callback is provided
+        Action<string>? streamCallback = onStreamChunk != null && FeatureGateRegistry.IsEnabled(FeatureGateRegistry.StreamFinalText)
+            ? onStreamChunk
+            : null;
+        GroundingSynthesisOutcome synthesis = GroundingSynthesisService.Build(report, contextJson, toolResultsJson, modelClient, streamCallback);
         string answerText = synthesis.AnswerText;
         string planText = GroundingPlanBuilder.Build(report);
         string toolsText = GroundingToolResultsBuilder.Build(report.ToolResults);
