@@ -18,6 +18,7 @@ public sealed class GroundingToolCatalog
         Mates = new GetMatesTool();
         RebuildDiagnostics = new GetRebuildDiagnosticsTool();
         ReferenceGraph = new GetReferenceGraphTool();
+        SearchProjectFiles = new SearchProjectFilesTool();
     }
 
     public IReadOnlyTool<EmptyParameters> ActiveDocument { get; }
@@ -39,6 +40,8 @@ public sealed class GroundingToolCatalog
     public IReadOnlyTool<GetRebuildDiagnosticsParameters> RebuildDiagnostics { get; }
 
     public IReadOnlyTool<GetReferenceGraphParameters> ReferenceGraph { get; }
+
+    public IReadOnlyTool<SearchProjectFilesParameters> SearchProjectFiles { get; }
 }
 
 public static class ToolCatalog

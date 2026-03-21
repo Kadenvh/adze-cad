@@ -21,6 +21,10 @@ public sealed class BrokerModelSettingsTests
         "OPENAI_API_KEY",
         "SOLIDWORKS_AI_OPENAI_MODEL",
         "SOLIDWORKS_AI_OPENAI_ENDPOINT",
+        "SOLIDWORKS_AI_OLLAMA_ENDPOINT",
+        "SOLIDWORKS_AI_OLLAMA_MODEL",
+        "SOLIDWORKS_AI_LMSTUDIO_ENDPOINT",
+        "SOLIDWORKS_AI_LMSTUDIO_MODEL",
         "SOLIDWORKS_AI_MAX_TOKENS",
         "SOLIDWORKS_AI_ANTHROPIC_MAX_TOKENS",
         "SOLIDWORKS_AI_SYNTHESIS_MAX_TOKENS",
@@ -264,5 +268,131 @@ public sealed class BrokerModelSettingsTests
         };
 
         Assert.That(settings.IsUsable(), Is.True);
+    }
+
+    // --- Local provider tests ---
+
+    [Test]
+    public void LoadFromEnvironment_OllamaProvider_SetsDefaults()
+    {
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER", "ollama");
+
+        BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
+
+        Assert.That(settings.Provider, Is.EqualTo("ollama"));
+        Assert.That(settings.ApiKey, Is.EqualTo("ollama"));
+        Assert.That(settings.Model, Is.EqualTo("qwen2.5:32b"));
+        Assert.That(settings.Endpoint, Is.EqualTo("http://localhost:11434/v1/chat/completions"));
+        Assert.That(settings.Enabled, Is.True);
+        Assert.That(settings.IsLocalProvider, Is.True);
+        Assert.That(settings.UsesOpenAIFormat, Is.True);
+    }
+
+    [Test]
+    public void LoadFromEnvironment_LmStudioProvider_SetsDefaults()
+    {
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER", "lmstudio");
+
+        BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
+
+        Assert.That(settings.Provider, Is.EqualTo("lmstudio"));
+        Assert.That(settings.ApiKey, Is.EqualTo("lm-studio"));
+        Assert.That(settings.Model, Is.EqualTo("qwen2.5-32b"));
+        Assert.That(settings.Endpoint, Is.EqualTo("http://localhost:1234/v1/chat/completions"));
+        Assert.That(settings.Enabled, Is.True);
+        Assert.That(settings.IsLocalProvider, Is.True);
+    }
+
+    [Test]
+    public void LoadFromEnvironment_LmStudioVariantNames_Normalize()
+    {
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER", "lm-studio");
+        BrokerModelSettings settings1 = BrokerModelSettings.LoadFromEnvironment();
+        Assert.That(settings1.Provider, Is.EqualTo("lmstudio"));
+
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER", "lm_studio");
+        BrokerModelSettings settings2 = BrokerModelSettings.LoadFromEnvironment();
+        Assert.That(settings2.Provider, Is.EqualTo("lmstudio"));
+    }
+
+    [Test]
+    public void LoadFromEnvironment_OllamaCustomModel_Applied()
+    {
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER", "ollama");
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_OLLAMA_MODEL", "llama3.3:70b");
+
+        BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
+
+        Assert.That(settings.Model, Is.EqualTo("llama3.3:70b"));
+    }
+
+    [Test]
+    public void LoadFromEnvironment_OllamaCustomEndpoint_Applied()
+    {
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER", "ollama");
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_OLLAMA_ENDPOINT", "http://192.168.1.100:11434/v1/chat/completions");
+
+        BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
+
+        Assert.That(settings.Endpoint, Is.EqualTo("http://192.168.1.100:11434/v1/chat/completions"));
+    }
+
+    [Test]
+    public void LoadFromEnvironment_LocalProvider_LongerDefaultTimeouts()
+    {
+        Environment.SetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER", "ollama");
+
+        BrokerModelSettings settings = BrokerModelSettings.LoadFromEnvironment();
+
+        Assert.That(settings.TimeoutMilliseconds, Is.EqualTo(60000));
+        Assert.That(settings.SynthesisTimeoutMilliseconds, Is.EqualTo(90000));
+    }
+
+    [Test]
+    public void IsUsable_OllamaProvider_ReturnsTrue()
+    {
+        var settings = new BrokerModelSettings
+        {
+            Enabled = true,
+            ApiKey = "ollama",
+            Provider = "ollama",
+            Model = "qwen2.5:32b",
+            Endpoint = "http://localhost:11434/v1/chat/completions"
+        };
+
+        Assert.That(settings.IsUsable(), Is.True);
+    }
+
+    [Test]
+    public void IsUsable_LmStudioProvider_ReturnsTrue()
+    {
+        var settings = new BrokerModelSettings
+        {
+            Enabled = true,
+            ApiKey = "lm-studio",
+            Provider = "lmstudio",
+            Model = "qwen2.5-32b",
+            Endpoint = "http://localhost:1234/v1/chat/completions"
+        };
+
+        Assert.That(settings.IsUsable(), Is.True);
+    }
+
+    [Test]
+    public void IsLocalProviderName_CorrectForAllProviders()
+    {
+        Assert.That(BrokerModelSettings.IsLocalProviderName("ollama"), Is.True);
+        Assert.That(BrokerModelSettings.IsLocalProviderName("lmstudio"), Is.True);
+        Assert.That(BrokerModelSettings.IsLocalProviderName("openai"), Is.False);
+        Assert.That(BrokerModelSettings.IsLocalProviderName("anthropic"), Is.False);
+    }
+
+    [Test]
+    public void UsesOpenAIFormat_CorrectForAllProviders()
+    {
+        Assert.That(new BrokerModelSettings { Provider = "openai" }.UsesOpenAIFormat, Is.True);
+        Assert.That(new BrokerModelSettings { Provider = "ollama" }.UsesOpenAIFormat, Is.True);
+        Assert.That(new BrokerModelSettings { Provider = "lmstudio" }.UsesOpenAIFormat, Is.True);
+        Assert.That(new BrokerModelSettings { Provider = "anthropic" }.UsesOpenAIFormat, Is.False);
     }
 }

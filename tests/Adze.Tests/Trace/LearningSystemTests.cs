@@ -181,6 +181,40 @@ public class AgentRecipeCaptureServiceTests
         Assert.AreEqual("review_ready", result!.PromotionState);
         Assert.AreEqual(1.0, result.ReliabilityScore);
     }
+
+    [Test]
+    public void ListPromoted_ReturnsPromotedRecipes()
+    {
+        // ListPromoted should return a list (empty is fine, no crash)
+        var promoted = AgentRecipeCaptureService.ListPromoted();
+        Assert.IsNotNull(promoted);
+    }
+
+    [Test]
+    public void ListReviewReady_ReturnsReviewReadyRecipes()
+    {
+        var reviewReady = AgentRecipeCaptureService.ListReviewReady();
+        Assert.IsNotNull(reviewReady);
+        // All returned items should be review_ready state
+        foreach (var candidate in reviewReady)
+        {
+            Assert.AreEqual("review_ready", candidate.PromotionState);
+        }
+    }
+
+    [Test]
+    public void ListReviewReady_AfterThreeCaptures_ContainsCandidate()
+    {
+        string uniqueIntent = "list_ready_test_" + Guid.NewGuid().ToString("N");
+        var tools = new List<string> { "get_active_document" };
+
+        AgentRecipeCaptureService.CaptureFromAgentRun(uniqueIntent, tools, true, "lr1_" + uniqueIntent, "testuser");
+        AgentRecipeCaptureService.CaptureFromAgentRun(uniqueIntent, tools, true, "lr2_" + uniqueIntent, "testuser");
+        AgentRecipeCaptureService.CaptureFromAgentRun(uniqueIntent, tools, true, "lr3_" + uniqueIntent, "testuser");
+
+        var reviewReady = AgentRecipeCaptureService.ListReviewReady();
+        Assert.That(reviewReady.Exists(r => r.Intent == uniqueIntent), Is.True);
+    }
 }
 
 [TestFixture]

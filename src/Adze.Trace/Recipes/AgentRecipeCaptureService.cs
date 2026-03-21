@@ -109,6 +109,31 @@ public static class AgentRecipeCaptureService
     }
 
     /// <summary>
+    /// Lists all review-ready (but not yet promoted) recipe candidates.
+    /// </summary>
+    public static List<RecipeCandidate> ListReviewReady()
+    {
+        StatePaths.Ensure();
+        var results = new List<RecipeCandidate>();
+        if (!Directory.Exists(StatePaths.RecipeDirectory))
+            return results;
+
+        foreach (string path in Directory.GetFiles(StatePaths.RecipeDirectory, "*.json"))
+        {
+            if (JsonFileStore.TryRead(path, out Dictionary<string, object> payload))
+            {
+                var candidate = ModelJsonMapper.ToRecipeCandidate(payload, Path.GetFileNameWithoutExtension(path));
+                if (string.Equals(candidate.PromotionState, "review_ready", StringComparison.OrdinalIgnoreCase))
+                {
+                    results.Add(candidate);
+                }
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
     /// Lists all promoted recipes.
     /// </summary>
     public static List<RecipeCandidate> ListPromoted()

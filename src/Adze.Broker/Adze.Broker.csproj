@@ -53,6 +53,10 @@
       <Project>{9B474ACB-90A0-40A6-8BFA-B8C0AD8837C6}</Project>
       <Name>Adze.Tools</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Adze.Index\Adze.Index.csproj">
+      <Project>{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}</Project>
+      <Name>Adze.Index</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

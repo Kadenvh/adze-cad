@@ -24,7 +24,8 @@ public static class ModelClientFactory
             return null;
         }
 
-        return string.Equals(settings.Provider, "openai", StringComparison.OrdinalIgnoreCase)
+        // OpenAI, Ollama, and LM Studio all use the OpenAI-compatible client
+        return settings.UsesOpenAIFormat
             ? new OpenAIModelClient(settings)
             : new AnthropicMessagesModelClient(settings);
     }

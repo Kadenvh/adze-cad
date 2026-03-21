@@ -45,23 +45,67 @@ public sealed class BrokerModelSettings
         string openAiModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_MODEL"));
         string openAiEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_ENDPOINT"));
 
+        // Local provider settings
+        string ollamaEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OLLAMA_ENDPOINT"));
+        string ollamaModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OLLAMA_MODEL"));
+        string lmStudioEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_LMSTUDIO_ENDPOINT"));
+        string lmStudioModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_LMSTUDIO_MODEL"));
+
+        // Local providers use longer default timeouts
+        int localDefaultTimeoutMs = 60000;
+        int localDefaultSynthesisTimeoutMs = 90000;
+
         string provider = ResolveProvider(configuredProvider, openAiApiKey, anthropicApiKey);
-        string activeApiKey = string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)
-            ? openAiApiKey
-            : anthropicApiKey;
-        bool defaultEnabled = !string.IsNullOrWhiteSpace(activeApiKey);
+        bool isLocal = IsLocalProviderName(provider);
+
+        string activeApiKey;
+        string activeModel;
+        string activeEndpoint;
+        int defaultTimeoutMs;
+        int defaultSynthesisTimeoutMs;
+
+        if (string.Equals(provider, "ollama", StringComparison.OrdinalIgnoreCase))
+        {
+            activeApiKey = "ollama"; // Ollama accepts any key
+            activeModel = DefaultIfBlank(ollamaModel, "qwen2.5:32b");
+            activeEndpoint = EnsureChatCompletionsPath(DefaultIfBlank(ollamaEndpoint, "http://localhost:11434/v1/chat/completions"));
+            defaultTimeoutMs = localDefaultTimeoutMs;
+            defaultSynthesisTimeoutMs = localDefaultSynthesisTimeoutMs;
+        }
+        else if (string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase))
+        {
+            activeApiKey = "lm-studio"; // LM Studio accepts any key
+            activeModel = DefaultIfBlank(lmStudioModel, "qwen2.5-32b");
+            activeEndpoint = EnsureChatCompletionsPath(DefaultIfBlank(lmStudioEndpoint, "http://localhost:1234/v1/chat/completions"));
+            defaultTimeoutMs = localDefaultTimeoutMs;
+            defaultSynthesisTimeoutMs = localDefaultSynthesisTimeoutMs;
+        }
+        else if (string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase))
+        {
+            activeApiKey = openAiApiKey;
+            activeModel = DefaultIfBlank(openAiModel, "gpt-4o");
+            activeEndpoint = EnsureChatCompletionsPath(DefaultIfBlank(openAiEndpoint, "https://api.openai.com/v1/chat/completions"));
+            defaultTimeoutMs = 20000;
+            defaultSynthesisTimeoutMs = 30000;
+        }
+        else
+        {
+            activeApiKey = anthropicApiKey;
+            activeModel = DefaultIfBlank(anthropicModel, "claude-sonnet-4-20250514");
+            activeEndpoint = DefaultIfBlank(anthropicEndpoint, "https://api.anthropic.com/v1/messages");
+            defaultTimeoutMs = 20000;
+            defaultSynthesisTimeoutMs = 30000;
+        }
+
+        bool defaultEnabled = isLocal || !string.IsNullOrWhiteSpace(activeApiKey);
 
         return new BrokerModelSettings
         {
             Provider = provider,
             Enabled = ReadBoolean(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ENABLE_MODEL"), defaultEnabled),
             ApiKey = activeApiKey,
-            Model = string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)
-                ? DefaultIfBlank(openAiModel, "gpt-4o")
-                : DefaultIfBlank(anthropicModel, "claude-sonnet-4-20250514"),
-            Endpoint = string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)
-                ? EnsureChatCompletionsPath(DefaultIfBlank(openAiEndpoint, "https://api.openai.com/v1/chat/completions"))
-                : DefaultIfBlank(anthropicEndpoint, "https://api.anthropic.com/v1/messages"),
+            Model = activeModel,
+            Endpoint = activeEndpoint,
             ApiVersion = DefaultIfBlank(anthropicVersion, "2023-06-01"),
             MaxTokens = ReadInteger(
                 FirstNonEmpty(
@@ -77,12 +121,12 @@ public sealed class BrokerModelSettings
                 FirstNonEmpty(
                     Environment.GetEnvironmentVariable("SOLIDWORKS_AI_TIMEOUT_MS"),
                     Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_TIMEOUT_MS")),
-                20000),
+                defaultTimeoutMs),
             SynthesisTimeoutMilliseconds = ReadInteger(
                 FirstNonEmpty(
                     Environment.GetEnvironmentVariable("SOLIDWORKS_AI_SYNTHESIS_TIMEOUT_MS"),
                     Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_SYNTHESIS_TIMEOUT_MS")),
-                30000),
+                defaultSynthesisTimeoutMs),
             Temperature = ReadDouble(
                 FirstNonEmpty(
                     Environment.GetEnvironmentVariable("SOLIDWORKS_AI_TEMPERATURE"),
@@ -102,8 +146,23 @@ public sealed class BrokerModelSettings
         }
 
         return string.Equals(Provider, "openai", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(Provider, "anthropic", StringComparison.OrdinalIgnoreCase);
+               string.Equals(Provider, "anthropic", StringComparison.OrdinalIgnoreCase) ||
+               IsLocalProviderName(Provider);
     }
+
+    public bool IsLocalProvider => IsLocalProviderName(Provider);
+
+    public static bool IsLocalProviderName(string provider)
+    {
+        return string.Equals(provider, "ollama", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Returns true if this provider routes through the OpenAI-compatible client (OpenAI, Ollama, LM Studio).
+    /// </summary>
+    public bool UsesOpenAIFormat =>
+        string.Equals(Provider, "openai", StringComparison.OrdinalIgnoreCase) || IsLocalProvider;
 
     private static string ResolveProvider(string configuredProvider, string openAiApiKey, string anthropicApiKey)
     {
@@ -142,6 +201,8 @@ public sealed class BrokerModelSettings
         {
             "anthropic" => "anthropic",
             "openai" => "openai",
+            "ollama" => "ollama",
+            "lmstudio" or "lm-studio" or "lm_studio" => "lmstudio",
             _ => normalizedProvider
         };
     }

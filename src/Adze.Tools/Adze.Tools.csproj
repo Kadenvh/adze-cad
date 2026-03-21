@@ -48,6 +48,10 @@
       <Project>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</Project>
       <Name>Adze.Contracts</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Adze.Index\Adze.Index.csproj">
+      <Project>{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}</Project>
+      <Name>Adze.Index</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -64,6 +68,7 @@
     <Compile Include="Grounding\GetMatesTool.cs" />
     <Compile Include="Grounding\GetRebuildDiagnosticsTool.cs" />
     <Compile Include="Grounding\GetReferenceGraphTool.cs" />
+    <Compile Include="Grounding\SearchProjectFilesTool.cs" />
     <Compile Include="ToolCatalog.cs" />
     <Compile Include="Write\SetCustomPropertyTool.cs" />
     <Compile Include="Write\SetDimensionValueTool.cs" />

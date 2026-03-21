@@ -99,6 +99,7 @@
     <Compile Include="Broker\DiagnosticIntentTests.cs" />
     <Compile Include="Broker\MultiTurnContextTests.cs" />
     <Compile Include="Index\OleIndexerTests.cs" />
+    <Compile Include="Tools\SearchProjectFilesToolTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

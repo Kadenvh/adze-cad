@@ -236,6 +236,25 @@ internal static class HostState
         }
     }
 
+    public static List<RecipeCandidate> GetSuggestedRecipes()
+    {
+        try
+        {
+            var all = new List<RecipeCandidate>();
+            all.AddRange(AgentRecipeCaptureService.ListPromoted());
+            foreach (var candidate in AgentRecipeCaptureService.ListReviewReady())
+            {
+                if (!all.Exists(r => r.RecipeId == candidate.RecipeId))
+                    all.Add(candidate);
+            }
+            return all;
+        }
+        catch
+        {
+            return new List<RecipeCandidate>();
+        }
+    }
+
     private static string ApplyWriteToolDirect(PendingWriteAction action)
     {
         ISldWorks? application = GetApplicationSnapshot();
@@ -461,9 +480,12 @@ internal static class HostState
     private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient)
     {
         AgentModelSettings agentSettings = AgentModelSettings.LoadFromEnvironment();
+        bool includeRetrieval = FeatureGateRegistry.IsEnabled(FeatureGateRegistry.Retrieval);
         List<AgentToolDefinition> toolDefinitions = AgentModelClientFactory.IsFirstWaveWritesEnabled()
-            ? ToolDefinitionBuilder.BuildAllToolDefinitions()
+            ? ToolDefinitionBuilder.BuildAllToolDefinitions(includeRetrieval)
             : ToolDefinitionBuilder.BuildReadToolDefinitions();
+        if (includeRetrieval && !AgentModelClientFactory.IsFirstWaveWritesEnabled())
+            toolDefinitions.AddRange(ToolDefinitionBuilder.BuildRetrievalToolDefinitions());
         var toolDispatcher = new AgentToolDispatcher();
         var loopRunner = new AgentLoopRunner();
 

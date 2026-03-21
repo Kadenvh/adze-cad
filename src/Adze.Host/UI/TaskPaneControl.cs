@@ -635,6 +635,45 @@ public sealed class TaskPaneControl : UserControl
         return sb.ToString();
     }
 
+    private string BuildRecipeSuggestionsHtml()
+    {
+        var recipes = HostState.GetSuggestedRecipes();
+        if (recipes.Count == 0) return string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append(BuildCollapsibleHeader("recipes", "Suggested Recipes (" + recipes.Count + ")", false));
+        sb.Append("<div id=\"recipes-body\" class=\"section-body\" style=\"display:none\">");
+        for (int i = 0; i < recipes.Count; i++)
+        {
+            var recipe = recipes[i];
+            string stateClass = string.Equals(recipe.PromotionState, "promoted", StringComparison.OrdinalIgnoreCase)
+                ? "recipe-promoted" : "recipe-review";
+            string stateLabel = string.Equals(recipe.PromotionState, "promoted", StringComparison.OrdinalIgnoreCase)
+                ? "Promoted" : "Review Ready";
+
+            sb.Append("<div class=\"recipe-card " + stateClass + "\">");
+            sb.Append("<div class=\"recipe-title\">" + HtmlEncode(recipe.Title) + "</div>");
+            sb.Append("<div class=\"recipe-state\">" + stateLabel + " &middot; " +
+                      recipe.ReliabilityScore.ToString("P0") + " reliability</div>");
+            sb.Append("<div class=\"recipe-tools\">");
+            foreach (string tool in recipe.ToolSequence)
+            {
+                sb.Append("<span class=\"recipe-tool-tag\">" + HtmlEncode(tool) + "</span> ");
+            }
+            sb.Append("</div>");
+            sb.Append("<div class=\"recipe-actions\">");
+            sb.Append("<button class=\"btn-recipe-run\" onclick=\"window.external.RunRecipe(" + i + ")\">Run</button>");
+            if (!string.Equals(recipe.PromotionState, "promoted", StringComparison.OrdinalIgnoreCase))
+            {
+                sb.Append("<button class=\"btn-recipe-promote\" onclick=\"window.external.PromoteRecipe(" + i + ")\">Promote</button>");
+            }
+            sb.Append("</div>");
+            sb.Append("</div>");
+        }
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
     private string BuildWriteHistoryHtml()
     {
         var history = HostState.GetWriteHistory();
@@ -666,6 +705,7 @@ public sealed class TaskPaneControl : UserControl
     private string BuildFullPageHtml()
     {
         string conversationHtml = BuildConversationHtml();
+        string recipeHtml = BuildRecipeSuggestionsHtml();
         string writeHistoryHtml = BuildWriteHistoryHtml();
 
         string planSection = string.Empty;
@@ -887,12 +927,60 @@ public sealed class TaskPaneControl : UserControl
     margin-top: 4px;
   }
 
+  /* --- Recipe suggestions --- */
+  .recipe-card {
+    padding: 8px 10px;
+    margin: 4px 0;
+    border-radius: 4px;
+    border: 1px solid #DDE1E6;
+    background: #FFFFFF;
+  }
+  .recipe-promoted { border-left: 3px solid #2E7D32; }
+  .recipe-review { border-left: 3px solid #E8A500; }
+  .recipe-title { font-size: 12px; font-weight: 600; color: #18304C; }
+  .recipe-state { font-size: 10px; color: #78808A; margin: 2px 0; }
+  .recipe-tools { margin: 4px 0; }
+  .recipe-tool-tag {
+    display: inline-block;
+    font-family: Consolas, monospace;
+    font-size: 10px;
+    background: #F0F2F4;
+    padding: 1px 5px;
+    border-radius: 2px;
+    margin: 1px 2px 1px 0;
+    color: #566370;
+  }
+  .recipe-actions { margin-top: 6px; }
+  .btn-recipe-run {
+    padding: 3px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background: #1976D2;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 4px;
+  }
+  .btn-recipe-run:hover { background: #1565C0; }
+  .btn-recipe-promote {
+    padding: 3px 12px;
+    font-size: 11px;
+    color: #566370;
+    background: #EBEDF0;
+    border: 1px solid #DDE1E6;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .btn-recipe-promote:hover { background: #DDE1E6; }
+
   .muted { color: #78808A; font-style: italic; }
   .content-area { padding: 8px 10px 6px 10px; }
 </style>
 </head><body>
 <div class=""content-area"">" + conversationHtml + @"</div>
 <div class=""sections-area"">"
+    + recipeHtml
     + writeHistoryHtml
     + planSection
     + toolsSection
@@ -1035,6 +1123,33 @@ scrollToBottom();
     {
         HostState.CancelPendingWrite(index);
         RenderContent();
+    }
+
+    public void RunRecipe(int index)
+    {
+        var recipes = HostState.GetSuggestedRecipes();
+        if (index < 0 || index >= recipes.Count) return;
+        var recipe = recipes[index];
+
+        // Populate the request box with the recipe intent and auto-run
+        _requestBox.Text = recipe.Intent;
+        _requestPlaceholderActive = false;
+        _requestBox.ForeColor = Color.FromArgb(34, 41, 47);
+        RunAssistant();
+    }
+
+    public void PromoteRecipe(int index)
+    {
+        var recipes = HostState.GetSuggestedRecipes();
+        if (index < 0 || index >= recipes.Count) return;
+        var recipe = recipes[index];
+
+        if (string.Equals(recipe.PromotionState, "review_ready", StringComparison.OrdinalIgnoreCase))
+        {
+            Adze.Trace.Recipes.AgentRecipeCaptureService.Promote(recipe.RecipeId);
+            _runStateLabel.Text = "Recipe promoted: " + recipe.Title;
+            RenderContent();
+        }
     }
 
     // -----------------------------------------------------------------------

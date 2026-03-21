@@ -102,11 +102,30 @@ public static class ToolDefinitionBuilder
         };
     }
 
-    public static List<AgentToolDefinition> BuildAllToolDefinitions()
+    public static List<AgentToolDefinition> BuildRetrievalToolDefinitions()
+    {
+        return new List<AgentToolDefinition>
+        {
+            Build(ToolNames.SearchProjectFiles,
+                "Searches closed SOLIDWORKS files (.SLDPRT, .SLDASM, .SLDDRW) in a folder by metadata, custom properties, file type, or keyword. Indexes files via OLE Structured Storage without opening them in SOLIDWORKS.",
+                ObjectSchema(
+                    Required("root_folder_path", "string", "Absolute path to the folder to scan for SOLIDWORKS files."),
+                    Optional("file_type", "string", "Filter by type: 'part', 'assembly', or 'drawing'."),
+                    Optional("keyword", "string", "Search keyword matched against file name, title, author, keywords, comments, and custom property values."),
+                    Optional("property_name", "string", "Filter by a specific custom property name."),
+                    Optional("property_value", "string", "Filter by custom property value (substring match). Requires property_name."),
+                    Optional("path_pattern", "string", "Filter by path substring."),
+                    Optional("max_results", "integer", "Maximum results to return (default 20).")))
+        };
+    }
+
+    public static List<AgentToolDefinition> BuildAllToolDefinitions(bool includeRetrieval = false)
     {
         var all = new List<AgentToolDefinition>();
         all.AddRange(BuildReadToolDefinitions());
         all.AddRange(BuildWriteToolDefinitions());
+        if (includeRetrieval)
+            all.AddRange(BuildRetrievalToolDefinitions());
         return all;
     }
 

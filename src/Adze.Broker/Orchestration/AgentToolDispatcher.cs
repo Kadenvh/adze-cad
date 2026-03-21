@@ -6,6 +6,7 @@ using Adze.Broker.Models;
 using Adze.Contracts.Models;
 using Adze.Contracts.Tooling;
 using Adze.Tools;
+using Adze.Tools.Grounding;
 using Adze.Tools.Write;
 
 namespace Adze.Broker.Orchestration;
@@ -116,6 +117,9 @@ public sealed class AgentToolDispatcher : IToolExecutor
 
             case ToolNames.UnsuppressFeature:
                 return DispatchWritePreview(new UnsuppressFeatureTool(), DeserializeUnsuppressFeatureParams(arguments), session);
+
+            case ToolNames.SearchProjectFiles:
+                return _catalog.SearchProjectFiles.Execute(session, DeserializeSearchProjectFilesParams(arguments));
 
             default:
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
@@ -280,6 +284,26 @@ public sealed class AgentToolDispatcher : IToolExecutor
             parameters.Depth = depth;
         if (TryGetBool(args, "include_external_references", out bool includeExternal))
             parameters.IncludeExternalReferences = includeExternal;
+        return parameters;
+    }
+
+    private static SearchProjectFilesParameters DeserializeSearchProjectFilesParams(Dictionary<string, object?> args)
+    {
+        var parameters = new SearchProjectFilesParameters();
+        if (TryGetString(args, "root_folder_path", out string? rootPath))
+            parameters.RootFolderPath = rootPath!;
+        if (TryGetString(args, "file_type", out string? fileType))
+            parameters.FileType = fileType;
+        if (TryGetString(args, "path_pattern", out string? pathPattern))
+            parameters.PathPattern = pathPattern;
+        if (TryGetString(args, "property_name", out string? propName))
+            parameters.PropertyName = propName;
+        if (TryGetString(args, "property_value", out string? propValue))
+            parameters.PropertyValue = propValue;
+        if (TryGetString(args, "keyword", out string? keyword))
+            parameters.Keyword = keyword;
+        if (TryGetInt(args, "max_results", out int maxResults))
+            parameters.MaxResults = maxResults;
         return parameters;
     }
 
