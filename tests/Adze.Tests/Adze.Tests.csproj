@@ -103,6 +103,7 @@
     <Compile Include="Broker\SseStreamReaderTests.cs" />
     <Compile Include="Broker\LocalEndpointHealthCheckTests.cs" />
     <Compile Include="Broker\StreamingAgentTests.cs" />
+    <Compile Include="Broker\ToolCallCapabilityProbeTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

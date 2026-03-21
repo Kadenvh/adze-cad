@@ -29,6 +29,16 @@ public static class AgentModelClientFactory
             return null;
         }
 
+        // For local providers, probe whether the model supports tool calling.
+        // If the probe determines the model does not support tool calls,
+        // return null so the classic synthesis-only path is used instead.
+        if (settings.IsLocalProvider)
+        {
+            var probe = ToolCallCapabilityProbe.GetOrProbe(settings, timeoutMs: 5000);
+            if (probe.Capability == ToolCallCapability.NotSupported)
+                return null;
+        }
+
         // Both OpenAI-compatible and Anthropic providers go through
         // OpenAIFormatAgentClient when routed via OpenRouter.
         // Direct Anthropic support can be added later if needed.

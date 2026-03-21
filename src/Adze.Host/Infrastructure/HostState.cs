@@ -104,6 +104,8 @@ internal static class HostState
     private static readonly List<PendingWriteAction> _pendingWrites = new();
     private static readonly List<CompletedWriteEntry> _writeHistory = new();
     private static string? _chatDocumentKey;
+    private static LocalHealthResult? _localHealthResult;
+    private static volatile bool _localHealthChecked;
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
 
@@ -254,6 +256,33 @@ internal static class HostState
             return new List<RecipeCandidate>();
         }
     }
+
+    /// <summary>
+    /// Kicks off a background health check for local model endpoints (Ollama/LM Studio).
+    /// Only runs once per session. Results are available via GetLocalHealthResult().
+    /// </summary>
+    public static void RunLocalHealthCheckAsync()
+    {
+        if (_localHealthChecked) return;
+        _localHealthChecked = true;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                var settings = BrokerModelSettings.LoadFromEnvironment();
+                if (settings.IsLocalProvider)
+                {
+                    _localHealthResult = LocalEndpointHealthCheck.Check(settings, timeoutMs: 3000);
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("Local health check failed.", ex);
+            }
+        });
+    }
+
+    public static LocalHealthResult? GetLocalHealthResult() => _localHealthResult;
 
     private static string ApplyWriteToolDirect(PendingWriteAction action)
     {

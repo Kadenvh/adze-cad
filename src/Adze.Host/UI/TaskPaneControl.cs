@@ -512,9 +512,10 @@ public sealed class TaskPaneControl : UserControl
         try
         {
             _statusText = HostState.BuildStatusText();
-            string statusHtml = string.IsNullOrWhiteSpace(_statusText)
+            string healthHtml = BuildLocalHealthHtml();
+            string statusHtml = healthHtml + (string.IsNullOrWhiteSpace(_statusText)
                 ? "<pre>Status refreshes when expanded.</pre>"
-                : "<pre>" + HtmlEncode(_statusText) + "</pre>";
+                : "<pre>" + HtmlEncode(_statusText) + "</pre>");
             try
             {
                 _contentBrowser.Document?.InvokeScript("updateSectionContent",
@@ -533,6 +534,7 @@ public sealed class TaskPaneControl : UserControl
     {
         if (_statusRefreshScheduled || !IsHandleCreated || IsDisposed) return;
         _statusRefreshScheduled = true;
+        HostState.RunLocalHealthCheckAsync();
         BeginInvoke((Action)(() =>
         {
             _statusRefreshScheduled = false;
@@ -728,6 +730,57 @@ public sealed class TaskPaneControl : UserControl
         return sb.ToString();
     }
 
+    private static string BuildLocalHealthHtml()
+    {
+        var result = HostState.GetLocalHealthResult();
+        if (result == null || result.Status == Adze.Broker.Clients.LocalHealthStatus.NotApplicable)
+            return string.Empty;
+
+        string cssClass;
+        string icon;
+        switch (result.Status)
+        {
+            case Adze.Broker.Clients.LocalHealthStatus.Ready:
+                cssClass = "health-ready";
+                icon = "&#10003;";
+                break;
+            case Adze.Broker.Clients.LocalHealthStatus.Unreachable:
+                cssClass = "health-error";
+                icon = "&#9888;";
+                break;
+            case Adze.Broker.Clients.LocalHealthStatus.NoModels:
+            case Adze.Broker.Clients.LocalHealthStatus.ModelNotFound:
+                cssClass = "health-warning";
+                icon = "&#9888;";
+                break;
+            default:
+                cssClass = "health-error";
+                icon = "&#9888;";
+                break;
+        }
+
+        string message = HtmlEncode(result.Message);
+        string guidance = string.Empty;
+        switch (result.Status)
+        {
+            case Adze.Broker.Clients.LocalHealthStatus.Unreachable:
+                guidance = message.IndexOf("ollama", StringComparison.OrdinalIgnoreCase) >= 0
+                    ? "<div class=\"health-guidance\">Start the server: <code>ollama serve</code></div>"
+                    : "<div class=\"health-guidance\">Start the LM Studio server from the application.</div>";
+                break;
+            case Adze.Broker.Clients.LocalHealthStatus.NoModels:
+                guidance = "<div class=\"health-guidance\">Pull a model: <code>ollama pull qwen2.5:32b</code></div>";
+                break;
+            case Adze.Broker.Clients.LocalHealthStatus.ModelNotFound:
+                if (result.AvailableModels.Count > 0)
+                    guidance = "<div class=\"health-guidance\">Available: " +
+                        HtmlEncode(string.Join(", ", result.AvailableModels)) + "</div>";
+                break;
+        }
+
+        return "<div class=\"health-banner " + cssClass + "\">" + icon + " " + message + guidance + "</div>";
+    }
+
     private static string BuildCollapsibleHeader(string id, string label, bool open)
     {
         string arrow = open ? "&#9662;" : "&#9656;";
@@ -758,8 +811,10 @@ public sealed class TaskPaneControl : UserControl
                 HtmlEncode(_toolsText) + "</pre></div>";
         }
 
+        string healthBanner = BuildLocalHealthHtml();
         string statusSection = BuildCollapsibleHeader("status", "Status", false) +
-            "<div id=\"status-body\" class=\"section-body\" style=\"display:none\"><pre>" +
+            "<div id=\"status-body\" class=\"section-body\" style=\"display:none\">" +
+            healthBanner + "<pre>" +
             HtmlEncode(string.IsNullOrWhiteSpace(_statusText) ? "Status refreshes when expanded." : _statusText) +
             "</pre></div>";
 
@@ -1009,6 +1064,13 @@ public sealed class TaskPaneControl : UserControl
 
   .muted { color: #78808A; font-style: italic; }
   .content-area { padding: 8px 10px 6px 10px; }
+
+  /* --- Health check banners --- */
+  .health-banner { padding: 6px 10px; margin: 0 0 6px 0; border-radius: 4px; font-size: 12px; line-height: 1.4; }
+  .health-ready { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+  .health-warning { background: #FFF8E1; color: #F57F17; border: 1px solid #FFE082; }
+  .health-error { background: #FFF5F5; color: #C62828; border: 1px solid #FFCDD2; }
+  .health-guidance { font-size: 11px; margin-top: 3px; opacity: 0.85; }
 </style>
 </head><body>
 <div id=""chat-area"" class=""content-area"">" + conversationHtml + @"</div>
