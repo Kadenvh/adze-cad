@@ -1,6 +1,6 @@
 # Adze Task Index
 
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-03-23
 **Source:** END-GOAL-FINAL.md + IMPLEMENTATION-BLUEPRINT.md + 7 research briefs + 4 discovery briefs
 
 This is the comprehensive task breakdown for the full agentic implementation. Tasks are organized by phase, with dependencies, acceptance criteria, and references to supporting research.
@@ -267,7 +267,7 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Default endpoints: `localhost:11434` (Ollama), `localhost:1234` (LM Studio)
 - [x] Longer default timeouts: 60s broker, 90s synthesis
 - [x] Custom model/endpoint via `SOLIDWORKS_AI_OLLAMA_MODEL`, `SOLIDWORKS_AI_LMSTUDIO_MODEL`, etc.
-- [ ] 6 automated capability gate tests before enabling tool calling (deferred — T8-02b)
+- [x] Capability gate probing before enabling tool calling (T8-02b) — `ToolCallCapabilityProbe`, 13 tests
 - [ ] Label as experimental in UI (deferred — T8-02c)
 - [x] 10 unit tests
 - **Reference:** `research-local-model-feasibility.md`
@@ -282,7 +282,7 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Tool call turns remain fully buffered (streaming only on synthesis/final text pass)
 - [x] Feature-gated behind `SOLIDWORKS_AI_STREAM_FINAL_TEXT=true`
 - [x] 19 unit tests for SSE parsing + streaming infrastructure
-- [ ] Agentic loop final-turn streaming (deferred — same SSE parser, separate wiring in `OpenAIFormatAgentClient`)
+- [x] Agentic loop final-turn streaming — `IStreamingAgentModelClient`, `OpenAIFormatAgentClient.SendTurnStreaming`, `AgentLoopRunner` streaming overload, HostState wiring. 12 tests.
 - **Reference:** `research-streaming-ux-patterns.md`, `research-local-model-feasibility.md` section 3
 
 ### T8-NEW: Local endpoint health check and graceful degradation ✓
@@ -293,8 +293,8 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Cloud provider failures remain unchanged
 - [x] 13 health check tests + 5 synthesis degradation tests
 - **Files:** `src/Adze.Broker/Clients/LocalEndpointHealthCheck.cs`, `src/Adze.Broker/Orchestration/GroundingSynthesisService.cs`
-- [ ] Wire health check into Task Pane Status section (deferred — display at startup)
-- [ ] Capability gate probing before enabling tool calling (deferred — T8-02b)
+- [x] Wire health check into Task Pane Status section — `HostState.RunLocalHealthCheckAsync()`, styled health banners (ready/warning/error), actionable guidance messages
+- [x] Capability gate probing (T8-02b) — `ToolCallCapabilityProbe` sends minimal tool-calling request, caches per provider+model, `AgentModelClientFactory` falls back to synthesis-only when unsupported. 13 tests.
 
 ### T8-04: Large assembly performance
 - [ ] Lazy tool execution (don't execute all tools upfront)
