@@ -56,3 +56,4 @@ packages/
 # Local workspace tooling
 .ava/
 .stfolder/
+.mcp.json
