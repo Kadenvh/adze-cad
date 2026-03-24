@@ -6,11 +6,15 @@ namespace Adze.Broker.Clients;
 
 /// <summary>
 /// Detects HTTP 429 rate-limit responses and provides retry-after delays.
+/// Tracks active rate limit windows so subsequent requests can queue rather
+/// than immediately hitting the API.
 /// </summary>
 public static class RateLimitHelper
 {
     private const int DefaultRetryAfterMs = 2000;
     private const int MaxRetryAfterMs = 15000;
+    private static readonly object _lock = new();
+    private static DateTimeOffset _rateLimitExpiresUtc = DateTimeOffset.MinValue;
 
     public static bool IsRateLimited(WebException ex)
     {
@@ -48,10 +52,12 @@ public static class RateLimitHelper
 
     /// <summary>
     /// Sleeps for the retry-after duration. Returns false if cancelled.
+    /// Also records the rate limit window for queuing.
     /// </summary>
     public static bool WaitForRetry(WebException ex, CancellationToken ct = default)
     {
         int delayMs = GetRetryAfterMs(ex);
+        RecordRateLimitWindow(delayMs);
         try
         {
             if (ct.CanBeCanceled)
@@ -65,6 +71,80 @@ public static class RateLimitHelper
         catch (OperationCanceledException)
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Records that a rate limit is active for the given duration.
+    /// Subsequent calls to WaitIfRateLimited will delay until the window expires.
+    /// </summary>
+    public static void RecordRateLimitWindow(int durationMs)
+    {
+        lock (_lock)
+        {
+            var newExpiry = DateTimeOffset.UtcNow.AddMilliseconds(durationMs);
+            if (newExpiry > _rateLimitExpiresUtc)
+                _rateLimitExpiresUtc = newExpiry;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if a rate limit window is currently active.
+    /// </summary>
+    public static bool IsInRateLimitWindow()
+    {
+        lock (_lock)
+        {
+            return DateTimeOffset.UtcNow < _rateLimitExpiresUtc;
+        }
+    }
+
+    /// <summary>
+    /// Returns the remaining milliseconds in the current rate limit window, or 0 if none.
+    /// </summary>
+    public static int GetRemainingWindowMs()
+    {
+        lock (_lock)
+        {
+            var remaining = _rateLimitExpiresUtc - DateTimeOffset.UtcNow;
+            return remaining.TotalMilliseconds > 0 ? (int)remaining.TotalMilliseconds : 0;
+        }
+    }
+
+    /// <summary>
+    /// If a rate limit window is active, waits until it expires before proceeding.
+    /// Returns true if the wait completed, false if cancelled.
+    /// </summary>
+    public static bool WaitIfRateLimited(CancellationToken ct = default)
+    {
+        int remainingMs = GetRemainingWindowMs();
+        if (remainingMs <= 0)
+            return true;
+
+        try
+        {
+            if (ct.CanBeCanceled)
+            {
+                ct.WaitHandle.WaitOne(remainingMs);
+                return !ct.IsCancellationRequested;
+            }
+            Thread.Sleep(remainingMs);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Clears the rate limit window. Used for testing.
+    /// </summary>
+    public static void ResetWindow()
+    {
+        lock (_lock)
+        {
+            _rateLimitExpiresUtc = DateTimeOffset.MinValue;
         }
     }
 }

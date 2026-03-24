@@ -33,8 +33,13 @@ public sealed class GetDimensionsTool : IReadOnlyTool<GetDimensionsParameters>
             source = Array.Empty<DimensionNode>();
         }
 
+        int totalAvailable = source.Count();
+        int offset = Math.Max(0, parameters.Offset);
+        int limit = Math.Max(1, Math.Min(parameters.Limit, 200));
+
         List<Dictionary<string, object?>> items = source
-            .Take(50)
+            .Skip(offset)
+            .Take(limit)
             .Select(item => new Dictionary<string, object?>
             {
                 ["name"] = item.Name,
@@ -49,9 +54,12 @@ public sealed class GetDimensionsTool : IReadOnlyTool<GetDimensionsParameters>
             result.Summary = "No dimensions found for the requested scope.";
         }
 
+        bool hasMore = offset + items.Count < totalAvailable;
         result.Data["scope"] = string.IsNullOrWhiteSpace(parameters.Scope) ? "selection" : parameters.Scope.Trim();
-        result.Data["count"] = context.Dimensions.Count;
+        result.Data["total_count"] = totalAvailable;
+        result.Data["offset"] = offset;
         result.Data["returned_count"] = items.Count;
+        result.Data["has_more"] = hasMore;
         result.Data["include_driven"] = parameters.IncludeDriven;
         result.Data["items"] = items;
         return result;

@@ -33,6 +33,7 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
         List<AgentToolDefinition> toolDefinitions,
         AgentModelSettings settings)
     {
+        RateLimitHelper.WaitIfRateLimited();
         const int maxRetries = 1;
         for (int attempt = 0; ; attempt++)
         {
@@ -149,6 +150,7 @@ public sealed class OpenAIFormatAgentClient : IStreamingAgentModelClient
         AgentModelSettings settings,
         Action<string> onTextChunk)
     {
+        RateLimitHelper.WaitIfRateLimited();
         const int maxRetries = 1;
         for (int attempt = 0; ; attempt++)
         {

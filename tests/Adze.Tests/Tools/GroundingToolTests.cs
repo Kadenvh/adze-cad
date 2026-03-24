@@ -182,7 +182,7 @@ public sealed class GroundingToolTests
         ToolResult result = _catalog.Dimensions.Execute(context, new GetDimensionsParameters { Scope = "document" });
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Data["count"], Is.EqualTo(3));
+        Assert.That(result.Data["total_count"], Is.EqualTo(3));
         Assert.That(result.Data["returned_count"], Is.EqualTo(3));
     }
 
@@ -195,6 +195,42 @@ public sealed class GroundingToolTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.Data["returned_count"], Is.EqualTo(0));
+    }
+
+    [Test]
+    public void GetDimensions_Pagination_OffsetAndLimit()
+    {
+        SessionContext context = SessionContextFactory.CreateWithDimensions();
+
+        ToolResult result = _catalog.Dimensions.Execute(context, new GetDimensionsParameters
+        {
+            Scope = "document",
+            Offset = 1,
+            Limit = 1
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Data["total_count"], Is.EqualTo(3));
+        Assert.That(result.Data["returned_count"], Is.EqualTo(1));
+        Assert.That(result.Data["offset"], Is.EqualTo(1));
+        Assert.That(result.Data["has_more"], Is.True);
+    }
+
+    [Test]
+    public void GetDimensions_Pagination_LastPage()
+    {
+        SessionContext context = SessionContextFactory.CreateWithDimensions();
+
+        ToolResult result = _catalog.Dimensions.Execute(context, new GetDimensionsParameters
+        {
+            Scope = "document",
+            Offset = 2,
+            Limit = 50
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Data["returned_count"], Is.EqualTo(1));
+        Assert.That(result.Data["has_more"], Is.False);
     }
 
     [Test]
@@ -274,6 +310,25 @@ public sealed class GroundingToolTests
     }
 
     [Test]
+    public void GetMates_Pagination_OffsetAndLimit()
+    {
+        SessionContext context = SessionContextFactory.CreateWithAssembly();
+
+        ToolResult result = _catalog.Mates.Execute(context, new GetMatesParameters
+        {
+            Scope = "document",
+            Offset = 1,
+            Limit = 1
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Data["total_count"], Is.EqualTo(2));
+        Assert.That(result.Data["returned_count"], Is.EqualTo(1));
+        Assert.That(result.Data["offset"], Is.EqualTo(1));
+        Assert.That(result.Data["has_more"], Is.False);
+    }
+
+    [Test]
     public void GetMates_AssemblyWithMates_ReturnsList()
     {
         SessionContext context = SessionContextFactory.CreateWithAssembly();
@@ -281,7 +336,7 @@ public sealed class GroundingToolTests
         ToolResult result = _catalog.Mates.Execute(context, new GetMatesParameters { Scope = "document", Limit = 50 });
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Data["count"], Is.EqualTo(2));
+        Assert.That(result.Data["total_count"], Is.EqualTo(2));
         Assert.That(result.Data["returned_count"], Is.EqualTo(2));
     }
 

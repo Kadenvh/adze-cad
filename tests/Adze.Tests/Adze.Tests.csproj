@@ -105,6 +105,11 @@
     <Compile Include="Broker\StreamingAgentTests.cs" />
     <Compile Include="Broker\ToolCallCapabilityProbeTests.cs" />
     <Compile Include="Broker\RateLimitHelperTests.cs" />
+    <Compile Include="Broker\UiThreadInvokerTests.cs" />
+    <Compile Include="Broker\SessionTelemetryTests.cs" />
+    <Compile Include="Broker\ErrorClassifierTests.cs" />
+    <Compile Include="Broker\ElevatedConfirmationTests.cs" />
+    <Compile Include="Tools\DependencyAnalyzerTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

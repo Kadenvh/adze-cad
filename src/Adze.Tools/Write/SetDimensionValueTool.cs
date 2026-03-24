@@ -10,10 +10,13 @@ public sealed class SetDimensionValueTool : IWriteTool<SetDimensionValueParamete
 {
     public WritePreview Preview(SessionContext context, SetDimensionValueParameters parameters)
     {
+        string configSuffix = string.IsNullOrWhiteSpace(parameters.ConfigurationName)
+            ? ""
+            : " in configuration \"" + parameters.ConfigurationName + "\"";
         var preview = new WritePreview
         {
             ToolName = Contracts.Tooling.ToolNames.SetDimensionValue,
-            Summary = "Set dimension \"" + parameters.DimensionFullName + "\" to " + parameters.NewValue
+            Summary = "Set dimension \"" + parameters.DimensionFullName + "\" to " + parameters.NewValue + configSuffix
         };
 
         DimensionNode? existingDim = context.Dimensions.Items

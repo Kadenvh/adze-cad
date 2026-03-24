@@ -237,27 +237,34 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Stop on first failure, report partial progress in write history
 - **Files:** `src/Adze.Host/Infrastructure/HostState.cs`
 
-### T7-03: Advanced write tools (gated by Gate G)
-- [ ] Component insertion: `AssemblyDoc.AddComponent5()`
-- [ ] Drawing view creation: standard views
-- [ ] Configuration-scoped advanced edits
-- [ ] Each requires elevated confirmation
+### T7-03: Advanced write tools (partially ✓)
+- [x] `rename_object` — `RenameObjectTool` with full IWriteTool lifecycle: preview (name collision detection, dimension reference warnings), apply (feature.Name via COM), verify (name change confirmed in refreshed tree). Wired into dispatcher, schema builder, HostState. 12 tests.
+- [x] `insert_component` — `InsertComponentTool`, Class 3 (HardWriteAdvanced). Assembly-only. Preview validates doc type, file extension (.SLDPRT/.SLDASM), duplicate detection via reference graph, insertion coordinates. Apply uses `AddComponent5()` via COM. Elevated confirmation UI. 11 tests.
+- [ ] Drawing view creation: standard views (gated by Gate G)
+- [ ] Configuration-scoped advanced edits (gated by Gate G)
+- [x] Elevated confirmation UI infra: `PendingWriteAction.IsElevated`, `ElevatedToolNames` set, orange-bordered cards with "Elevated Change" header, CSS for `.write-card-elevated` and `.write-header-elevated`. 6 tests.
+- **Files:** `src/Adze.Tools/Write/RenameObjectTool.cs`, `src/Adze.Tools/Write/InsertComponentTool.cs`
 
-### T7-04: Dependency preview for advanced writes
-- [ ] Show affected dependents before suppression/modification
-- [ ] Rebuild preview for cascade-sensitive operations
+### T7-04: Dependency preview for advanced writes ✓
+- [x] `DependencyAnalyzer` — analyzes cascade risk for suppression and dimension changes
+- [x] Feature tree ordering + type heuristics (sketch→extrusion, extrusion→fillet/shell/pattern/mirror)
+- [x] Dimension reference detection (FullName search), mate reference detection (component search)
+- [x] `CascadeRisk` enum (None/Low/Medium/High), `DependencyPreview` with affected features/dimensions/mates
+- [x] Integrated into `SuppressFeatureTool.Preview` — replaces old basic dependency check
+- 12 unit tests
+- **Files:** `src/Adze.Tools/Write/DependencyAnalyzer.cs`
 
 ---
 
 ## Phase 8: Production Hardening
 
-### T8-01: Cost controls and budget management ✓ (core)
+### T8-01: Cost controls and budget management ✓
 - `CostBudgetSettings` + `BudgetStatus` in `Adze.Broker/Configuration/`
 - Per-session and per-day token limits from env vars
 - `IsOverBudget`, `IsNearLimit(percent)`, `FormatSummary()`
-- [ ] Usage dashboard in Status tab with cost estimates by provider
-- [ ] Warning UI when approaching budget limit
-- 6 unit tests
+- [x] Usage dashboard in Status section with run count, token breakdown, session budget progress bar, estimated cost
+- [x] Warning banner (health-warning) when approaching budget limit, error banner (health-error) when budget exhausted
+- 9 unit tests
 
 ### T8-02: Local model support (experimental) ✓
 - [x] Ollama (`SOLIDWORKS_AI_PROVIDER=ollama`) and LM Studio (`SOLIDWORKS_AI_PROVIDER=lmstudio`) as providers
@@ -303,15 +310,18 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ### T8-05: Rate limiting and retry ✓
 - [x] Retry with backoff for 429 responses — `RateLimitHelper` with `Retry-After` header parsing (capped 15s), max 1 retry
-- [ ] Request queuing during rate limit windows
-- [x] Provider-specific rate limit detection — `RateLimitHelper.IsRateLimited()` checks HTTP 429 status. 7 tests.
+- [x] Request queuing during rate limit windows — `RecordRateLimitWindow`, `IsInRateLimitWindow`, `WaitIfRateLimited`. All model clients call `WaitIfRateLimited()` before API requests. 5 additional tests.
+- [x] Provider-specific rate limit detection — `RateLimitHelper.IsRateLimited()` checks HTTP 429 status. 12 tests total.
 
-### T8-06: Advanced telemetry
-- [ ] Track which tools are called most
-- [ ] Track plan success/failure rates
-- [ ] Track where users cancel
-- [ ] Track recipe promotion rates
-- [ ] Dashboard in Status tab or separate analytics
+### T8-06: Advanced telemetry ✓
+- [x] Track which tools are called most — `SessionTelemetry.GetToolCallRanking()`, case-insensitive, ranked by frequency
+- [x] Track plan success/failure rates — `RecordRunOutcome()`, `SuccessRate`, `CancellationRate`, agentic vs classic path counts
+- [x] Track where users cancel — `RecordCancellation(phase)` with API call / tool execution / user breakdown
+- [x] Track recipe promotion rates — `RecordRecipeCaptured()`, `RecordRecipePromoted()`
+- [x] Dashboard in Status section — top 5 tools, success/cancel/fail rates, write apply/cancel stats
+- [x] Write tracking: proposed/applied/cancelled/failed/batch counts, `WriteApplyRate`
+- 23 unit tests
+- **Files:** `src/Adze.Broker/Models/SessionTelemetry.cs`, `src/Adze.Host/Infrastructure/HostState.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`
 
 ---
 
@@ -323,16 +333,24 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - `IsEnabled()`, `GetAllStates()`, `FormatSummary()`
 - 4 unit tests
 
-### TX-02: IUiThreadInvoker abstraction
-- [ ] Clean interface for UI-thread marshaling
-- [ ] Used by write execution, snapshot capture, COM refresh
-- [ ] Testable via mock for unit tests
-- **Reference:** END-GOAL-INTERFACES Section 7.2
+### TX-02: IUiThreadInvoker abstraction ✓
+- [x] `IUiThreadInvoker` interface in `Adze.Contracts/Abstractions/` — `Invoke(Action)` and `Invoke<T>(Func<T>)`
+- [x] `WinFormsUiThreadInvoker` in `Adze.Host/Infrastructure/` — uses `Control.Invoke`/`InvokeRequired`
+- [x] `SynchronousUiThreadInvoker` in `Adze.Broker/Orchestration/` — test-friendly inline execution
+- [x] Wired into `HostState` — `SetUiThreadInvoker()`, `GetUiThreadInvoker()`, used in `ApplyPendingWrite` for automatic UI-thread marshaling
+- [x] Registered in `TaskPaneControl` constructor
+- 8 unit tests
 
-### TX-03: Error presentation tiers
-- [ ] Tool failures: non-prominent log lines (agent self-corrects)
-- [ ] API errors: retry status shown
-- [ ] COM/host errors: calm recovery guidance
+### TX-03: Error presentation tiers ✓
+- [x] `ErrorClassifier` in `Adze.Broker/Orchestration/` — 3-tier classification: ToolError, ApiError, HostError
+- [x] Tool failures: non-prominent, logged in Tools tab only (agent self-corrects)
+- [x] API errors (429/401/403/timeout/network/500): user-friendly messages with actionable guidance
+- [x] COM/host errors: calm recovery guidance, never stack traces
+- [x] `FormatForUser()` — produces clean user-facing messages with guidance
+- [x] `FormatAgentOutcomeMessage()` — friendly text for agent loop failure outcomes (rate limit, timeout, max errors, cancellation)
+- [x] Wired into `TaskPaneControl.ShowRunFailure` — classifies exceptions before rendering
+- 17 unit tests
+- **Files:** `src/Adze.Broker/Orchestration/ErrorClassifier.cs`, `src/Adze.Host/UI/TaskPaneControl.cs`, `src/Adze.Host/Infrastructure/HostState.cs`
 - [ ] Never stack traces in the answer panel
 - **Reference:** `research-streaming-ux-patterns.md`
 

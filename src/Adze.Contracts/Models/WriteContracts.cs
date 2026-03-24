@@ -9,7 +9,10 @@ public enum WriteTargetKind
 {
     Dimension,
     CustomProperty,
-    FeatureSuppression
+    FeatureSuppression,
+    ObjectRename,
+    ComponentInsertion,
+    DrawingView
 }
 
 public sealed class WriteTargetDescriptor

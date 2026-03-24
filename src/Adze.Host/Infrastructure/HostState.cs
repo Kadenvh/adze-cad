@@ -14,6 +14,7 @@ using AgentConversationState = Adze.Broker.Models.AgentConversationState;
 using ConversationMessage = Adze.Broker.Models.ConversationMessage;
 using ConversationRole = Adze.Broker.Models.ConversationRole;
 using ModelUsage = Adze.Broker.Models.ModelUsage;
+using Adze.Contracts.Abstractions;
 using Adze.Contracts.Models;
 using Adze.Host.Services;
 using Adze.Trace.Progression;
@@ -58,6 +59,10 @@ internal sealed class PendingWriteAction
     public bool Cancelled { get; set; }
 
     public string? ResultMessage { get; set; }
+
+    public bool IsElevated { get; set; }
+
+    public string UndoLabel { get; set; } = string.Empty;
 }
 
 internal sealed class CompletedWriteEntry
@@ -67,6 +72,8 @@ internal sealed class CompletedWriteEntry
     public string Summary { get; set; } = string.Empty;
 
     public string ResultMessage { get; set; } = string.Empty;
+
+    public string UndoLabel { get; set; } = string.Empty;
 
     public DateTimeOffset AppliedUtc { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -106,6 +113,8 @@ internal static class HostState
     private static string? _chatDocumentKey;
     private static LocalHealthResult? _localHealthResult;
     private static volatile bool _localHealthChecked;
+    private static IUiThreadInvoker? _uiThreadInvoker;
+    private static readonly SessionTelemetry _telemetry = new();
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
 
@@ -123,6 +132,7 @@ internal static class HostState
         lock (Sync)
         {
             _currentRunCts?.Cancel();
+            _telemetry.RecordCancellation("user");
         }
     }
 
@@ -140,6 +150,38 @@ internal static class HostState
         lock (Sync)
         {
             _application = application;
+        }
+    }
+
+    public static void SetUiThreadInvoker(IUiThreadInvoker? invoker)
+    {
+        lock (Sync)
+        {
+            _uiThreadInvoker = invoker;
+        }
+    }
+
+    public static IUiThreadInvoker? GetUiThreadInvoker()
+    {
+        lock (Sync)
+        {
+            return _uiThreadInvoker;
+        }
+    }
+
+    public static string GetTelemetrySummary()
+    {
+        lock (Sync)
+        {
+            return _telemetry.FormatSummary();
+        }
+    }
+
+    public static SessionTelemetry GetTelemetry()
+    {
+        lock (Sync)
+        {
+            return _telemetry;
         }
     }
 
@@ -175,6 +217,7 @@ internal static class HostState
         lock (Sync)
         {
             snapshot = new List<PendingWriteAction>(_pendingWrites);
+            _telemetry.RecordWritePlanBatchApplied();
         }
         for (int i = 0; i < snapshot.Count; i++)
         {
@@ -198,6 +241,7 @@ internal static class HostState
                 {
                     pw.Cancelled = true;
                     pw.ResultMessage = "Cancelled by user.";
+                    _telemetry.RecordWriteCancelled();
                 }
             }
         }
@@ -217,8 +261,17 @@ internal static class HostState
 
         try
         {
-            // Apply the write tool directly via COM
-            var result = ApplyWriteToolDirect(action);
+            // Apply the write tool directly via COM — marshal to UI thread if invoker is set
+            IUiThreadInvoker? invoker = GetUiThreadInvoker();
+            string result;
+            if (invoker != null)
+            {
+                result = invoker.Invoke(() => ApplyWriteToolDirect(action));
+            }
+            else
+            {
+                result = ApplyWriteToolDirect(action);
+            }
             lock (Sync)
             {
                 action.Applied = true;
@@ -228,8 +281,10 @@ internal static class HostState
                     ToolName = action.ToolName,
                     Summary = action.Preview?.Summary ?? action.ToolName,
                     ResultMessage = result,
+                    UndoLabel = action.UndoLabel,
                     AppliedUtc = DateTimeOffset.UtcNow
                 });
+                _telemetry.RecordWriteApplied();
             }
             return result;
         }
@@ -239,6 +294,7 @@ internal static class HostState
             lock (Sync)
             {
                 action.ResultMessage = error;
+                _telemetry.RecordWriteFailed();
             }
             FileLogger.Error("Pending write apply failed.", ex);
             return error;
@@ -253,6 +309,7 @@ internal static class HostState
             {
                 _pendingWrites[index].Cancelled = true;
                 _pendingWrites[index].ResultMessage = "Cancelled by user.";
+                _telemetry.RecordWriteCancelled();
             }
         }
     }
@@ -358,38 +415,125 @@ internal static class HostState
                 double newValue = 0;
                 if (action.Arguments.TryGetValue("new_value", out var nv) && nv != null)
                     double.TryParse(nv.ToString(), out newValue);
+                string dimConfig = action.Arguments.TryGetValue("configuration_name", out var dc) ? dc?.ToString() ?? "" : "";
 
                 dynamic? dim = modelDoc.Parameter(dimFullName);
                 if (dim == null)
                     return "Dimension '" + dimFullName + "' not found.";
 
-                dim.SystemValue = newValue / 1000.0; // Convert mm to meters
+                if (!string.IsNullOrWhiteSpace(dimConfig))
+                {
+                    // Set value for a specific configuration
+                    dim.SetSystemValue3(newValue / 1000.0, 1, dimConfig); // 1 = swSetValue_InSpecificConfigurations
+                }
+                else
+                {
+                    dim.SystemValue = newValue / 1000.0; // Convert mm to meters
+                }
                 modelDoc.EditRebuild3();
-                return "Dimension '" + dimFullName + "' set to " + newValue + " mm.";
+                string configSuffix = string.IsNullOrWhiteSpace(dimConfig) ? "" : " in configuration '" + dimConfig + "'";
+                return "Dimension '" + dimFullName + "' set to " + newValue + " mm" + configSuffix + ".";
             }
 
             case Contracts.Tooling.ToolNames.SuppressFeature:
             {
                 string featureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() ?? "" : "";
+                string supConfig = action.Arguments.TryGetValue("configuration_name", out var sc) ? sc?.ToString() ?? "" : "";
                 dynamic? feature = modelDoc.FeatureByName(featureName);
                 if (feature == null)
                     return "Feature '" + featureName + "' not found.";
 
-                feature.SetSuppression2(0, 2, null); // 0=suppressed, 2=all configs
+                int supConfigOpt = string.IsNullOrWhiteSpace(supConfig) ? 2 : 1;
+                string[]? supConfigNames = string.IsNullOrWhiteSpace(supConfig) ? null : new[] { supConfig };
+                feature.SetSuppression2(0, supConfigOpt, supConfigNames); // 0=suppressed
                 modelDoc.EditRebuild3();
-                return "Feature '" + featureName + "' suppressed.";
+                string supSuffix = string.IsNullOrWhiteSpace(supConfig) ? "" : " in configuration '" + supConfig + "'";
+                return "Feature '" + featureName + "' suppressed" + supSuffix + ".";
             }
 
             case Contracts.Tooling.ToolNames.UnsuppressFeature:
             {
                 string featureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() ?? "" : "";
+                string unsupConfig = action.Arguments.TryGetValue("configuration_name", out var uc) ? uc?.ToString() ?? "" : "";
                 dynamic? feature = modelDoc.FeatureByName(featureName);
                 if (feature == null)
                     return "Feature '" + featureName + "' not found.";
 
-                feature.SetSuppression2(1, 2, null); // 1=resolved, 2=all configs
+                int unsupConfigOpt = string.IsNullOrWhiteSpace(unsupConfig) ? 2 : 1;
+                string[]? unsupConfigNames = string.IsNullOrWhiteSpace(unsupConfig) ? null : new[] { unsupConfig };
+                feature.SetSuppression2(1, unsupConfigOpt, unsupConfigNames); // 1=resolved
                 modelDoc.EditRebuild3();
-                return "Feature '" + featureName + "' unsuppressed.";
+                string unsupSuffix = string.IsNullOrWhiteSpace(unsupConfig) ? "" : " in configuration '" + unsupConfig + "'";
+                return "Feature '" + featureName + "' unsuppressed" + unsupSuffix + ".";
+            }
+
+            case Contracts.Tooling.ToolNames.InsertComponent:
+            {
+                string compPath = action.Arguments.TryGetValue("component_path", out var cp) ? cp?.ToString() ?? "" : "";
+                string configName = action.Arguments.TryGetValue("configuration_name", out var cfn) ? cfn?.ToString() ?? "" : "";
+                double x = 0, y = 0, z = 0;
+                if (action.Arguments.TryGetValue("x", out var xv) && xv != null) double.TryParse(xv.ToString(), out x);
+                if (action.Arguments.TryGetValue("y", out var yv) && yv != null) double.TryParse(yv.ToString(), out y);
+                if (action.Arguments.TryGetValue("z", out var zv) && zv != null) double.TryParse(zv.ToString(), out z);
+
+                int docType = (int)modelDoc.GetType();
+                if (docType != 2)
+                    return "Active document is not an assembly.";
+
+                dynamic? component = modelDoc.AddComponent5(
+                    compPath, 0, "", false, configName,
+                    x / 1000.0, y / 1000.0, z / 1000.0);
+
+                if (component == null)
+                    return "Could not insert component. Verify the file path is correct.";
+
+                string compName = "(inserted)";
+                try { compName = component.Name2; } catch { }
+                return "Component '" + System.IO.Path.GetFileName(compPath) + "' inserted as '" + compName + "'.";
+            }
+
+            case Contracts.Tooling.ToolNames.CreateDrawingView:
+            {
+                string viewType = action.Arguments.TryGetValue("view_type", out var vt) ? vt?.ToString() ?? "front" : "front";
+                string modelPath = action.Arguments.TryGetValue("model_path", out var mp) ? mp?.ToString() ?? "" : "";
+                double vx = 0.15, vy = 0.15;
+                if (action.Arguments.TryGetValue("x", out var vxv) && vxv != null) double.TryParse(vxv.ToString(), out vx);
+                if (action.Arguments.TryGetValue("y", out var vyv) && vyv != null) double.TryParse(vyv.ToString(), out vy);
+
+                int docType = (int)modelDoc.GetType();
+                if (docType != 3)
+                    return "Active document is not a drawing.";
+
+                var viewNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["front"] = "*Front", ["back"] = "*Back", ["top"] = "*Top",
+                    ["bottom"] = "*Bottom", ["left"] = "*Left", ["right"] = "*Right",
+                    ["isometric"] = "*Isometric", ["trimetric"] = "*Trimetric", ["dimetric"] = "*Dimetric"
+                };
+
+                if (!viewNameMap.TryGetValue(viewType, out string? swViewName))
+                    return "Unsupported view type: " + viewType;
+
+                dynamic? view = modelDoc.CreateDrawViewFromModelView3(modelPath, swViewName, vx, vy);
+                if (view == null)
+                    return "Could not create " + viewType + " view. Ensure a model is referenced by the drawing.";
+
+                string viewName = "(created)";
+                try { viewName = view.Name; } catch { }
+                return viewType + " view created as '" + viewName + "'.";
+            }
+
+            case Contracts.Tooling.ToolNames.RenameObject:
+            {
+                string currentName = action.Arguments.TryGetValue("current_name", out var cn) ? cn?.ToString() ?? "" : "";
+                string newName = action.Arguments.TryGetValue("new_name", out var nn) ? nn?.ToString() ?? "" : "";
+
+                dynamic? feature = modelDoc.FeatureByName(currentName);
+                if (feature == null)
+                    return "Feature '" + currentName + "' not found.";
+
+                feature.Name = newName;
+                return "Feature '" + currentName + "' renamed to '" + newName + "'.";
             }
 
             default:
@@ -407,6 +551,21 @@ internal static class HostState
                 CompletionTokens = _sessionUsage.CompletionTokens,
                 TotalTokens = _sessionUsage.TotalTokens
             });
+        }
+    }
+
+    public static BudgetStatus GetBudgetStatus()
+    {
+        CostBudgetSettings budgetSettings = CostBudgetSettings.LoadFromEnvironment();
+        lock (Sync)
+        {
+            return new BudgetStatus
+            {
+                SessionTokensUsed = _sessionUsage.TotalTokens,
+                SessionTokenLimit = budgetSettings.MaxSessionTokens,
+                DailyTokensUsed = _sessionUsage.TotalTokens, // session-scoped for now
+                DailyTokenLimit = budgetSettings.MaxDailyTokens
+            };
         }
     }
 
@@ -448,12 +607,17 @@ internal static class HostState
 
     public static AssistantRunSnapshot CompleteAssistantRun(AssistantRunPreparation preparation, Action<string>? onStreamChunk)
     {
+        return CompleteAssistantRun(preparation, onStreamChunk, null);
+    }
+
+    public static AssistantRunSnapshot CompleteAssistantRun(AssistantRunPreparation preparation, Action<string>? onStreamChunk, Action<AgentProgressUpdate>? onProgress)
+    {
         if (preparation == null)
         {
             throw new ArgumentNullException(nameof(preparation));
         }
 
-        return RunAssistantUnsafe(preparation.Context, preparation.Request, preparation.IsApplicationConnected, onStreamChunk);
+        return RunAssistantUnsafe(preparation.Context, preparation.Request, preparation.IsApplicationConnected, onStreamChunk, onProgress);
     }
 
     public static void LogSnapshot(string reason)
@@ -503,6 +667,11 @@ internal static class HostState
 
     private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected, Action<string>? onStreamChunk)
     {
+        return RunAssistantUnsafe(context, request, isApplicationConnected, onStreamChunk, null);
+    }
+
+    private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected, Action<string>? onStreamChunk, Action<AgentProgressUpdate>? onProgress)
+    {
         // Clear chat history if the active document changed
         string currentDocKey = context.Document?.Path ?? string.Empty;
         lock (Sync)
@@ -526,7 +695,7 @@ internal static class HostState
                 Action<string>? agentStreamCallback = onStreamChunk != null && FeatureGateRegistry.IsEnabled(FeatureGateRegistry.StreamFinalText)
                     ? onStreamChunk
                     : null;
-                snapshot = RunAgenticAssistant(context, request, agentClient, agentStreamCallback);
+                snapshot = RunAgenticAssistant(context, request, agentClient, agentStreamCallback, onProgress);
             }
             else
             {
@@ -554,7 +723,7 @@ internal static class HostState
         return snapshot;
     }
 
-    private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient, Action<string>? onStreamChunk = null)
+    private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient, Action<string>? onStreamChunk = null, Action<AgentProgressUpdate>? onProgress = null)
     {
         AgentModelSettings agentSettings = AgentModelSettings.LoadFromEnvironment();
         bool includeRetrieval = FeatureGateRegistry.IsEnabled(FeatureGateRegistry.Retrieval);
@@ -604,7 +773,11 @@ internal static class HostState
             toolDefinitions,
             agentSettings,
             ct,
-            progress => FileLogger.Info("Agent: " + progress.Kind + " — " + progress.Message),
+            progress =>
+            {
+                FileLogger.Info("Agent: " + progress.Kind + " — " + progress.Message);
+                onProgress?.Invoke(progress);
+            },
             priorConversation,
             onStreamChunk);
 
@@ -616,11 +789,30 @@ internal static class HostState
         {
             _sessionRunCount++;
             _sessionUsage = _sessionUsage + runUsage;
+
+            // Telemetry: record agentic run
+            _telemetry.RecordAgenticRun();
+            _telemetry.RecordRunOutcome(result.Outcome);
+            foreach (var tool in result.ExecutedTools)
+            {
+                _telemetry.RecordToolCall(tool.ToolName, tool.IsError);
+            }
+            if (writeTracker.CapturedWrites.Count > 0)
+            {
+                for (int w = 0; w < writeTracker.CapturedWrites.Count; w++)
+                    _telemetry.RecordWriteProposed();
+            }
         }
 
-        string answerText = !string.IsNullOrWhiteSpace(result.FinalAnswer)
-            ? result.FinalAnswer
-            : "The agent loop completed with outcome: " + result.Outcome + ".";
+        string answerText;
+        if (!string.IsNullOrWhiteSpace(result.FinalAnswer))
+        {
+            answerText = result.FinalAnswer;
+        }
+        else
+        {
+            answerText = FormatAgentOutcomeMessage(result);
+        }
 
         string source = result.Outcome == AgentRunOutcome.Success ? "agent_loop" : "agent_fallback";
         if (BrokerModelSettings.LoadFromEnvironment().IsLocalProvider)
@@ -670,6 +862,34 @@ internal static class HostState
             TurnStatus = result.Outcome == AgentRunOutcome.Success ? "ready" : "attention_needed",
             RunUsage = runUsage
         };
+    }
+
+    private static string FormatAgentOutcomeMessage(AgentLoopResult result)
+    {
+        switch (result.Outcome)
+        {
+            case AgentRunOutcome.Cancelled:
+                return "Run cancelled.";
+            case AgentRunOutcome.Failed:
+                if (!string.IsNullOrWhiteSpace(result.FailureReason))
+                {
+                    if (result.FailureReason.IndexOf("rate limit", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        result.FailureReason.IndexOf("429", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return "Rate limited by the AI provider. Try again in a few seconds.";
+                    if (result.FailureReason.IndexOf("timeout", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return "The AI provider took too long to respond. Try again.";
+                    if (result.FailureReason.IndexOf("Max consecutive errors", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return "The assistant encountered repeated errors and stopped. Check the Tools Log for details.";
+                    return "The assistant could not complete this request. Check the Tools Log for details.";
+                }
+                return "The assistant could not complete this request.";
+            case AgentRunOutcome.FellBack:
+                return "The assistant could not produce a complete answer and fell back to a simpler path.";
+            case AgentRunOutcome.BlockedByPolicy:
+                return "This operation was blocked by the current safety policy.";
+            default:
+                return "The assistant completed with outcome: " + result.Outcome + ".";
+        }
     }
 
     private static string BuildAgentToolsText(List<AgentToolResult> executedTools)
@@ -760,10 +980,12 @@ internal static class HostState
         }
 
         ModelUsage runUsage = synthesis.Usage ?? new ModelUsage();
+        bool classicSuccess = !string.IsNullOrWhiteSpace(synthesis.Source) && synthesis.Source != "deterministic_fallback";
         lock (Sync)
         {
             _sessionRunCount++;
             _sessionUsage = _sessionUsage + runUsage;
+            _telemetry.RecordClassicRun(classicSuccess);
         }
 
         string usageText = runUsage.TotalTokens > 0
@@ -887,7 +1109,17 @@ internal static class HostState
             Contracts.Tooling.ToolNames.SetCustomProperty,
             Contracts.Tooling.ToolNames.SetDimensionValue,
             Contracts.Tooling.ToolNames.SuppressFeature,
-            Contracts.Tooling.ToolNames.UnsuppressFeature
+            Contracts.Tooling.ToolNames.UnsuppressFeature,
+            Contracts.Tooling.ToolNames.RenameObject,
+            Contracts.Tooling.ToolNames.InsertComponent,
+            Contracts.Tooling.ToolNames.CreateDrawingView
+        };
+
+        // Class 3 (HardWriteAdvanced) tools require elevated confirmation
+        private static readonly HashSet<string> ElevatedToolNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            Contracts.Tooling.ToolNames.InsertComponent,
+            Contracts.Tooling.ToolNames.CreateDrawingView
         };
 
         private readonly IToolExecutor _inner;
@@ -904,21 +1136,24 @@ internal static class HostState
 
             if (!result.IsError && WriteToolNames.Contains(toolName))
             {
-                var preview = ExtractPreviewFromResult(result, toolName);
+                var (preview, undoLabel) = ExtractPreviewFromResult(result, toolName);
                 CapturedWrites.Add(new PendingWriteAction
                 {
                     ToolName = toolName,
                     Arguments = new Dictionary<string, object?>(arguments ?? new Dictionary<string, object?>()),
-                    Preview = preview
+                    Preview = preview,
+                    IsElevated = ElevatedToolNames.Contains(toolName),
+                    UndoLabel = undoLabel
                 });
             }
 
             return result;
         }
 
-        private static WritePreview ExtractPreviewFromResult(AgentToolResult result, string toolName)
+        private static (WritePreview preview, string undoLabel) ExtractPreviewFromResult(AgentToolResult result, string toolName)
         {
             var preview = new WritePreview { ToolName = toolName };
+            string undoLabel = string.Empty;
             try
             {
                 var serializer = new JavaScriptSerializer();
@@ -928,6 +1163,9 @@ internal static class HostState
 
                 if (parsed != null && parsed.TryGetValue("data", out object? dataObj) && dataObj is Dictionary<string, object> data)
                 {
+                    if (data.TryGetValue("undo_label", out object? undoObj) && undoObj != null)
+                        undoLabel = undoObj.ToString() ?? "";
+
                     if (data.TryGetValue("changes", out object? changesObj) && changesObj is object[] changes)
                     {
                         foreach (var change in changes)
@@ -958,7 +1196,7 @@ internal static class HostState
                 FileLogger.Error("Failed to extract write preview from tool result.", ex);
                 preview.Summary = "Write preview (details unavailable)";
             }
-            return preview;
+            return (preview, undoLabel);
         }
     }
 

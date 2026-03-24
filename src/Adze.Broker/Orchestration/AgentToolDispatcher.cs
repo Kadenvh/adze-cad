@@ -118,6 +118,15 @@ public sealed class AgentToolDispatcher : IToolExecutor
             case ToolNames.UnsuppressFeature:
                 return DispatchWritePreview(new UnsuppressFeatureTool(), DeserializeUnsuppressFeatureParams(arguments), session);
 
+            case ToolNames.RenameObject:
+                return DispatchWritePreview(new RenameObjectTool(), DeserializeRenameObjectParams(arguments), session);
+
+            case ToolNames.InsertComponent:
+                return DispatchWritePreview(new InsertComponentTool(), DeserializeInsertComponentParams(arguments), session);
+
+            case ToolNames.CreateDrawingView:
+                return DispatchWritePreview(new CreateDrawingViewTool(), DeserializeCreateDrawingViewParams(arguments), session);
+
             case ToolNames.SearchProjectFiles:
                 return _catalog.SearchProjectFiles.Execute(session, DeserializeSearchProjectFilesParams(arguments));
 
@@ -201,6 +210,50 @@ public sealed class AgentToolDispatcher : IToolExecutor
         return parameters;
     }
 
+    private static CreateDrawingViewParameters DeserializeCreateDrawingViewParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateDrawingViewParameters();
+        if (TryGetString(args, "view_type", out string? viewType))
+            parameters.ViewType = viewType!;
+        if (TryGetString(args, "model_path", out string? modelPath))
+            parameters.ModelPath = modelPath;
+        if (TryGetDouble(args, "x", out double x))
+            parameters.X = x;
+        if (TryGetDouble(args, "y", out double y))
+            parameters.Y = y;
+        if (TryGetDouble(args, "scale", out double scale))
+            parameters.Scale = scale;
+        return parameters;
+    }
+
+    private static InsertComponentParameters DeserializeInsertComponentParams(Dictionary<string, object?> args)
+    {
+        var parameters = new InsertComponentParameters();
+        if (TryGetString(args, "component_path", out string? path))
+            parameters.ComponentPath = path!;
+        if (TryGetString(args, "configuration_name", out string? configName))
+            parameters.ConfigurationName = configName;
+        if (TryGetDouble(args, "x", out double x))
+            parameters.X = x;
+        if (TryGetDouble(args, "y", out double y))
+            parameters.Y = y;
+        if (TryGetDouble(args, "z", out double z))
+            parameters.Z = z;
+        return parameters;
+    }
+
+    private static RenameObjectParameters DeserializeRenameObjectParams(Dictionary<string, object?> args)
+    {
+        var parameters = new RenameObjectParameters();
+        if (TryGetString(args, "object_type", out string? objectType))
+            parameters.ObjectType = objectType!;
+        if (TryGetString(args, "current_name", out string? currentName))
+            parameters.CurrentName = currentName!;
+        if (TryGetString(args, "new_name", out string? newName))
+            parameters.NewName = newName!;
+        return parameters;
+    }
+
     private static GetDocumentSummaryParameters DeserializeDocumentSummaryParams(Dictionary<string, object?> args)
     {
         var parameters = new GetDocumentSummaryParameters();
@@ -236,6 +289,10 @@ public sealed class AgentToolDispatcher : IToolExecutor
             parameters.Scope = scope!;
         if (TryGetBool(args, "include_driven", out bool includeDriven))
             parameters.IncludeDriven = includeDriven;
+        if (TryGetInt(args, "offset", out int offset))
+            parameters.Offset = offset;
+        if (TryGetInt(args, "limit", out int limit))
+            parameters.Limit = limit;
         return parameters;
     }
 
@@ -262,6 +319,8 @@ public sealed class AgentToolDispatcher : IToolExecutor
         var parameters = new GetMatesParameters();
         if (TryGetString(args, "scope", out string? scope))
             parameters.Scope = scope!;
+        if (TryGetInt(args, "offset", out int mateOffset))
+            parameters.Offset = mateOffset;
         if (TryGetInt(args, "limit", out int limit))
             parameters.Limit = limit;
         return parameters;

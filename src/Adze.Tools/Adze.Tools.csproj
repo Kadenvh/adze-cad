@@ -73,6 +73,10 @@
     <Compile Include="Write\SetCustomPropertyTool.cs" />
     <Compile Include="Write\SetDimensionValueTool.cs" />
     <Compile Include="Write\SuppressFeatureTool.cs" />
+    <Compile Include="Write\DependencyAnalyzer.cs" />
+    <Compile Include="Write\RenameObjectTool.cs" />
+    <Compile Include="Write\InsertComponentTool.cs" />
+    <Compile Include="Write\CreateDrawingViewTool.cs" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

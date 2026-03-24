@@ -10,10 +10,13 @@ public sealed class SuppressFeatureTool : IWriteTool<SuppressFeatureParameters>
 {
     public WritePreview Preview(SessionContext context, SuppressFeatureParameters parameters)
     {
+        string configSuffix = string.IsNullOrWhiteSpace(parameters.ConfigurationName)
+            ? ""
+            : " in configuration \"" + parameters.ConfigurationName + "\"";
         var preview = new WritePreview
         {
             ToolName = Contracts.Tooling.ToolNames.SuppressFeature,
-            Summary = "Suppress feature \"" + parameters.FeatureName + "\""
+            Summary = "Suppress feature \"" + parameters.FeatureName + "\"" + configSuffix
         };
 
         FeatureNode? feature = context.FeatureTree.Features
@@ -34,22 +37,7 @@ public sealed class SuppressFeatureTool : IWriteTool<SuppressFeatureParameters>
                 AfterValue = "suppressed"
             });
 
-            // Check for dependent features that may be affected
-            int featureIndex = context.FeatureTree.Features.IndexOf(feature);
-            List<FeatureNode> dependents = context.FeatureTree.Features
-                .Skip(featureIndex + 1)
-                .Where(f => f.State == "active")
-                .Take(5)
-                .ToList();
-
-            if (dependents.Count > 0)
-            {
-                preview.Warnings.Add(
-                    "Suppressing this feature may affect " + dependents.Count +
-                    " subsequent feature(s): " +
-                    string.Join(", ", dependents.Select(d => d.Name)) +
-                    ". Dependent features may also be suppressed.");
-            }
+            // Dependency analysis is now handled by DependencyAnalyzer below
         }
         else
         {
@@ -60,6 +48,14 @@ public sealed class SuppressFeatureTool : IWriteTool<SuppressFeatureParameters>
                 BeforeValue = "(unknown)",
                 AfterValue = "suppressed"
             });
+        }
+
+        // Enrich with dependency analysis
+        DependencyPreview depPreview = DependencyAnalyzer.AnalyzeSuppression(context, parameters.FeatureName);
+        foreach (string warning in depPreview.Warnings)
+        {
+            if (!preview.Warnings.Contains(warning))
+                preview.Warnings.Add(warning);
         }
 
         if (context.Document?.IsReadOnly == true)
@@ -97,10 +93,15 @@ public sealed class SuppressFeatureTool : IWriteTool<SuppressFeatureParameters>
 
             // SetSuppression2: 0 = Suppressed, 1 = Resolved
             // swInConfigurationOpts: 1 = This configuration, 2 = All configurations
+            int configOption = string.IsNullOrWhiteSpace(parameters.ConfigurationName) ? 2 : 1;
+            string[]? configNames = string.IsNullOrWhiteSpace(parameters.ConfigurationName)
+                ? null
+                : new[] { parameters.ConfigurationName };
+
             bool result = feature.SetSuppression2(
                 0, // swFeatureSuppressionAction_e.swSuppressFeature
-                2, // swInConfigurationOpts_e.swAllConfiguration
-                null);
+                configOption,
+                configNames);
 
             if (!result)
             {
@@ -187,10 +188,13 @@ public sealed class UnsuppressFeatureTool : IWriteTool<UnsuppressFeatureParamete
 {
     public WritePreview Preview(SessionContext context, UnsuppressFeatureParameters parameters)
     {
+        string unsupConfigSuffix = string.IsNullOrWhiteSpace(parameters.ConfigurationName)
+            ? ""
+            : " in configuration \"" + parameters.ConfigurationName + "\"";
         var preview = new WritePreview
         {
             ToolName = Contracts.Tooling.ToolNames.UnsuppressFeature,
-            Summary = "Unsuppress feature \"" + parameters.FeatureName + "\""
+            Summary = "Unsuppress feature \"" + parameters.FeatureName + "\"" + unsupConfigSuffix
         };
 
         FeatureNode? feature = context.FeatureTree.Features
@@ -251,10 +255,15 @@ public sealed class UnsuppressFeatureTool : IWriteTool<UnsuppressFeatureParamete
             }
 
             // SetSuppression2: 1 = Resolved (unsuppressed)
+            int configOption = string.IsNullOrWhiteSpace(parameters.ConfigurationName) ? 2 : 1;
+            string[]? configNames = string.IsNullOrWhiteSpace(parameters.ConfigurationName)
+                ? null
+                : new[] { parameters.ConfigurationName };
+
             bool result = feature.SetSuppression2(
                 1, // swFeatureSuppressionAction_e.swUnSuppressFeature
-                2, // swInConfigurationOpts_e.swAllConfiguration
-                null);
+                configOption,
+                configNames);
 
             if (!result)
             {

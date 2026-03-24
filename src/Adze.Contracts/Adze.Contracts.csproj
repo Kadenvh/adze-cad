@@ -56,6 +56,7 @@
     <Compile Include="Models\ToolContracts.cs" />
     <Compile Include="Models\TraceEvent.cs" />
     <Compile Include="Abstractions\ITrustService.cs" />
+    <Compile Include="Abstractions\IUiThreadInvoker.cs" />
     <Compile Include="Abstractions\IWriteServices.cs" />
     <Compile Include="Models\WriteContracts.cs" />
     <Compile Include="Models\IndexContracts.cs" />

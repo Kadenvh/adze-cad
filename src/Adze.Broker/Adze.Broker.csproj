@@ -83,15 +83,18 @@
     <Compile Include="Models\AgentContracts.cs" />
     <Compile Include="Models\BrokerContracts.cs" />
     <Compile Include="Models\ConversationContracts.cs" />
+    <Compile Include="Models\SessionTelemetry.cs" />
     <Compile Include="Models\GroundingExecutionReport.cs" />
     <Compile Include="Orchestration\AgentLoopRunner.cs" />
     <Compile Include="Orchestration\AgentToolDispatcher.cs" />
     <Compile Include="Orchestration\ConversationTruncator.cs" />
+    <Compile Include="Orchestration\ErrorClassifier.cs" />
     <Compile Include="Orchestration\GroundingSynthesisService.cs" />
     <Compile Include="Orchestration\HybridBrokerOrchestrator.cs" />
     <Compile Include="Orchestration\DefaultVerificationPolicy.cs" />
     <Compile Include="Orchestration\KeywordBrokerOrchestrator.cs" />
     <Compile Include="Orchestration\StateDiffService.cs" />
+    <Compile Include="Orchestration\SynchronousUiThreadInvoker.cs" />
     <Compile Include="Orchestration\WriteExecutionCoordinator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

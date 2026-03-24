@@ -222,4 +222,41 @@ internal static class SessionContextFactory
         });
         return context;
     }
+
+    public static SessionContext CreateWithDrawing(string title = "TestDrawing", string path = @"C:\test\TestDrawing.SLDDRW")
+    {
+        SessionContext context = CreateMinimal();
+        context.Document = new DocumentInfo
+        {
+            Type = "drawing",
+            Title = title,
+            Path = path,
+            ActiveConfiguration = "Default",
+            Units = "mm",
+            IsDirty = false,
+            IsReadOnly = false
+        };
+        context.Configurations = new ConfigurationsInfo
+        {
+            ActiveName = "Default",
+            Count = 1,
+            Items = new List<ConfigurationItem>
+            {
+                new ConfigurationItem { Name = "Default", IsActive = true }
+            }
+        };
+        context.Diagnostics = new DiagnosticsInfo
+        {
+            RebuildState = "clean"
+        };
+        context.ReferenceGraph = new ReferenceGraphInfo
+        {
+            DirectCount = 1,
+            DirectItems = new List<ReferenceNode>
+            {
+                new ReferenceNode { Name = "Part1.SLDPRT", Path = @"C:\test\Part1.SLDPRT", ExistsOnDisk = true }
+            }
+        };
+        return context;
+    }
 }

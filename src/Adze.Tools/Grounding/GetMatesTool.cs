@@ -53,8 +53,10 @@ public sealed class GetMatesTool : IReadOnlyTool<GetMatesParameters>
             }
         }
 
-        int limit = Math.Max(1, parameters.Limit);
-        List<MateNode> filtered = source.Take(limit).ToList();
+        int totalAvailable = source.Count();
+        int offset = Math.Max(0, parameters.Offset);
+        int limit = Math.Max(1, Math.Min(parameters.Limit, 200));
+        List<MateNode> filtered = source.Skip(offset).Take(limit).ToList();
         var items = new List<Dictionary<string, object?>>();
         foreach (MateNode item in filtered)
         {
@@ -72,9 +74,12 @@ public sealed class GetMatesTool : IReadOnlyTool<GetMatesParameters>
             result.Summary = "No mates found for the requested scope.";
         }
 
+        bool hasMore = offset + items.Count < totalAvailable;
         result.Data["scope"] = string.IsNullOrWhiteSpace(parameters.Scope) ? "selection" : parameters.Scope.Trim();
-        result.Data["count"] = context.Mates.Count;
+        result.Data["total_count"] = totalAvailable;
+        result.Data["offset"] = offset;
         result.Data["returned_count"] = items.Count;
+        result.Data["has_more"] = hasMore;
         result.Data["items"] = items;
         return result;
     }

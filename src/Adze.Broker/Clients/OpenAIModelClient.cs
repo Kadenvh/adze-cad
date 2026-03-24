@@ -156,6 +156,7 @@ public sealed class OpenAIModelClient : IStreamingModelClient
             };
         }
 
+        RateLimitHelper.WaitIfRateLimited();
         const int maxRetries = 1;
         for (int attempt = 0; ; attempt++)
         {
@@ -281,6 +282,7 @@ public sealed class OpenAIModelClient : IStreamingModelClient
         int maxTokens,
         int timeoutMilliseconds)
     {
+        RateLimitHelper.WaitIfRateLimited();
         const int maxRetries = 1;
         for (int attempt = 0; ; attempt++)
         {

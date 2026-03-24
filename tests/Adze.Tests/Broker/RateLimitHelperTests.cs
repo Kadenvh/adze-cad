@@ -70,4 +70,67 @@ public class RateLimitHelperTests
         // The point is it doesn't throw.
         Assert.That(result, Is.False); // 50ms < 2000ms, so cancellation wins
     }
+
+    [Test]
+    public void RecordRateLimitWindow_SetsActiveWindow()
+    {
+        RateLimitHelper.ResetWindow();
+        Assert.IsFalse(RateLimitHelper.IsInRateLimitWindow());
+
+        RateLimitHelper.RecordRateLimitWindow(5000);
+
+        Assert.IsTrue(RateLimitHelper.IsInRateLimitWindow());
+        Assert.That(RateLimitHelper.GetRemainingWindowMs(), Is.GreaterThan(0));
+        Assert.That(RateLimitHelper.GetRemainingWindowMs(), Is.LessThanOrEqualTo(5000));
+
+        RateLimitHelper.ResetWindow();
+    }
+
+    [Test]
+    public void IsInRateLimitWindow_FalseAfterReset()
+    {
+        RateLimitHelper.RecordRateLimitWindow(5000);
+        RateLimitHelper.ResetWindow();
+
+        Assert.IsFalse(RateLimitHelper.IsInRateLimitWindow());
+        Assert.AreEqual(0, RateLimitHelper.GetRemainingWindowMs());
+    }
+
+    [Test]
+    public void WaitIfRateLimited_ReturnsImmediately_WhenNoWindow()
+    {
+        RateLimitHelper.ResetWindow();
+
+        bool result = RateLimitHelper.WaitIfRateLimited();
+
+        Assert.IsTrue(result);
+    }
+
+    [Test]
+    public void WaitIfRateLimited_ReturnsFalse_WhenCancelledDuringWindow()
+    {
+        RateLimitHelper.ResetWindow();
+        RateLimitHelper.RecordRateLimitWindow(5000);
+        var cts = new System.Threading.CancellationTokenSource();
+        cts.Cancel();
+
+        bool result = RateLimitHelper.WaitIfRateLimited(cts.Token);
+
+        Assert.IsFalse(result);
+        RateLimitHelper.ResetWindow();
+    }
+
+    [Test]
+    public void RecordRateLimitWindow_ExtendsWindow()
+    {
+        RateLimitHelper.ResetWindow();
+        RateLimitHelper.RecordRateLimitWindow(1000);
+        int firstRemaining = RateLimitHelper.GetRemainingWindowMs();
+
+        RateLimitHelper.RecordRateLimitWindow(10000);
+        int secondRemaining = RateLimitHelper.GetRemainingWindowMs();
+
+        Assert.That(secondRemaining, Is.GreaterThan(firstRemaining));
+        RateLimitHelper.ResetWindow();
+    }
 }

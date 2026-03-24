@@ -52,6 +52,10 @@ public sealed class GetDimensionsParameters
     public string Scope { get; set; } = "selection";
 
     public bool IncludeDriven { get; set; } = true;
+
+    public int Offset { get; set; }
+
+    public int Limit { get; set; } = 50;
 }
 
 public sealed class GetConfigurationsParameters
@@ -69,6 +73,8 @@ public sealed class GetCustomPropertiesParameters
 public sealed class GetMatesParameters
 {
     public string Scope { get; set; } = "selection";
+
+    public int Offset { get; set; }
 
     public int Limit { get; set; } = 50;
 }
@@ -123,6 +129,41 @@ public sealed class UnsuppressFeatureParameters
     public string FeatureName { get; set; } = string.Empty;
 
     public string? ConfigurationName { get; set; }
+}
+
+public sealed class RenameObjectParameters
+{
+    public string ObjectType { get; set; } = "feature";
+
+    public string CurrentName { get; set; } = string.Empty;
+
+    public string NewName { get; set; } = string.Empty;
+}
+
+public sealed class InsertComponentParameters
+{
+    public string ComponentPath { get; set; } = string.Empty;
+
+    public string? ConfigurationName { get; set; }
+
+    public double X { get; set; }
+
+    public double Y { get; set; }
+
+    public double Z { get; set; }
+}
+
+public sealed class CreateDrawingViewParameters
+{
+    public string ViewType { get; set; } = "front";
+
+    public string? ModelPath { get; set; }
+
+    public double X { get; set; } = 0.15;
+
+    public double Y { get; set; } = 0.15;
+
+    public double Scale { get; set; } = 1.0;
 }
 
 public static class ToolRequests

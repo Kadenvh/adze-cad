@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using Adze.Broker.Models;
+using Adze.Broker.Orchestration;
 using Adze.Host.Infrastructure;
 
 namespace Adze.Host.UI;
@@ -244,6 +246,9 @@ public sealed class TaskPaneControl : UserControl
             _diagnosticsCheckBox = diagnosticsCheckBox;
 
             ApplyRequestPlaceholder();
+
+            // Register UI-thread invoker for COM write marshaling
+            HostState.SetUiThreadInvoker(new WinFormsUiThreadInvoker(this));
         }
         catch (Exception ex)
         {
@@ -439,7 +444,13 @@ public sealed class TaskPaneControl : UserControl
                     catch { /* swallow UI errors during streaming */ }
                 };
 
-                AssistantRunSnapshot snapshot = HostState.CompleteAssistantRun(preparation, streamCallback);
+                Action<AgentProgressUpdate> progressCallback = progress =>
+                {
+                    try { PostToUi(() => UpdateRunProgress(progress)); }
+                    catch { /* swallow UI errors during progress updates */ }
+                };
+
+                AssistantRunSnapshot snapshot = HostState.CompleteAssistantRun(preparation, streamCallback, progressCallback);
                 PostToUi(() => ApplySnapshot(snapshot));
             }
             catch (Exception ex)
@@ -452,6 +463,38 @@ public sealed class TaskPaneControl : UserControl
                 PostToUi(FinishRun);
             }
         });
+    }
+
+    private void UpdateRunProgress(AgentProgressUpdate progress)
+    {
+        string text;
+        switch (progress.Kind)
+        {
+            case AgentProgressKind.ToolRequested:
+                text = "Calling " + (progress.ToolName ?? "tool") + "...";
+                break;
+            case AgentProgressKind.ToolExecuting:
+                text = "Running " + (progress.ToolName ?? "tool") + "...";
+                break;
+            case AgentProgressKind.Thinking:
+                text = progress.Iteration > 0
+                    ? "Thinking (turn " + progress.Iteration + ")..."
+                    : "Thinking...";
+                break;
+            case AgentProgressKind.Completed:
+                text = "Generating answer...";
+                break;
+            case AgentProgressKind.Failed:
+                text = "Error encountered.";
+                break;
+            case AgentProgressKind.FellBack:
+                text = "Falling back...";
+                break;
+            default:
+                text = "Running...";
+                break;
+        }
+        _runStateLabel.Text = text;
     }
 
     private void AppendStreamChunk(string text)
@@ -477,8 +520,10 @@ public sealed class TaskPaneControl : UserControl
 
     private void ShowRunFailure(Exception ex)
     {
-        _runStateLabel.Text = "Run failed.";
-        _lastErrorMessage = "The assistant run failed.\n\n" + ex.Message;
+        ClassifiedError classified = ErrorClassifier.Classify(ex);
+        _runStateLabel.Text = classified.Tier == ErrorTier.ApiError ? "Provider error." : "Run failed.";
+        _lastErrorMessage = ErrorClassifier.FormatForUser(classified);
+        FileLogger.Error("Classified error (tier=" + classified.Tier + "): " + (classified.TechnicalDetail ?? ex.Message), ex);
         RenderContent();
     }
 
@@ -635,7 +680,8 @@ public sealed class TaskPaneControl : UserControl
     private static string BuildWriteConfirmationCard(PendingWriteAction pw, int index)
     {
         var sb = new System.Text.StringBuilder();
-        sb.Append("<div class=\"write-card\">");
+        string extraClass = pw.IsElevated && !pw.Applied && !pw.Cancelled ? " write-card-elevated" : "";
+        sb.Append("<div class=\"write-card" + extraClass + "\">");
 
         if (pw.Applied)
         {
@@ -651,7 +697,14 @@ public sealed class TaskPaneControl : UserControl
         }
         else
         {
-            sb.Append("<div class=\"write-header\">Proposed Change</div>");
+            if (pw.IsElevated)
+            {
+                sb.Append("<div class=\"write-header write-header-elevated\">&#9888; Elevated Change</div>");
+            }
+            else
+            {
+                sb.Append("<div class=\"write-header\">Proposed Change</div>");
+            }
             sb.Append("<div class=\"write-summary\">" + HtmlEncode(pw.Preview.Summary) + "</div>");
 
             if (pw.Preview.Changes.Count > 0)
@@ -737,6 +790,10 @@ public sealed class TaskPaneControl : UserControl
             sb.Append("<span class=\"history-tool\">" + HtmlEncode(entry.ToolName) + "</span> ");
             sb.Append("<span class=\"history-summary\">" + HtmlEncode(entry.Summary) + "</span>");
             sb.Append("<div class=\"history-result\">" + HtmlEncode(entry.ResultMessage) + "</div>");
+            if (!string.IsNullOrWhiteSpace(entry.UndoLabel))
+            {
+                sb.Append("<div class=\"history-undo\">Undo: " + HtmlEncode(entry.UndoLabel) + "</div>");
+            }
             sb.Append("<div class=\"history-time\">" + entry.AppliedUtc.ToString("HH:mm:ss") + "</div>");
             sb.Append("</div>");
         }
@@ -798,6 +855,142 @@ public sealed class TaskPaneControl : UserControl
         return "<div class=\"health-banner " + cssClass + "\">" + icon + " " + message + guidance + "</div>";
     }
 
+    private static string BuildBudgetHtml()
+    {
+        var budget = HostState.GetBudgetStatus();
+        var (runCount, usage) = HostState.GetSessionUsage();
+        if (usage.TotalTokens == 0 && runCount == 0)
+            return string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+
+        // Warning banner if near or over limit
+        var budgetSettings = Adze.Broker.Configuration.CostBudgetSettings.LoadFromEnvironment();
+        if (budget.IsOverBudget)
+        {
+            sb.Append("<div class=\"health-banner health-error\">&#9888; Token budget exhausted. ");
+            if (budget.SessionLimitReached)
+                sb.Append("Session limit reached (" + budget.SessionTokensUsed.ToString("N0") + "/" + budget.SessionTokenLimit.ToString("N0") + "). ");
+            if (budget.DailyLimitReached)
+                sb.Append("Daily limit reached (" + budget.DailyTokensUsed.ToString("N0") + "/" + budget.DailyTokenLimit.ToString("N0") + "). ");
+            sb.Append("</div>");
+        }
+        else if (budget.IsNearLimit(budgetSettings.WarningThresholdPercent))
+        {
+            sb.Append("<div class=\"health-banner health-warning\">&#9888; Approaching token budget limit. ");
+            double sessionPct = budget.SessionTokenLimit > 0 ? (double)budget.SessionTokensUsed / budget.SessionTokenLimit * 100 : 0;
+            sb.Append("Session: " + sessionPct.ToString("0") + "% used.");
+            sb.Append("</div>");
+        }
+
+        // Usage dashboard
+        sb.Append("<div class=\"telemetry-dashboard\">");
+        sb.Append("<div class=\"telemetry-title\">Usage</div>");
+
+        sb.Append("<div class=\"telemetry-row\">");
+        sb.Append("<span class=\"telemetry-label\">Runs:</span> " + runCount);
+        sb.Append("</div>");
+
+        sb.Append("<div class=\"telemetry-row\">");
+        sb.Append("<span class=\"telemetry-label\">Tokens:</span> " + usage.TotalTokens.ToString("N0"));
+        sb.Append(" (prompt: " + usage.PromptTokens.ToString("N0") + ", completion: " + usage.CompletionTokens.ToString("N0") + ")");
+        sb.Append("</div>");
+
+        // Budget bars
+        double sessionPercent = budget.SessionTokenLimit > 0 ? (double)budget.SessionTokensUsed / budget.SessionTokenLimit * 100 : 0;
+        string sessionBarColor = sessionPercent >= 90 ? "#C53030" : sessionPercent >= 70 ? "#D69E2E" : "#38A169";
+        sb.Append("<div class=\"telemetry-row\">");
+        sb.Append("<span class=\"telemetry-label\">Session budget:</span> " +
+            budget.SessionTokensUsed.ToString("N0") + " / " + budget.SessionTokenLimit.ToString("N0") +
+            " (" + sessionPercent.ToString("0.0") + "%)");
+        sb.Append("</div>");
+        sb.Append("<div class=\"budget-bar\"><div class=\"budget-fill\" style=\"width:" +
+            Math.Min(sessionPercent, 100).ToString("0.0") + "%;background:" + sessionBarColor + "\"></div></div>");
+
+        // Cost estimate (rough: $0.003/1K prompt tokens, $0.015/1K completion tokens for typical models)
+        double estimatedCost = (usage.PromptTokens / 1000.0) * 0.003 + (usage.CompletionTokens / 1000.0) * 0.015;
+        if (estimatedCost > 0.001)
+        {
+            sb.Append("<div class=\"telemetry-row\">");
+            sb.Append("<span class=\"telemetry-label\">Est. cost:</span> ~$" + estimatedCost.ToString("0.00"));
+            sb.Append(" <span style=\"opacity:0.6\">(approximate)</span>");
+            sb.Append("</div>");
+        }
+
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
+    private static string BuildTelemetryHtml()
+    {
+        var telemetry = HostState.GetTelemetry();
+        if (telemetry.RunsTotal == 0)
+            return string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<div class=\"telemetry-dashboard\">");
+        sb.Append("<div class=\"telemetry-title\">Session Telemetry</div>");
+
+        // Run stats row
+        sb.Append("<div class=\"telemetry-row\">");
+        sb.Append("<span class=\"telemetry-label\">Runs:</span> ");
+        sb.Append(telemetry.RunsTotal + " total");
+        if (telemetry.AgenticRuns > 0)
+            sb.Append(" (" + telemetry.AgenticRuns + " agentic");
+        if (telemetry.ClassicRuns > 0)
+            sb.Append(telemetry.AgenticRuns > 0 ? ", " : " (");
+        if (telemetry.ClassicRuns > 0)
+            sb.Append(telemetry.ClassicRuns + " classic");
+        if (telemetry.AgenticRuns > 0 || telemetry.ClassicRuns > 0)
+            sb.Append(")");
+        sb.Append("</div>");
+
+        // Success rate
+        sb.Append("<div class=\"telemetry-row\">");
+        sb.Append("<span class=\"telemetry-label\">Success:</span> ");
+        sb.Append(telemetry.RunsSuccess + "/" + telemetry.RunsTotal);
+        sb.Append(" (" + (telemetry.SuccessRate * 100).ToString("0") + "%)");
+        if (telemetry.RunsCancelled > 0)
+            sb.Append(" &middot; " + telemetry.RunsCancelled + " cancelled");
+        if (telemetry.RunsFailed > 0)
+            sb.Append(" &middot; " + telemetry.RunsFailed + " failed");
+        sb.Append("</div>");
+
+        // Tool call ranking (top 5)
+        var ranking = telemetry.GetToolCallRanking();
+        if (ranking.Count > 0)
+        {
+            sb.Append("<div class=\"telemetry-row\"><span class=\"telemetry-label\">Top tools:</span></div>");
+            var errorCounts = telemetry.GetToolErrorCounts();
+            int shown = 0;
+            foreach (var kv in ranking)
+            {
+                if (shown >= 5) break;
+                sb.Append("<div class=\"telemetry-tool\">");
+                sb.Append(HtmlEncode(kv.Key) + ": " + kv.Value);
+                if (errorCounts.ContainsKey(kv.Key) && errorCounts[kv.Key] > 0)
+                    sb.Append(" <span style=\"color:#C53030\">(" + errorCounts[kv.Key] + " err)</span>");
+                sb.Append("</div>");
+                shown++;
+            }
+        }
+
+        // Writes
+        if (telemetry.WritesProposed > 0)
+        {
+            sb.Append("<div class=\"telemetry-row\">");
+            sb.Append("<span class=\"telemetry-label\">Writes:</span> ");
+            sb.Append(telemetry.WritesApplied + " applied, " + telemetry.WritesCancelled + " cancelled");
+            if (telemetry.WritesFailed > 0)
+                sb.Append(", " + telemetry.WritesFailed + " failed");
+            sb.Append(" of " + telemetry.WritesProposed + " proposed");
+            sb.Append("</div>");
+        }
+
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
     private static string BuildCollapsibleHeader(string id, string label, bool open)
     {
         string arrow = open ? "&#9662;" : "&#9656;";
@@ -829,9 +1022,11 @@ public sealed class TaskPaneControl : UserControl
         }
 
         string healthBanner = BuildLocalHealthHtml();
+        string budgetHtml = BuildBudgetHtml();
+        string telemetryHtml = BuildTelemetryHtml();
         string statusSection = BuildCollapsibleHeader("status", "Status", false) +
             "<div id=\"status-body\" class=\"section-body\" style=\"display:none\">" +
-            healthBanner + "<pre>" +
+            healthBanner + budgetHtml + telemetryHtml + "<pre>" +
             HtmlEncode(string.IsNullOrWhiteSpace(_statusText) ? "Status refreshes when expanded." : _statusText) +
             "</pre></div>";
 
@@ -959,6 +1154,7 @@ public sealed class TaskPaneControl : UserControl
   .history-tool { font-family: Consolas, monospace; font-size: 11px; color: #18304C; font-weight: 600; }
   .history-summary { color: #22292F; }
   .history-result { color: #2E7D32; font-size: 11px; }
+  .history-undo { color: #5B7083; font-size: 10px; font-style: italic; }
   .history-time { color: #98A0A8; font-size: 10px; }
 
   /* --- Write plan header --- */
@@ -974,12 +1170,20 @@ public sealed class TaskPaneControl : UserControl
     border: 1px solid #E8D9A0;
     border-radius: 6px;
   }
+  .write-card-elevated {
+    background: #FFF8E1;
+    border-color: #F9A825;
+    border-width: 2px;
+  }
   .write-header {
     font-size: 11px;
     font-weight: 600;
     color: #8B6914;
     text-transform: uppercase;
     margin-bottom: 4px;
+  }
+  .write-header-elevated {
+    color: #E65100;
   }
   .write-summary { margin-bottom: 6px; }
   .write-changes {
@@ -1093,6 +1297,13 @@ public sealed class TaskPaneControl : UserControl
   .health-warning { background: #FFF8E1; color: #F57F17; border: 1px solid #FFE082; }
   .health-error { background: #FFF5F5; color: #C62828; border: 1px solid #FFCDD2; }
   .health-guidance { font-size: 11px; margin-top: 3px; opacity: 0.85; }
+  .telemetry-dashboard { padding: 8px 10px; margin: 0 0 6px 0; background: #F0F4F8; border: 1px solid #D2D8E0; border-radius: 4px; font-size: 12px; line-height: 1.5; }
+  .telemetry-title { font-weight: 600; color: #2D3748; margin-bottom: 4px; }
+  .telemetry-row { color: #4A5568; }
+  .telemetry-label { font-weight: 600; color: #2D3748; }
+  .telemetry-tool { padding-left: 12px; color: #4A5568; font-family: 'Consolas', monospace; font-size: 11px; }
+  .budget-bar { height: 6px; background: #E2E8F0; border-radius: 3px; margin: 3px 0 4px 0; overflow: hidden; }
+  .budget-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
 </style>
 </head><body>
 <div id=""chat-area"" class=""content-area"">" + conversationHtml + @"</div>

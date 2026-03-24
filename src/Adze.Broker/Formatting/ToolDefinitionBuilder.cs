@@ -33,10 +33,12 @@ public static class ToolDefinitionBuilder
                     Optional("radius", "integer", "Number of features above and below the anchor to include."))),
 
             Build(ToolNames.GetDimensions,
-                "Returns dimensions in the active document, optionally scoped to a feature.",
+                "Returns dimensions in the active document, optionally scoped to a feature. Supports pagination via offset/limit.",
                 ObjectSchema(
                     Optional("scope", "string", "Scope: 'document' for all, or a feature name to filter."),
-                    Optional("include_driven", "boolean", "Include driven dimensions."))),
+                    Optional("include_driven", "boolean", "Include driven dimensions."),
+                    Optional("offset", "integer", "Number of dimensions to skip (default 0, for pagination)."),
+                    Optional("limit", "integer", "Maximum dimensions to return (default 50, max 200)."))),
 
             Build(ToolNames.GetConfigurations,
                 "Returns all configurations in the active document.",
@@ -50,10 +52,11 @@ public static class ToolDefinitionBuilder
                     Optional("configuration_name", "string", "Configuration name to read properties from."))),
 
             Build(ToolNames.GetMates,
-                "Returns mates in the active assembly document.",
+                "Returns mates in the active assembly document. Supports pagination via offset/limit.",
                 ObjectSchema(
                     Optional("scope", "string", "Scope: 'document' for all mates."),
-                    Optional("limit", "integer", "Maximum number of mates to return."))),
+                    Optional("offset", "integer", "Number of mates to skip (default 0, for pagination)."),
+                    Optional("limit", "integer", "Maximum number of mates to return (default 50, max 200)."))),
 
             Build(ToolNames.GetRebuildDiagnostics,
                 "Returns rebuild diagnostics, warnings, and missing references.",
@@ -98,7 +101,32 @@ public static class ToolDefinitionBuilder
                 "Unsuppresses (resolves) a previously suppressed feature. Requires rebuild.",
                 ObjectSchema(
                     Required("feature_name", "string", "The name of the feature to unsuppress."),
-                    Optional("configuration_name", "string", "Configuration to apply the unsuppression to.")))
+                    Optional("configuration_name", "string", "Configuration to apply the unsuppression to."))),
+
+            Build(ToolNames.RenameObject,
+                "Renames a feature in the active document. SOLIDWORKS automatically updates dimension references.",
+                ObjectSchema(
+                    Required("current_name", "string", "The current name of the object to rename."),
+                    Required("new_name", "string", "The new name for the object."),
+                    Optional("object_type", "string", "Object type: 'feature' (default)."))),
+
+            Build(ToolNames.InsertComponent,
+                "Inserts a component (part or sub-assembly) into the active assembly at specified coordinates. Elevated operation requiring confirmation. Only works with assembly documents.",
+                ObjectSchema(
+                    Required("component_path", "string", "Absolute file path to the .SLDPRT or .SLDASM file to insert."),
+                    Optional("configuration_name", "string", "Configuration of the component to use."),
+                    Optional("x", "number", "X coordinate for insertion point in mm (default 0)."),
+                    Optional("y", "number", "Y coordinate for insertion point in mm (default 0)."),
+                    Optional("z", "number", "Z coordinate for insertion point in mm (default 0)."))),
+
+            Build(ToolNames.CreateDrawingView,
+                "Creates a standard drawing view on the active sheet. Elevated operation requiring confirmation. Only works with drawing documents.",
+                ObjectSchema(
+                    Required("view_type", "string", "View type: front, back, top, bottom, left, right, isometric, trimetric, or dimetric."),
+                    Optional("model_path", "string", "Path to the model file. If empty, uses the first referenced model."),
+                    Optional("x", "number", "X position on the sheet in meters (default 0.15)."),
+                    Optional("y", "number", "Y position on the sheet in meters (default 0.15)."),
+                    Optional("scale", "number", "View scale ratio (default 1.0).")))
         };
     }
 

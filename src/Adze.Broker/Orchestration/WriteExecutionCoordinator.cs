@@ -240,6 +240,33 @@ public sealed class WriteExecutionCoordinator
             };
         }
 
+        if (parameters is RenameObjectParameters renameParams)
+        {
+            return new WriteTargetDescriptor
+            {
+                Kind = WriteTargetKind.ObjectRename,
+                TargetName = renameParams.CurrentName
+            };
+        }
+
+        if (parameters is InsertComponentParameters insertParams)
+        {
+            return new WriteTargetDescriptor
+            {
+                Kind = WriteTargetKind.ComponentInsertion,
+                TargetName = insertParams.ComponentPath
+            };
+        }
+
+        if (parameters is CreateDrawingViewParameters drawParams)
+        {
+            return new WriteTargetDescriptor
+            {
+                Kind = WriteTargetKind.DrawingView,
+                TargetName = drawParams.ViewType
+            };
+        }
+
         return new WriteTargetDescriptor();
     }
 
@@ -253,6 +280,12 @@ public sealed class WriteExecutionCoordinator
             return Contracts.Tooling.ToolNames.SuppressFeature;
         if (parameters is UnsuppressFeatureParameters)
             return Contracts.Tooling.ToolNames.UnsuppressFeature;
+        if (parameters is RenameObjectParameters)
+            return Contracts.Tooling.ToolNames.RenameObject;
+        if (parameters is InsertComponentParameters)
+            return Contracts.Tooling.ToolNames.InsertComponent;
+        if (parameters is CreateDrawingViewParameters)
+            return Contracts.Tooling.ToolNames.CreateDrawingView;
 
         return tool.GetType().Name;
     }

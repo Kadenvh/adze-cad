@@ -111,6 +111,52 @@ public class BudgetStatusTests
         Assert.That(summary, Does.Contain("Daily:"));
         Assert.That(summary, Does.Contain("20.0%"));
     }
+
+    [Test]
+    public void IsOverBudget_WhenBothLimitsReached()
+    {
+        var status = new BudgetStatus
+        {
+            SessionTokensUsed = 600000,
+            SessionTokenLimit = 500000,
+            DailyTokensUsed = 3000000,
+            DailyTokenLimit = 2000000
+        };
+
+        Assert.IsTrue(status.IsOverBudget);
+        Assert.IsTrue(status.SessionLimitReached);
+        Assert.IsTrue(status.DailyLimitReached);
+    }
+
+    [Test]
+    public void IsNearLimit_DailyTriggersAlone()
+    {
+        var status = new BudgetStatus
+        {
+            SessionTokensUsed = 10000,
+            SessionTokenLimit = 500000,
+            DailyTokensUsed = 1700000,
+            DailyTokenLimit = 2000000
+        };
+
+        Assert.IsTrue(status.IsNearLimit(80));
+        Assert.IsFalse(status.IsOverBudget);
+    }
+
+    [Test]
+    public void FormatSummary_ZeroLimitShowsNA()
+    {
+        var status = new BudgetStatus
+        {
+            SessionTokensUsed = 0,
+            SessionTokenLimit = 0,
+            DailyTokensUsed = 0,
+            DailyTokenLimit = 0
+        };
+
+        string summary = status.FormatSummary();
+        Assert.That(summary, Does.Contain("n/a"));
+    }
 }
 
 [TestFixture]

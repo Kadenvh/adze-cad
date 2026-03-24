@@ -2,9 +2,9 @@
 
 **Version:** 0.1.0
 **Created:** 2026-03-11
-**Last Updated:** 2026-03-21
-**Current Phase:** Production hardening, write plan review, and batch execution complete. Live SOLIDWORKS testing validated. Next: advanced write tools, telemetry, further hardening.
-**Status:** Full tool surface (11 read + 4 write + 1 retrieval), SSE streaming (both paths), health check UI, capability probing, recipe suggestions UI, local model support, rate limiting, tool result truncation, write plan review UI. 503 tests passing. 7 projects (6 production + 1 test).
+**Last Updated:** 2026-03-23
+**Current Phase:** IUiThreadInvoker abstraction, session telemetry, and cost budget UI complete. Next: advanced write tools (T7-03/T7-04), large assembly testing.
+**Status:** Full tool surface (11 read + 4 write + 1 retrieval), SSE streaming (both paths), health check UI, capability probing, recipe suggestions UI, local model support, rate limiting, tool result truncation, write plan review UI, session telemetry dashboard, cost budget UI with warning banners, IUiThreadInvoker for COM threading. 537 tests passing. 7 projects (6 production + 1 test).
 
 ## Current Working Baseline
 
@@ -140,6 +140,20 @@
 - [x] **Phase 7 (T7-02):** Batch write execution — `ApplyAllPendingWrites()` sequential apply with stop-on-first-failure, `CancelAllPendingWrites()`. JS bridge methods.
 - [x] **Bug fix:** ApplyWrite COM threading — moved from ThreadPool to UI thread (STA). Was causing silent failures on write confirmation Apply button.
 - [x] **Interactive testing:** All 8 Task Pane features validated in live SOLIDWORKS (streaming, write confirmations, recipe UI, diagnostic intent, multi-turn, collapsible sections, status, cancel).
+- [x] **Cross-cutting (TX-02):** `IUiThreadInvoker` abstraction — `IUiThreadInvoker` interface in Contracts, `SynchronousUiThreadInvoker` for tests, `WinFormsUiThreadInvoker` for production. Wired into `HostState.ApplyPendingWrite` for automatic UI-thread marshaling. 8 tests.
+- [x] **Phase 8 (T8-06):** Session telemetry — `SessionTelemetry` class tracking tool call frequency, run outcomes (success/cancelled/failed/fallback), write apply/cancel/fail rates, cancellation phases, recipe capture/promotion counts, agentic vs classic path tracking. Dashboard in Status section. 23 tests.
+- [x] **Phase 8 (T8-01):** Cost budget UI — usage dashboard in Status section with run count, token breakdown, session budget progress bar, estimated cost. Warning banner when near limit (health-warning), error banner when over budget (health-error). 3 additional BudgetStatus tests.
+- [x] **Cross-cutting (TX-03):** Error presentation tiers — `ErrorClassifier` with 3-tier classification (ToolError/ApiError/HostError). Rate limit, auth, timeout, network, COM error recognition. User-friendly messages with guidance, never stack traces. `FormatAgentOutcomeMessage` for agent loop failures. 17 tests.
+- [x] **Phase 7 (T7-04):** Dependency preview — `DependencyAnalyzer` analyzes cascade risk for suppression and dimension changes. Feature tree ordering, type heuristics, dimension/mate references, `CascadeRisk` enum. Integrated into `SuppressFeatureTool.Preview`. 12 tests.
+- [x] **Phase 7 (T7-03 partial):** `rename_object` write tool — 5th write tool. `RenameObjectTool` with full IWriteTool lifecycle. Preview validates existence, name collisions, dimension references. Wired into dispatcher, schema builder, HostState COM apply. 12 tests.
+- [x] **Elevated confirmation infra:** `PendingWriteAction.IsElevated`, `WriteTrackingToolExecutor.ElevatedToolNames`, elevated card CSS (orange border, "Elevated Change" header). 6 tests.
+- [x] **Phase 7 (T7-03b):** `insert_component` write tool — 6th write tool, Class 3 (HardWriteAdvanced). Assembly-only, `AddComponent5()` COM apply. Preview validates doc type, file extension, duplicates. Elevated confirmation. 11 tests.
+- [x] **Phase 7 (T7-03c):** `create_drawing_view` write tool — 7th write tool, Class 3 (HardWriteAdvanced). Drawing-only, `CreateDrawViewFromModelView3()` COM apply. 9 standard view types. Elevated confirmation. 11 tests.
+- [x] **Phase 8 (T8-04c):** Pagination for large tool outputs — `GetDimensionsTool` and `GetMatesTool` now support `offset`/`limit` with `total_count`/`has_more` response fields. Max limit 200. Tool definitions and dispatchers updated. 3 tests.
+- [x] **Phase 7 (T7-03d):** Configuration-scoped write behavior — suppress/unsuppress use `swThisConfiguration` with named config when `configuration_name` specified. `SetDimensionValue` uses `SetSystemValue3` config-specific mode. HostState COM apply paths updated. Preview summaries include config name. 2 tests.
+- [x] **Agent progress UI:** `AgentLoopRunner` progress callbacks wired through `HostState` → `TaskPaneControl.UpdateRunProgress`. Run state label shows tool name, iteration count, and status during agentic runs.
+- [x] **Undo label tracking:** `CompletedWriteEntry.UndoLabel` populated from write preview `undo_label` field. Displayed in Write History section.
+- [x] **Phase 8 (T8-05b):** Request queuing — `RateLimitHelper` tracks active rate limit windows. `WaitIfRateLimited()` called before all API requests in all 3 model clients. 5 tests.
 
 ## Handoff Notes
 
@@ -150,12 +164,13 @@ If a new agent or session picks this up:
 3. Read `documentation/tasks/TASK-INDEX.md` for the comprehensive task breakdown.
 4. Read `documentation/plans/IMPLEMENTATION-BLUEPRINT.md` for C# interface contracts.
 5. The 8 research briefs in `documentation/plans/research-*.md` are the validated evidence base.
-6. Phases 1A through 9 are implemented. 503 tests passing. 7 projects (6 production + 1 test). 16 tools (11 read + 4 write + 1 retrieval).
+6. Phases 1A through 9 are implemented. 616 tests passing. 7 projects (6 production + 1 test). 19 tools (11 read + 7 write + 1 retrieval).
 7. Feature gates: `SOLIDWORKS_AI_AGENT_LOOP=true` (agentic loop), `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true` (write tools), `SOLIDWORKS_AI_RETRIEVAL=true` (search tool), `SOLIDWORKS_AI_STREAM_FINAL_TEXT=true` (streaming synthesis). See `FeatureGateRegistry` for all 5 gates.
 8. Local models: set `SOLIDWORKS_AI_PROVIDER=ollama` or `lmstudio` to use local inference. `ToolCallCapabilityProbe` automatically detects whether the model supports tool calling — if not, falls back to synthesis-only. `LocalEndpointHealthCheck.Check()` verifies server readiness and displays in Task Pane Status section. Local providers now show `[Experimental]` in answer footer and health banner. See `research-local-model-feasibility.md`.
-9. Next priorities: (a) advanced write tools (T7-03, T7-04), (b) telemetry (T8-06), (c) cost budget UI warning, (d) large assembly testing with real assemblies.
-10. Key new infrastructure this session (2026-03-21): `RateLimitHelper` (429 detection + retry), `MaxToolResultChars` truncation in `AgentLoopRunner`, reference graph `Limit` parameter, write plan review UI (Apply All / Cancel All), batch write execution (`ApplyAllPendingWrites`), experimental label for local providers. ApplyWrite COM threading bug fixed (ThreadPool → UI thread). All 8 Task Pane features validated in live SOLIDWORKS.
-11. Prior session (2026-03-23): Agentic loop final-turn streaming, health check wired into Task Pane, `ToolCallCapabilityProbe`.
+9. Next priorities: (a) T7-03 remaining (component insertion, drawing view creation — Gate G), (b) large assembly testing with real .SLDASM files, (c) MCP server exposure (Phase 10+).
+10. Key new infrastructure this session (2026-03-23): `IUiThreadInvoker`, `SessionTelemetry`, cost budget UI, `ErrorClassifier`, `DependencyAnalyzer`, 3 new write tools (`RenameObjectTool`, `InsertComponentTool`, `CreateDrawingViewTool`), elevated confirmation UI, config-scoped writes, tool pagination, agent progress UI, undo label tracking, request queuing. 113 new tests (503→616). 19 tools total (11 read + 7 write + 1 retrieval).
+11. Prior session (2026-03-23 earlier): Agentic loop final-turn streaming, health check wired into Task Pane, `ToolCallCapabilityProbe`.
+12. Prior session (2026-03-21): `RateLimitHelper` (429 detection + retry), `MaxToolResultChars` truncation in `AgentLoopRunner`, reference graph `Limit` parameter, write plan review UI (Apply All / Cancel All), batch write execution (`ApplyAllPendingWrites`), experimental label for local providers. ApplyWrite COM threading bug fixed (ThreadPool → UI thread). All 8 Task Pane features validated in live SOLIDWORKS.
 12. Prior session (2026-03-22): SSE streaming (T8-03), `LocalEndpointHealthCheck`, graceful degradation messaging.
 13. Prior session (2026-03-21 earlier): SearchProjectFilesTool (T6-04), recipe suggestions UI (T5-04/T9-03), local model support (T8-02).
 14. Earlier sessions: diagnostic intent, multi-turn context, OLE indexer, write history, collapsible UI redesign, HTML answer panel, chat history, write confirmation cards, write tools + safety, trust/recipe/memory, cost budgets, feature gates.

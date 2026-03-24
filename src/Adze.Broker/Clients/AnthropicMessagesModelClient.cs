@@ -148,6 +148,7 @@ public sealed class AnthropicMessagesModelClient : IModelClient
         int maxTokens,
         int timeoutMilliseconds)
     {
+        RateLimitHelper.WaitIfRateLimited();
         const int maxRetries = 1;
         for (int attempt = 0; ; attempt++)
         {
