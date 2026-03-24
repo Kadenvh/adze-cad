@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
-**Version:** 0.1.0
+**Version:** 0.1.1
 **Last Updated:** 2026-03-24
-**Status:** First tagged release (v0.1.0) — 19 tools (11 read + 7 write + 1 retrieval), 616 tests, agentic loop, streaming, local models, full production hardening
+**Status:** Public repo prep complete — 19 tools, 666 tests, AgentPolicyEngine, MCP server design, ready for public visibility
 
 ## Product Thesis
 
@@ -47,6 +47,8 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-21 | Production hardening and write plan review: RateLimitHelper (429 retry with Retry-After), MaxToolResultChars truncation in AgentLoopRunner, reference graph Limit parameter, experimental label for local providers, write plan review UI (Apply All / Cancel All), batch write execution, ApplyWrite COM threading fix. All 8 Task Pane features validated in live SOLIDWORKS. 503 tests (11 new). |
 | 0.1.0 | 2026-03-23 | Advanced writes, telemetry, error tiers, budget UI, dependency analysis: IUiThreadInvoker abstraction, SessionTelemetry dashboard, cost budget UI with progress bar and warning banners, ErrorClassifier 3-tier error presentation, DependencyAnalyzer cascade risk, RenameObjectTool (5th write), InsertComponentTool (6th write, Class 3), CreateDrawingViewTool (7th write, Class 3), elevated confirmation UI, tool pagination, config-scoped writes, agent progress UI, undo label tracking, request queuing. 616 tests (113 new). |
 | **0.1.0** | **2026-03-24** | **First tagged release (v0.1.0).** |
+| 0.1.0 | 2026-03-24 | Licensing research, partner application prep, multi-CAD strategy, simulation tool design, security review. |
+| 0.1.1 | 2026-03-24 | Public repo prep (README, LICENSE, CONTRIBUTING, SECURITY, .github/ templates), AgentPolicyEngine (T4-05), write tool dispatch tests, large assembly pagination tests, MCP server design (638-line sidecar architecture), .env loader wiring. 666 tests (50 new). |
 
 ## Current Architecture
 
@@ -56,7 +58,7 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 |------|-------------------------|---------|
 | Native host | In-process C# SOLIDWORKS add-in with WebBrowser-based conversational UI | Owns lifecycle, COM access, Task Pane, chat history, and write confirmation |
 | Context boundary | Shared C# contracts plus JSON schemas | Keeps host, broker, tools, traces, and scripts aligned |
-| Tool layer | 11 read-only grounding tools + 4 first-wave write tools + 1 retrieval tool | Exposes auditable inspection, governed modification, and closed-file search over the active CAD session |
+| Tool layer | 11 read-only grounding tools + 7 write tools + 1 retrieval tool | Exposes auditable inspection, governed modification, and closed-file search over the active CAD session |
 | Broker layer | Hybrid deterministic + OpenAI/Anthropic planning | Produces structured turn state, tool recommendations, blockers, and recovery guidance |
 | Answer layer | Provider-routed synthesis over executed tool results with deterministic fallback | Produces a grounded natural-language answer without giving the model direct CAD access |
 | Write safety layer | Snapshot/diff/verification, WriteExecutionCoordinator, IWriteTool lifecycle | Ensures write tools follow preview/apply/verify/trace pattern |
@@ -139,8 +141,14 @@ User request
 
 ### Supportability As A Core Product Concern
 
-**Decision:** Treat traces, reports, launcher preflight, and support bundles as first-class workflows.  
+**Decision:** Treat traces, reports, launcher preflight, and support bundles as first-class workflows.
 **Reason:** A desktop CAD assistant that cannot be diagnosed quickly will fail in beta even if the core model behavior is strong.
+
+**Decision:** Use a sidecar process for MCP server exposure (.NET 8 console app + named pipes to .NET 4.8 add-in).
+**Reason:** The MCP C# SDK targets .NET 8+ and depends on modern hosting infrastructure incompatible with .NET Framework 4.8. Process isolation also prevents MCP server crashes from taking down SOLIDWORKS.
+
+**Decision:** MIT license for open source release.
+**Reason:** Maximum freedom for community adoption. No patent grant needed for a COM add-in. Consistent with the free/community positioning in the partner application.
 
 ## Near-Term Roadmap
 
