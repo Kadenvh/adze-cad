@@ -64,3 +64,6 @@ packages/
 .ava/
 .stfolder/
 .mcp.json
+
+# Partner application (confidential business docs)
+solidworks-partner/
