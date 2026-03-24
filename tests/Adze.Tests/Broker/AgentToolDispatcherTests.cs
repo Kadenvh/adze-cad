@@ -322,6 +322,201 @@ public sealed class AgentToolDispatcherTests
         Assert.That(result.OutputJson, Is.Not.Null.And.Not.Empty);
     }
 
+    // --- Write tool dispatch tests ---
+
+    [Test]
+    public void Execute_SetCustomProperty_ReturnsPreview()
+    {
+        SessionContext session = SessionContextFactory.CreateWithPart();
+        ToolExecutionContext context = BuildContext(session);
+
+        AgentToolResult result = _dispatcher.Execute(
+            ToolNames.SetCustomProperty,
+            new Dictionary<string, object?>
+            {
+                ["property_name"] = "Material",
+                ["property_value"] = "Steel"
+            },
+            context);
+
+        Assert.That(result.IsError, Is.False);
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"));
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"));
+        Assert.That(result.OutputJson, Does.Contain("Material"));
+    }
+
+    [Test]
+    public void Execute_SetDimensionValue_ReturnsPreview()
+    {
+        SessionContext session = SessionContextFactory.CreateWithDimensions();
+        ToolExecutionContext context = BuildContext(session);
+
+        AgentToolResult result = _dispatcher.Execute(
+            ToolNames.SetDimensionValue,
+            new Dictionary<string, object?>
+            {
+                ["dimension_full_name"] = "D1@Sketch1",
+                ["new_value"] = 60.0
+            },
+            context);
+
+        Assert.That(result.IsError, Is.False);
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"));
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"));
+    }
+
+    [Test]
+    public void Execute_SuppressFeature_ReturnsPreviewWithWarnings()
+    {
+        SessionContext session = SessionContextFactory.CreateWithFeatures();
+        ToolExecutionContext context = BuildContext(session);
+
+        AgentToolResult result = _dispatcher.Execute(
+            ToolNames.SuppressFeature,
+            new Dictionary<string, object?>
+            {
+                ["feature_name"] = "Boss-Extrude1"
+            },
+            context);
+
+        Assert.That(result.IsError, Is.False);
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"));
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"));
+    }
+
+    [Test]
+    public void Execute_UnsuppressFeature_ReturnsPreview()
+    {
+        SessionContext session = SessionContextFactory.CreateWithFeatures();
+        ToolExecutionContext context = BuildContext(session);
+
+        AgentToolResult result = _dispatcher.Execute(
+            ToolNames.UnsuppressFeature,
+            new Dictionary<string, object?>
+            {
+                ["feature_name"] = "Boss-Extrude1"
+            },
+            context);
+
+        Assert.That(result.IsError, Is.False);
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"));
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"));
+    }
+
+    [Test]
+    public void Execute_RenameObject_ReturnsPreview()
+    {
+        SessionContext session = SessionContextFactory.CreateWithFeatures();
+        ToolExecutionContext context = BuildContext(session);
+
+        AgentToolResult result = _dispatcher.Execute(
+            ToolNames.RenameObject,
+            new Dictionary<string, object?>
+            {
+                ["object_type"] = "feature",
+                ["current_name"] = "Boss-Extrude1",
+                ["new_name"] = "MainBody"
+            },
+            context);
+
+        Assert.That(result.IsError, Is.False);
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"));
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"));
+    }
+
+    [Test]
+    public void Execute_InsertComponent_ReturnsPreview()
+    {
+        SessionContext session = SessionContextFactory.CreateWithAssembly();
+        ToolExecutionContext context = BuildContext(session);
+
+        AgentToolResult result = _dispatcher.Execute(
+            ToolNames.InsertComponent,
+            new Dictionary<string, object?>
+            {
+                ["component_path"] = @"C:\test\Part1.SLDPRT",
+                ["x"] = 0.0,
+                ["y"] = 0.0,
+                ["z"] = 0.0
+            },
+            context);
+
+        Assert.That(result.IsError, Is.False);
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"));
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"));
+    }
+
+    [Test]
+    public void Execute_CreateDrawingView_ReturnsPreview()
+    {
+        SessionContext session = SessionContextFactory.CreateWithDrawing();
+        ToolExecutionContext context = BuildContext(session);
+
+        AgentToolResult result = _dispatcher.Execute(
+            ToolNames.CreateDrawingView,
+            new Dictionary<string, object?>
+            {
+                ["view_type"] = "front",
+                ["x"] = 0.15,
+                ["y"] = 0.15,
+                ["scale"] = 1.0
+            },
+            context);
+
+        Assert.That(result.IsError, Is.False);
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"));
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"));
+    }
+
+    [TestCase(ToolNames.SetCustomProperty)]
+    [TestCase(ToolNames.SetDimensionValue)]
+    [TestCase(ToolNames.SuppressFeature)]
+    [TestCase(ToolNames.UnsuppressFeature)]
+    [TestCase(ToolNames.RenameObject)]
+    [TestCase(ToolNames.InsertComponent)]
+    [TestCase(ToolNames.CreateDrawingView)]
+    public void Execute_AllWriteTools_ReturnPreviewNotError(string toolName)
+    {
+        SessionContext session = SessionContextFactory.CreateWithAssembly();
+        ToolExecutionContext context = BuildContext(session);
+
+        var args = new Dictionary<string, object?>();
+        switch (toolName)
+        {
+            case ToolNames.SetCustomProperty:
+                args["property_name"] = "Test";
+                args["property_value"] = "Value";
+                break;
+            case ToolNames.SetDimensionValue:
+                args["dimension_full_name"] = "D1@Sketch1";
+                args["new_value"] = 10.0;
+                break;
+            case ToolNames.SuppressFeature:
+            case ToolNames.UnsuppressFeature:
+                args["feature_name"] = "Feature1";
+                break;
+            case ToolNames.RenameObject:
+                args["object_type"] = "feature";
+                args["current_name"] = "Feature1";
+                args["new_name"] = "NewName";
+                break;
+            case ToolNames.InsertComponent:
+                args["component_path"] = @"C:\test\Part.SLDPRT";
+                break;
+            case ToolNames.CreateDrawingView:
+                args["view_type"] = "front";
+                break;
+        }
+
+        AgentToolResult result = _dispatcher.Execute(toolName, args, context);
+
+        Assert.That(result.IsError, Is.False, $"Write tool '{toolName}' returned error: {result.OutputJson}");
+        Assert.That(result.OutputJson, Does.Contain("\"preview\":true"),
+            $"Write tool '{toolName}' missing preview flag");
+        Assert.That(result.OutputJson, Does.Contain("\"requires_confirmation\":true"),
+            $"Write tool '{toolName}' missing confirmation flag");
+    }
+
     // --- Helper ---
 
     private static ToolExecutionContext BuildContext(SessionContext session)

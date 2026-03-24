@@ -6,6 +6,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Load .env if present
+. (Join-Path $PSScriptRoot "load-env.ps1")
+
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not $TasksPath) { $TasksPath = Join-Path $repoRoot 'benchmarks\grounding\starter-grounding-tasks.json' }
 if (-not $ReportsPath) { $ReportsPath = Join-Path $repoRoot 'benchmarks\reports' }

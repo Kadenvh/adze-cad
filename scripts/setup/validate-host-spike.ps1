@@ -4,6 +4,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Load .env if present
+. (Join-Path $PSScriptRoot "load-env.ps1")
+
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $logPath = Join-Path $env:LOCALAPPDATA "Adze\logs\host.log"
 $progressionPath = Join-Path $env:LOCALAPPDATA "Adze\state\progression-state.json"

@@ -1,10 +1,10 @@
 # Adze - Implementation Plan
 
-**Version:** 0.1.0
+**Version:** 0.1.1
 **Created:** 2026-03-11
 **Last Updated:** 2026-03-24
-**Current Phase:** First tagged release (v0.1.0). Next: partner application, public repo prep, live write tool validation, large assembly testing (T8-04b), MCP server (Phase 10+), Fusion 360 target scoping.
-**Status:** Full tool surface (11 read + 7 write + 1 retrieval), agentic loop, SSE streaming (both paths), local model support, full production hardening (rate limiting, error tiers, telemetry, cost budgets, UI thread invoker, dependency analysis). 616 tests passing. 7 projects (6 production + 1 test).
+**Current Phase:** Public repo prep complete. Next: push to public, partner application submission, live write tool validation, Maker add-in test, Fusion 360 target scoping.
+**Status:** Full tool surface (11 read + 7 write + 1 retrieval), agentic loop, SSE streaming, local models, production hardening, AgentPolicyEngine, MCP server design, public repo files. 666 tests passing. 7 projects (6 production + 1 test).
 
 ## Current Working Baseline
 
@@ -154,6 +154,13 @@
 - [x] **Agent progress UI:** `AgentLoopRunner` progress callbacks wired through `HostState` → `TaskPaneControl.UpdateRunProgress`. Run state label shows tool name, iteration count, and status during agentic runs.
 - [x] **Undo label tracking:** `CompletedWriteEntry.UndoLabel` populated from write preview `undo_label` field. Displayed in Write History section.
 - [x] **Phase 8 (T8-05b):** Request queuing — `RateLimitHelper` tracks active rate limit windows. `WaitIfRateLimited()` called before all API requests in all 3 model clients. 5 tests.
+- [x] **Public repo prep:** README.md (public-facing), LICENSE (MIT), CONTRIBUTING.md, SECURITY.md, `.github/` issue/PR templates. All created.
+- [x] **T4-05:** `AgentPolicyEngine` — trust-gated tool access. Read tools always allowed, first-wave writes require Assisted tier, advanced writes require Reviewed tier. 27 tests.
+- [x] **T4-12 (partial):** Write tool dispatch tests — 14 tests covering all 7 write tools through `AgentToolDispatcher`. All return preview with confirmation flags.
+- [x] **T8-04b:** Large assembly test fixtures — `CreateLargeAssembly()` factory (configurable dim/mate/ref counts), 9 pagination edge case tests (offset beyond total, limit capping, negative offset, single-item limit, full pagination walk, reference graph clipping).
+- [x] **T9-04 design:** MCP server architecture — 638-line design document. Sidecar pattern (`.NET 8 Adze.Mcp.Server.exe` + named pipes to `.NET 4.8 add-in`). stdio + Streamable HTTP transports. Full tool/resource/prompt mapping.
+- [x] **T9-06:** `.env` loader wired into `validate-host-spike.ps1`, `run-provider-smoke.ps1`, `run-broker-evals.ps1`.
+- [x] **Security review follow-ups:** Hooks verified clean (no secrets/PII), bin/obj not tracked, no untracked sensitive files.
 
 ## Handoff Notes
 
@@ -167,13 +174,14 @@ If a new agent or session picks this up:
 6. Phases 1A through 9 are implemented. 616 tests passing. 7 projects (6 production + 1 test). 19 tools (11 read + 7 write + 1 retrieval).
 7. Feature gates: `SOLIDWORKS_AI_AGENT_LOOP=true` (agentic loop), `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true` (write tools), `SOLIDWORKS_AI_RETRIEVAL=true` (search tool), `SOLIDWORKS_AI_STREAM_FINAL_TEXT=true` (streaming synthesis). See `FeatureGateRegistry` for all 5 gates.
 8. Local models: set `SOLIDWORKS_AI_PROVIDER=ollama` or `lmstudio` to use local inference. `ToolCallCapabilityProbe` automatically detects whether the model supports tool calling — if not, falls back to synthesis-only. `LocalEndpointHealthCheck.Check()` verifies server readiness and displays in Task Pane Status section. Local providers now show `[Experimental]` in answer footer and health banner. See `research-local-model-feasibility.md`.
-9. Next priorities: (a) live validation of new write tools (rename, insert component, drawing view), (b) large assembly testing with real .SLDASM files, (c) MCP server exposure (Phase 10+), (d) Fusion 360 target scoping (Python add-in).
+9. Next priorities: (a) push public and complete partner application, (b) live validation of new write tools (rename, insert component, drawing view), (c) Maker add-in loading test, (d) MCP server implementation (design complete in `documentation/plans/design-mcp-server.md`), (e) Fusion 360 target scoping.
 10. **SOLIDWORKS Solution Partner application** prepared (2026-03-24): `solidworks-partner/` directory (gitignored) contains complete draft application, product brief, competitor comparison, applicant context, online form reference. PDF questionnaire downloaded. Blocked on: web presence (GitHub public repo, VH Tech site), personal details (TIN, address). Contact: SOLIDWORKS.PartnerProgram@3ds.com from kaden@vhtech.me.
 11. **Simulation tools designed** (2026-03-24): `solidworks-partner/sim-tools-design.md` has C# contracts for 3 grounding tools (get_simulation_studies, get_topology_study_params, get_simulation_results). ICWTopologyStudyManager API verified from 2026 docs. Blocked on Simulation Professional license.
 12. **Multi-CAD decision** (2026-03-24): Adze will target both SOLIDWORKS and Fusion 360. Fusion 360 is deferred until SOLIDWORKS is stable. Broker/AI logic is portable (~30%), tools+host are platform-specific.
 13. **Security review** (2026-03-24): Source code clean. `solidworks-partner/` gitignored. No secrets in tracked files. GitHub PAT in `.mcp.json` (gitignored) should be rotated.
 14. **Docs infrastructure**: FireCrawl + ChromaDB at ava:4173. SOLIDWORKS and Fusion API docs have URL catalogs but no embedded content (JS rendering issue — workaround in progress). CodeStack SOLIDWORKS API registered as alternative source.
-15. Key new infrastructure this session (2026-03-23): `IUiThreadInvoker`, `SessionTelemetry`, cost budget UI, `ErrorClassifier`, `DependencyAnalyzer`, 3 new write tools (`RenameObjectTool`, `InsertComponentTool`, `CreateDrawingViewTool`), elevated confirmation UI, config-scoped writes, tool pagination, agent progress UI, undo label tracking, request queuing. 113 new tests (503→616). 19 tools total (11 read + 7 write + 1 retrieval).
+15. Key new infrastructure session (2026-03-23): `IUiThreadInvoker`, `SessionTelemetry`, cost budget UI, `ErrorClassifier`, `DependencyAnalyzer`, 3 new write tools, elevated confirmation UI, config-scoped writes, tool pagination, agent progress UI, undo label tracking, request queuing. 113 new tests (503→616).
+16. **Session 2026-03-24b (public repo + hardening):** Public repo files (README.md, LICENSE, CONTRIBUTING.md, SECURITY.md, `.github/` templates). `AgentPolicyEngine` (T4-05, trust-gated tool access). Write tool dispatch tests (14 tests). Large assembly test fixtures + pagination edge cases (9 tests). MCP server design (638-line design doc). `.env` loader wired into 3 scripts. Security review follow-ups verified clean. 50 new tests (616→666).
 11. Prior session (2026-03-23 earlier): Agentic loop final-turn streaming, health check wired into Task Pane, `ToolCallCapabilityProbe`.
 12. Prior session (2026-03-21): `RateLimitHelper` (429 detection + retry), `MaxToolResultChars` truncation in `AgentLoopRunner`, reference graph `Limit` parameter, write plan review UI (Apply All / Cancel All), batch write execution (`ApplyAllPendingWrites`), experimental label for local providers. ApplyWrite COM threading bug fixed (ThreadPool → UI thread). All 8 Task Pane features validated in live SOLIDWORKS.
 12. Prior session (2026-03-22): SSE streaming (T8-03), `LocalEndpointHealthCheck`, graceful degradation messaging.

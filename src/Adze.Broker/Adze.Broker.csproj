@@ -95,6 +95,7 @@
     <Compile Include="Orchestration\KeywordBrokerOrchestrator.cs" />
     <Compile Include="Orchestration\StateDiffService.cs" />
     <Compile Include="Orchestration\SynchronousUiThreadInvoker.cs" />
+    <Compile Include="Orchestration\AgentPolicyEngine.cs" />
     <Compile Include="Orchestration\WriteExecutionCoordinator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

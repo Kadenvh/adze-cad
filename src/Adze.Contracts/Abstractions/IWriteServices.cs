@@ -1,4 +1,5 @@
 using System.Threading;
+using Adze.Contracts.Enums;
 using Adze.Contracts.Models;
 
 namespace Adze.Contracts.Abstractions;
@@ -23,6 +24,29 @@ public interface IVerificationPolicy
 public interface IApprovalCoordinator
 {
     ApprovalDecision RequestApproval(WritePreview preview, CancellationToken cancellationToken);
+}
+
+public enum ToolExecutionPolicy
+{
+    Allow,
+    RequireConfirmation,
+    Deny
+}
+
+public sealed class PolicyEvaluation
+{
+    public ToolExecutionPolicy Policy { get; set; } = ToolExecutionPolicy.Allow;
+
+    public string Reason { get; set; } = string.Empty;
+
+    public ToolUnlockTier RequiredTier { get; set; } = ToolUnlockTier.Baseline;
+
+    public ToolUnlockTier CurrentTier { get; set; } = ToolUnlockTier.Baseline;
+}
+
+public interface IAgentPolicyEngine
+{
+    PolicyEvaluation Evaluate(string toolName, SessionContext context, string userId);
 }
 
 public interface IWriteTool<TParams>

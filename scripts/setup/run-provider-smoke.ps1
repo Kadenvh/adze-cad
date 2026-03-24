@@ -3,6 +3,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Load .env if present
+. (Join-Path $PSScriptRoot "load-env.ps1")
+
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $nugetExe = Join-Path $repoRoot 'tools\nuget.exe'
 $nugetUrl = 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe'

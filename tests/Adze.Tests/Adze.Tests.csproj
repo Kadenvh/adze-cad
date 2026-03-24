@@ -110,6 +110,8 @@
     <Compile Include="Broker\ErrorClassifierTests.cs" />
     <Compile Include="Broker\ElevatedConfirmationTests.cs" />
     <Compile Include="Tools\DependencyAnalyzerTests.cs" />
+    <Compile Include="Broker\AgentPolicyEngineTests.cs" />
+    <Compile Include="Tools\LargeAssemblyTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

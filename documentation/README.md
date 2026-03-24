@@ -10,15 +10,17 @@ This directory is the source of truth for project documentation. The root `CLAUD
 
 As of 2026-03-15, the repo has a real working implementation, not just planning material:
 
-- a buildable 6-project C# solution (5 production + 1 test)
+- a buildable 7-project C# solution (6 production + 1 test)
 - a native SOLIDWORKS add-in host with a Task Pane UI
-- 10 live read-only grounding tools
-- a hybrid broker that can use OpenAI or Anthropic for planning while preserving deterministic fallback
-- model-backed final answer synthesis over executed tool results, again with deterministic fallback
-- an assistant-first Task Pane workspace with `Plan`, `Status`, and `Tools` tabs
+- 19 tools (11 read-only grounding + 7 write + 1 retrieval)
+- a hybrid broker with OpenAI/Anthropic/OpenRouter/Ollama/LM Studio provider routing and deterministic fallback
+- agentic tool loop with iterative model-driven tool calling
+- model-backed final answer synthesis with streaming support
+- write tool safety lifecycle (preview/approve/verify/trace)
+- a conversational Task Pane with collapsible sections, chat history, write confirmations, and recipe suggestions
 - background model execution after UI-thread context capture so slow network calls do not freeze the pane
 - trace, recipe-candidate, achievement, exploration, and unlock persistence
-- 175 compiled NUnit unit tests covering broker orchestration, response parsing, configuration, prompt composition, all 10 grounding tools, trace serialization, usage parsing, and live provider smoke tests
+- 616 compiled NUnit unit tests covering broker orchestration, agentic loop, write tools, response parsing, configuration, prompt composition, all tools, trace serialization, usage parsing, and live provider smoke tests
 - green scripted validation for build, schemas, unit tests, broker evals, host validation, and grounding benchmarks
 - one-command support bundle collection for logs, traces, snapshots, reports, and launcher preflight output
 - explicit COM cleanup and logged graceful degradation across the session-context builder
@@ -31,6 +33,10 @@ These live at the repo root because they serve different audiences:
 |------|------|
 | `CLAUDE.md` | Agent entrypoint, execution rules, current quick-reference commands |
 | `SETUP.md` | User-facing setup, registration, model configuration, validation, and troubleshooting guide |
+| `README.md` | Public-facing project description and quick start |
+| `CONTRIBUTING.md` | Community contribution guidelines |
+| `SECURITY.md` | Security policy and responsible disclosure |
+| `LICENSE` | MIT License |
 
 ## Read In This Order
 

@@ -223,6 +223,56 @@ internal static class SessionContextFactory
         return context;
     }
 
+    public static SessionContext CreateLargeAssembly(int dimensionCount = 500, int mateCount = 200, int referenceCount = 150)
+    {
+        SessionContext context = CreateWithAssembly("LargeAssembly", @"C:\test\LargeAssembly.SLDASM");
+
+        var dims = new List<DimensionNode>();
+        for (int i = 0; i < dimensionCount; i++)
+        {
+            dims.Add(new DimensionNode
+            {
+                Name = $"D{i + 1}",
+                FullName = $"D{i + 1}@Feature{i / 5 + 1}",
+                Value = 10.0 + i * 0.5,
+                UnitSource = "document"
+            });
+        }
+        context.Dimensions = new DimensionsInfo { Count = dimensionCount, Items = dims };
+
+        var mates = new List<MateNode>();
+        for (int i = 0; i < mateCount; i++)
+        {
+            mates.Add(new MateNode
+            {
+                Name = $"Coincident{i + 1}",
+                Kind = i % 3 == 0 ? "Coincident" : i % 3 == 1 ? "Concentric" : "Distance",
+                EntityCount = 2,
+                Components = new List<string> { $"Part{i / 2 + 1}-1", $"Part{i / 2 + 2}-1" }
+            });
+        }
+        context.Mates = new MatesInfo { Count = mateCount, Items = mates };
+
+        var refs = new List<ReferenceNode>();
+        for (int i = 0; i < referenceCount; i++)
+        {
+            refs.Add(new ReferenceNode
+            {
+                Name = $"Component{i + 1}.SLDPRT",
+                Path = $@"C:\test\parts\Component{i + 1}.SLDPRT",
+                ExistsOnDisk = true
+            });
+        }
+        context.ReferenceGraph = new ReferenceGraphInfo
+        {
+            DirectCount = referenceCount,
+            TransitiveCount = referenceCount,
+            DirectItems = refs
+        };
+
+        return context;
+    }
+
     public static SessionContext CreateWithDrawing(string title = "TestDrawing", string path = @"C:\test\TestDrawing.SLDDRW")
     {
         SessionContext context = CreateMinimal();
