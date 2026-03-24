@@ -237,11 +237,11 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - [x] Stop on first failure, report partial progress in write history
 - **Files:** `src/Adze.Host/Infrastructure/HostState.cs`
 
-### T7-03: Advanced write tools (partially ✓)
+### T7-03: Advanced write tools ✓
 - [x] `rename_object` — `RenameObjectTool` with full IWriteTool lifecycle: preview (name collision detection, dimension reference warnings), apply (feature.Name via COM), verify (name change confirmed in refreshed tree). Wired into dispatcher, schema builder, HostState. 12 tests.
 - [x] `insert_component` — `InsertComponentTool`, Class 3 (HardWriteAdvanced). Assembly-only. Preview validates doc type, file extension (.SLDPRT/.SLDASM), duplicate detection via reference graph, insertion coordinates. Apply uses `AddComponent5()` via COM. Elevated confirmation UI. 11 tests.
-- [ ] Drawing view creation: standard views (gated by Gate G)
-- [ ] Configuration-scoped advanced edits (gated by Gate G)
+- [x] Drawing view creation: `CreateDrawingViewTool` — 7th write tool, Class 3 (HardWriteAdvanced). Drawing-only. Creates standard views (front/back/top/bottom/left/right/isometric/trimetric/dimetric) via `CreateDrawViewFromModelView3()`. Validates doc type, view type, scale. Elevated confirmation. 11 tests.
+- [x] Configuration-scoped writes: suppress/unsuppress use `swThisConfiguration` with named config when `configuration_name` specified, `swAllConfiguration` when not. `SetDimensionValue` uses `SetSystemValue3` config-specific mode. HostState COM apply paths updated. Preview summaries include config name. 2 tests.
 - [x] Elevated confirmation UI infra: `PendingWriteAction.IsElevated`, `ElevatedToolNames` set, orange-bordered cards with "Elevated Change" header, CSS for `.write-card-elevated` and `.write-header-elevated`. 6 tests.
 - **Files:** `src/Adze.Tools/Write/RenameObjectTool.cs`, `src/Adze.Tools/Write/InsertComponentTool.cs`
 

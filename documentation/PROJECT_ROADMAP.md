@@ -1,8 +1,8 @@
 # Adze - Project Roadmap
 
 **Version:** 0.1.0
-**Last Updated:** 2026-03-21
-**Status:** Agentic alpha with production hardening — 16 tools (11 read + 4 write + 1 retrieval), 503 tests, SSE streaming (both paths), rate limiting, tool result truncation, write plan review UI, batch write execution, experimental label for local providers
+**Last Updated:** 2026-03-24
+**Status:** First tagged release (v0.1.0) — 19 tools (11 read + 7 write + 1 retrieval), 616 tests, agentic loop, streaming, local models, full production hardening
 
 ## Product Thesis
 
@@ -45,6 +45,8 @@ The project deliberately treats "learning" as reviewed operational memory, not a
 | 0.1.0 | 2026-03-22 | Streaming synthesis, local model hardening: SSE streaming for final answer synthesis (T8-03) — SseStreamReader, IStreamingModelClient, live token streaming to WebBrowser via InvokeScript. LocalEndpointHealthCheck pings /v1/models for Ollama/LM Studio. Graceful degradation messaging for local model failures. TASK-INDEX.md completion markers reconciled. 467 tests (37 new). |
 | 0.1.0 | 2026-03-23 | Agentic streaming, health check UI, capability probing: IStreamingAgentModelClient + OpenAIFormatAgentClient.SendTurnStreaming for agentic loop final-turn streaming. Health check wired into Task Pane Status section with styled banners. ToolCallCapabilityProbe auto-detects local model tool-calling support and falls back to synthesis-only. 492 tests (25 new). |
 | 0.1.0 | 2026-03-21 | Production hardening and write plan review: RateLimitHelper (429 retry with Retry-After), MaxToolResultChars truncation in AgentLoopRunner, reference graph Limit parameter, experimental label for local providers, write plan review UI (Apply All / Cancel All), batch write execution, ApplyWrite COM threading fix. All 8 Task Pane features validated in live SOLIDWORKS. 503 tests (11 new). |
+| 0.1.0 | 2026-03-23 | Advanced writes, telemetry, error tiers, budget UI, dependency analysis: IUiThreadInvoker abstraction, SessionTelemetry dashboard, cost budget UI with progress bar and warning banners, ErrorClassifier 3-tier error presentation, DependencyAnalyzer cascade risk, RenameObjectTool (5th write), InsertComponentTool (6th write, Class 3), CreateDrawingViewTool (7th write, Class 3), elevated confirmation UI, tool pagination, config-scoped writes, agent progress UI, undo label tracking, request queuing. 616 tests (113 new). |
+| **0.1.0** | **2026-03-24** | **First tagged release (v0.1.0).** |
 
 ## Current Architecture
 

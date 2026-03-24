@@ -45,6 +45,13 @@ benchmarks/reports/*-report-*.json
 credentials.*
 secrets.*
 
+# Test results
+TestResult.xml
+
+# Release artifacts
+install/dist/
+install/*.zip
+
 # NuGet
 packages/
 

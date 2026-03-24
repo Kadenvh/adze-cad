@@ -2,9 +2,9 @@
 
 **Version:** 0.1.0
 **Created:** 2026-03-11
-**Last Updated:** 2026-03-23
-**Current Phase:** IUiThreadInvoker abstraction, session telemetry, and cost budget UI complete. Next: advanced write tools (T7-03/T7-04), large assembly testing.
-**Status:** Full tool surface (11 read + 4 write + 1 retrieval), SSE streaming (both paths), health check UI, capability probing, recipe suggestions UI, local model support, rate limiting, tool result truncation, write plan review UI, session telemetry dashboard, cost budget UI with warning banners, IUiThreadInvoker for COM threading. 537 tests passing. 7 projects (6 production + 1 test).
+**Last Updated:** 2026-03-24
+**Current Phase:** First tagged release (v0.1.0). Next: live validation of new write tools, large assembly testing (T8-04b), MCP server exposure (Phase 10+).
+**Status:** Full tool surface (11 read + 7 write + 1 retrieval), agentic loop, SSE streaming (both paths), local model support, full production hardening (rate limiting, error tiers, telemetry, cost budgets, UI thread invoker, dependency analysis). 616 tests passing. 7 projects (6 production + 1 test).
 
 ## Current Working Baseline
 
@@ -14,7 +14,7 @@
 - hybrid broker with OpenAI/Anthropic/OpenRouter/Ollama/LM Studio provider routing and deterministic fallback
 - model-backed final answer synthesis with deterministic fallback
 - per-run and session-level token usage monitoring (API response → answer footer → Status tab)
-- 503 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
+- 616 compiled NUnit unit tests + 6 live provider smoke tests (all passing)
 - **agentic tool loop** (Phase 2): `OpenAIFormatAgentClient`, `AgentLoopRunner`, `AgentToolDispatcher`, `ToolDefinitionBuilder`, `AgentModelClientFactory`. Feature-gated behind `SOLIDWORKS_AI_AGENT_LOOP=true`. Existing single-turn path remains default fallback.
 - **write tool safety infrastructure** (Phase 3): `IStateSnapshotService`, `IStateDiffService`, `IVerificationPolicy`, `StateDiffService`, `DefaultVerificationPolicy`, `WriteTraceRecordBuilder`. All contracts and pure logic implementations with 30 tests.
 - **first-wave write tools** (Phase 4 core): `SetCustomPropertyTool`, `SetDimensionValueTool`, `SuppressFeatureTool`, `UnsuppressFeatureTool`. Full `IWriteTool<TParams>` implementations with preview/apply/verify/undo lifecycle. `WriteExecutionCoordinator` orchestrates the 8-step write lifecycle. Agent dispatch integration with feature gate `SOLIDWORKS_AI_FIRST_WAVE_WRITES=true`. 36 tests.

@@ -41,7 +41,9 @@ $requiredDlls = @(
     'Adze.Broker.dll',
     'Adze.Tools.dll',
     'Adze.Trace.dll',
-    'Adze.Contracts.dll'
+    'Adze.Contracts.dll',
+    'Adze.Index.dll',
+    'OpenMcdf.dll'
 )
 
 foreach ($dll in $requiredDlls) {
