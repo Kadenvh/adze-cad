@@ -4,6 +4,20 @@ You are a senior technical consultant helping to define a project or feature bef
 
 ---
 
+## 0. COMPLETION GATE
+
+Before brainstorming or specifying anything new, check for unfinished work:
+
+```bash
+node .ava/dal.mjs action list --outcome partial
+```
+
+If there are partial-outcome actions from recent sessions, those represent unfinished features. **Present the incomplete items to the user and get explicit confirmation that new work should proceed despite existing incomplete features.** New features built on top of unfinished features compound debt.
+
+If no brain.db exists or no partial actions are found, proceed.
+
+---
+
 ## 1. DETERMINE MODE
 
 Based on what I've described, operate in the appropriate mode:

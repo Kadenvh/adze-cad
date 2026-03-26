@@ -15,7 +15,7 @@ Every project in this ecosystem follows a hub-and-spoke documentation model. You
 | `CLAUDE.md` | Critical rules, anti-patterns, quick start, file structure, tech stack | **1st** (auto-loaded by Claude Code) |
 | `documentation/PROJECT_ROADMAP.md` | Why decisions were made, version history, architecture, future direction | 2nd |
 | `documentation/IMPLEMENTATION_PLAN.md` | Current tasks, what happened last session, blockers, handoff notes | **3rd** (start work from here) |
-| `documentation/.prompts/` | Session lifecycle prompts (this file, bootstrap, discovery, closeout, readme) | Reference as needed |
+| `.prompts/` | Skill protocol files (this file, dal-doctor, discovery, closeout, readme, system-reference, etc.) | Reference as needed |
 
 If `CLAUDE.md` exists at the project root, it is auto-loaded — you already have it. Read it anyway to confirm you've internalized the critical rules.
 
@@ -48,6 +48,13 @@ Before proceeding to any task, confirm:
 - [ ] **Stale docs** — are the "Updated" dates recent? Stale docs may not reflect the actual codebase.
 - [ ] **Blockers** — check `IMPLEMENTATION_PLAN.md` for known issues and blockers before starting work.
 - [ ] **Build/run** — can you build and run the project with the commands in `CLAUDE.md`? If the user asks you to make changes, verify the project compiles first.
+- [ ] **Incomplete features** — check brain.db for actions with partial outcomes from recent sessions:
+  ```bash
+  node .ava/dal.mjs action list --outcome partial
+  ```
+  For each: verify the backing store exists and has data. If not, this is your highest-priority work.
+  **Do not propose new features while partial-outcome actions remain unresolved.** If the user
+  explicitly requests new work, surface the incomplete items first and get confirmation to defer them.
 
 ### DAL Health Check (if brain.db exists)
 
@@ -55,13 +62,13 @@ If `.ava/brain.db` exists at the project root, the project uses the DAL for sess
 
 ```bash
 node .ava/dal.mjs status        # Verify schema version and integrity
-node .ava/dal.mjs fact audit     # Check for unclassified/stale/expired facts
+node .ava/dal.mjs identity list  # Core identity rows (should be 5-7)
+node .ava/dal.mjs arch list      # Scoped architecture knowledge
 ```
 
 - If `status` shows issues, flag them before starting work.
-- If `fact audit` shows unclassified facts, note them for classification during closeout.
-- **If brain.db has 0 facts and 0 sessions**: the DAL was deployed but never populated. Run `/cleanup` before starting work — it reads the project's docs and populates brain.db with facts and decisions. Without this, the DAL provides zero continuity value.
-- **If brain.db has facts but is missing key ones** (no `project.name`, no `tech.stack`, no decisions): brain.db is incomplete. Run `/cleanup` to fill gaps before starting work.
+- **If brain.db has 0 identity rows and 0 sessions**: the DAL was deployed but never populated. Run `/cleanup` before starting work — it reads the project's docs and populates brain.db with identity, architecture, and decisions. Without this, the DAL provides zero continuity value.
+- **If brain.db has identity rows but is missing key ones** (no `project.name`, no `tech.stack`, no decisions): brain.db is incomplete. Run `/cleanup` to fill gaps before starting work.
 - If `.ava/brain.db` does NOT exist, skip this — the project uses the 3-doc markdown system only.
 
 **Coverage evaluation:** The DAL state injected above (by the SessionStart hook) should give you enough context to understand the project without reading all the docs. If it doesn't — if you find yourself needing to read CLAUDE.md, ROADMAP, and IMPL_PLAN to understand what's going on — that means brain.db is incomplete and `/cleanup` should be run.
@@ -83,9 +90,70 @@ If a write or command gets blocked, check `.claude/hooks/` for the specific rule
 
 Run `/dal-setup` for full DAL reference if needed.
 
+### Obsidian Vault Context (if vault exists)
+
+If the Obsidian vault exists at `/home/ava/Obsidian/Ava/`, check for relevant project context beyond what brain.db provides.
+
+**Step 1: Identify the project folder.** Use `project.name` from identity to find the vault folder (e.g., `PE`, `Ava_Main`, `TradeSignal`).
+
+```bash
+ls /home/ava/Obsidian/Ava/{ProjectName}/ 2>/dev/null
+```
+
+**Step 2: Read the most recent session note** (if any exist):
+
+```bash
+ls -t /home/ava/Obsidian/Ava/{ProjectName}/sessions/*.md 2>/dev/null | head -1
+```
+
+Read it. This gives you the previous session's summary, decisions made, files modified, and next actions — richer context than the brain.db session summary alone.
+
+**Step 3: Check for active plans:**
+
+```bash
+ls /home/ava/Obsidian/Ava/{ProjectName}/plans/*.md 2>/dev/null
+```
+
+Read any with `status: active` in their frontmatter. These are living plans that may inform the current session's priorities.
+
+**Step 4: Read the latest handoff** (if YAML handoffs exist):
+
+```bash
+node .ava/dal.mjs handoff latest
+```
+
+The handoff contains structured session state: traces, open notes, blockers, next actions. This supplements the brain.db session summary.
+
+**If the vault folder doesn't exist for this project:** Skip. The vault is additive — brain.db and CLAUDE.md provide sufficient context. Note the absence as a recommendation: "Vault folder missing — consider running `/bootstrap` to initialize."
+
+**If no vault exists at all:** Skip entirely. The four-layer architecture is optional.
+
 ---
 
-## 4. UNDERSTAND THE PROMPT SYSTEM
+## 4. REVIEW PAST PERFORMANCE (if brain.db exists)
+
+> **If `.ava/brain.db` does NOT have agent_actions table, skip this.** Requires schema v4+.
+
+The learning loop injects performance data into your context (see above). Before starting work, review it:
+
+1. **Check action success rates.** If any action type has failures, understand why before repeating that type of work. The context shows per-type rates — a deployment at 75% means something went wrong last time.
+2. **Check metric trends.** Are key metrics (identity count, architecture count, schema version) trending in the right direction? Flat or declining metrics may indicate stalled progress.
+3. **Check recent failures.** If the context lists failures, read the detail. Adjust your approach to avoid repeating them.
+4. **If no loop data exists** (fresh project or first session with v4), skip this — there's nothing to learn from yet. But DO record actions during this session so the next one has data.
+
+For deeper investigation:
+
+```bash
+node .ava/dal.mjs loop summary           # Full performance overview
+node .ava/dal.mjs action rate <type>     # Success rate for a specific action type
+node .ava/dal.mjs metric trend <key>     # Trend over time for a metric
+```
+
+**The goal:** Don't repeat what failed. Double down on what worked. If deployments keep having partial outcomes, investigate the pattern before deploying again.
+
+---
+
+## 5. UNDERSTAND THE PROMPT SYSTEM
 
 The `.prompts/` directory contains session lifecycle templates. You are reading one of them right now.
 
@@ -101,7 +169,7 @@ You don't need to create an init prompt. This IS the init prompt. The documentat
 
 ---
 
-## 5. ENGAGEMENT PROTOCOL
+## 6. ENGAGEMENT PROTOCOL
 
 Before any implementation:
 
@@ -115,7 +183,7 @@ Before any implementation:
 
 ---
 
-## 6. SURFACE INSIGHTS
+## 7. SURFACE INSIGHTS
 
 Before waiting for instructions, proactively share what you've noticed:
 
@@ -128,7 +196,7 @@ Don't filter yourself. The human wants a collaborator who notices things, not an
 
 ---
 
-## 7. READ PROJECT NOTES
+## 8. READ PROJECT NOTES
 
 If the project has a notes, issues, or task tracking system (markdown files, in-app notes, TODO lists, etc.):
 
@@ -156,12 +224,12 @@ Archived content is still valid context — it was moved for size management, no
 
 ---
 
-## 8. START WORKING
+## 9. START WORKING
 
 Once oriented:
 
-1. Present your ready state: version, blockers, insights, questions, and **a prioritized plan for this session**. **Await explicit confirmation before implementing.**
-2. If the user has a specific request, proceed with that
+1. Present your ready state: version, blockers, **incomplete features from prior sessions**, insights, questions, and a prioritized plan. **Incomplete features are the default top priority.** Await explicit confirmation before implementing.
+2. If the user has a specific request, proceed with that — but surface incomplete items first so the user can make an informed choice to defer them.
 3. If picking from the plan, propose your approach and get confirmation
 4. If unclear, ask — it's cheaper to clarify now than to redo work later
 

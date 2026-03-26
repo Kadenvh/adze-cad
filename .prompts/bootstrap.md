@@ -53,8 +53,10 @@ The DO NOT section is the most important part of CLAUDE.md — it prevents mista
 | Any project | DO NOT read, write, or reference OpenClaw config files: AGENTS.md, HEARTBEAT.md, IDENTITY.md, MEMORY.md, SOUL.md, TOOLS.md, USER.md, or the `memory/` directory. These belong to the orchestrating agent, not to Claude Code sessions. |
 | Any project | ALWAYS: when outputting commands for the user to run manually, use fenced code blocks (```bash) with one command per block, no commentary inside the block. Commands must be directly copy-paste ready. |
 | Any project | ALWAYS: when a command requires elevated permissions (sudo), do NOT attempt to run it. Output it in a copy-paste-ready code block for the user to execute manually. |
-| `.ava/brain.db` exists | ALWAYS: start significant sessions with `/session-init`, end with `/session-closeout`. brain.db is the source of truth for project state — docs are rendered views. Classify fact permanence during closeout (immutable/persistent/standard/ephemeral). Record architectural decisions to brain.db, not just docs. |
+| `.ava/brain.db` exists | ALWAYS: start significant sessions with `/session-init`, end with `/session-closeout`. brain.db is the source of truth for project state — docs are rendered views. Assign architecture scope during closeout (project/ecosystem/infrastructure/convention). Record architectural decisions to brain.db, not just docs. |
 | `.ava/brain.db` exists | DO NOT commit `.ava/` — brain.db is gitignored by design. Do not use `.notes.json` — brain.db notes are the standard. |
+| Any project | DO NOT list endpoint counts, LOC, route file counts, or test numbers as metrics in CLAUDE.md. These incentivize breadth over depth. The only valid progress indicator is what the user can do. |
+| Any project with DB or file persistence | DO NOT declare a feature "shipped" if its backing database is empty or uninitialized. Verify file size and row count before marking complete. |
 
 **This table is a seed, not a ceiling.** Every project has unique dangers. If you discover a project-specific anti-pattern during bootstrap that isn't listed here, add it to the DO NOT section and flag it in your closeout notes — it may warrant adding to this table for future bootstraps.
 
@@ -525,6 +527,12 @@ Target **80–300 lines** for most projects:
 - Over 300 lines or 16KB — assess whether content should move to spoke docs or annexes. See Process Manual Section XIII for scaling triggers.
 - When in doubt, err on the side of including a rule. A rule an agent reads and doesn't need costs 1 line; a rule an agent needed but didn't have costs a session.
 
+### CLAUDE.md Anti-Patterns
+
+- **Endpoint scoreboards:** Never maintain a table counting endpoints, routes, or tests. If you need an API reference, link to the route directory. Counts are not achievements.
+- **Vanity headers:** "362 Endpoints | 47 Tests | 14 Tabs" is a resume, not a reference. The header should be: Version, Status, Updated. Nothing else.
+- **Feature lists as progress:** CLAUDE.md describes the current state for the next agent. It does not advertise accomplishments. If a feature exists, describe what it does and how to use it — not that it was "shipped in session 47."
+
 ### CLAUDE.md Quality Self-Check
 
 After writing CLAUDE.md, run this test before moving on:
@@ -533,6 +541,7 @@ After writing CLAUDE.md, run this test before moving on:
 2. **Is the first thing an agent sees the most dangerous information?** Version header → critical rules → everything else. If file structure comes before anti-patterns, reorder.
 3. **Could you build and run the project from just this file?** If not, the Quick Reference section is missing commands or prerequisites.
 4. **Are convention rules separated from danger rules?** Naming conventions go lower in the file. "This will break production" goes at the top. Priority = consequence of violation.
+5. **Does the file count anything?** Endpoint counts, test counts, LOC, tab counts — remove them. If you find yourself wanting to add a count, that's a signal the file is becoming a resume.
 
 ### CLAUDE.md must answer:
 - What is this project? (1-2 sentences)
@@ -565,4 +574,65 @@ After writing CLAUDE.md, run this test before moving on:
 6. Create subfolder READMEs for major directories
 7. Validate cross-references and consistency
 
+8. Initialize Obsidian vault folder (if vault exists)
+
 Take your time. These documents will be read hundreds of times. Quality matters more than speed.
+
+---
+
+## 7. OBSIDIAN VAULT INITIALIZATION (if vault exists)
+
+If the Obsidian vault exists at `/home/ava/Obsidian/Ava/`, create the project's vault folder structure and seed it with an initial architecture note.
+
+### Step 1: Create the project folder structure
+
+```bash
+# Determine vault folder name from project.name
+# Map: Prompt_Engineering → PE, tradeSignal → TradeSignal, etc.
+mkdir -p /home/ava/Obsidian/Ava/{ProjectName}/{plans,schemas,sessions,architecture}
+```
+
+### Step 2: Seed an initial architecture note
+
+Create a note from the project's identity and tech stack:
+
+```markdown
+---
+type: architecture
+project: {project-slug}
+scope: project
+status: active
+created: {YYYY-MM-DD}
+tags: [bootstrap]
+---
+
+# {Project Name} — Architecture Overview
+
+## Description
+
+{project.vision from identity}
+
+## Stack
+
+{tech.stack and tech.build from identity}
+
+## Constraints
+
+{Key conventions or anti-patterns from CLAUDE.md DO NOT section}
+
+## Related
+
+- Source: bootstrapped from project identity on {date}
+```
+
+### Step 3: Verify
+
+```bash
+ls /home/ava/Obsidian/Ava/{ProjectName}/
+# Should show: plans/ schemas/ sessions/ architecture/
+# architecture/ should contain the initial note
+```
+
+### If vault doesn't exist
+
+Skip this section entirely. The vault is part of the four-layer knowledge architecture and is optional. The three-file system (CLAUDE.md + ROADMAP + IMPLEMENTATION_PLAN) works standalone.

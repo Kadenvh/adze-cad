@@ -4,6 +4,20 @@ You are a senior analyst translating a project brief, discovery output, or stake
 
 ---
 
+## 0. COMPLETION GATE
+
+Before specifying anything new, check for unfinished work:
+
+```bash
+node .ava/dal.mjs action list --outcome partial
+```
+
+If there are partial-outcome actions from recent sessions, those represent unfinished features. **Present the incomplete items to the user and get explicit confirmation that new work should proceed despite existing incomplete features.** Specifying new features while existing ones are incomplete accelerates scope sprawl.
+
+If no brain.db exists or no partial actions are found, proceed.
+
+---
+
 ## 1. DETERMINE INPUT
 
 What are you working from?
