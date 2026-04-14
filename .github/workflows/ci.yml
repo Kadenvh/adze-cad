@@ -28,8 +28,12 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore Adze.sln
 
-      - name: Build solution
-        run: msbuild Adze.sln /t:Build /p:Configuration=Debug /p:Platform="Any CPU" /nologo /m
+      # Adze.Host references SolidWorks.Interop.* (COM interop DLLs that ship
+      # with SOLIDWORKS only), so we build the test project directly. This
+      # transitively builds all CI-buildable projects: Contracts, Index,
+      # Tools, Trace, Broker, and Adze.Tests.
+      - name: Build test project and dependencies
+        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Build /p:Configuration=Debug /p:Platform="Any CPU" /nologo /m
 
       - name: Run unit tests
         shell: pwsh
