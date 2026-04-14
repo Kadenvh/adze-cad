@@ -58,13 +58,13 @@ public sealed class TaskPaneControl : UserControl
             var headerLabel = new Label
             {
                 Dock = DockStyle.Top,
-                Height = 32,
+                Height = 36,
                 Margin = new Padding(0),
-                Padding = new Padding(14, 6, 14, 2),
-                Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(24, 48, 76),
-                BackColor = BackColor,
-                Text = "ADZE"
+                Padding = new Padding(14, 8, 14, 4),
+                Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(24, 48, 76),
+                Text = "Adze  \u2014  SOLIDWORKS AI"
             };
 
             // --- Request box ---
@@ -91,9 +91,16 @@ public sealed class TaskPaneControl : UserControl
                 Width = 110,
                 Height = 26,
                 Margin = new Padding(0),
-                FlatStyle = FlatStyle.System,
-                Text = "Run assistant"
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 114, 198),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Text = "Run assistant",
+                Cursor = Cursors.Hand
             };
+            runButton.FlatAppearance.BorderSize = 0;
+            runButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 90, 158);
+            runButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 70, 130);
 
             var runStateLabel = new Label
             {
@@ -208,7 +215,7 @@ public sealed class TaskPaneControl : UserControl
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                Padding = new Padding(10, 4, 10, 6),
+                Padding = new Padding(10, 6, 10, 8),
                 BackColor = Color.White
             };
             composer.Controls.Add(runRow);
@@ -471,21 +478,25 @@ public sealed class TaskPaneControl : UserControl
         switch (progress.Kind)
         {
             case AgentProgressKind.ToolRequested:
-                text = "Calling " + (progress.ToolName ?? "tool") + "...";
-                break;
             case AgentProgressKind.ToolExecuting:
-                text = "Running " + (progress.ToolName ?? "tool") + "...";
+                string toolName = progress.ToolName ?? "tool";
+                text = "Calling " + toolName + "...";
+                bool isWrite = IsWriteToolName(toolName);
+                try { _contentBrowser.Document?.InvokeScript("showToolChip", new object[] { toolName, isWrite ? "write" : "read" }); } catch { }
                 break;
             case AgentProgressKind.Thinking:
                 text = progress.Iteration > 0
                     ? "Thinking (turn " + progress.Iteration + ")..."
                     : "Thinking...";
+                try { _contentBrowser.Document?.InvokeScript("showThinking", new object[] { progress.Iteration }); } catch { }
                 break;
             case AgentProgressKind.Completed:
                 text = "Generating answer...";
+                try { _contentBrowser.Document?.InvokeScript("clearProgress", Array.Empty<object>()); } catch { }
                 break;
             case AgentProgressKind.Failed:
                 text = "Error encountered.";
+                try { _contentBrowser.Document?.InvokeScript("clearProgress", Array.Empty<object>()); } catch { }
                 break;
             case AgentProgressKind.FellBack:
                 text = "Falling back...";
@@ -496,6 +507,10 @@ public sealed class TaskPaneControl : UserControl
         }
         _runStateLabel.Text = text;
     }
+
+    private static bool IsWriteToolName(string name) =>
+        name is "set_custom_property" or "set_dimension_value" or "suppress_feature"
+            or "unsuppress_feature" or "rename_object" or "insert_component" or "create_drawing_view";
 
     private void AppendStreamChunk(string text)
     {
@@ -532,10 +547,12 @@ public sealed class TaskPaneControl : UserControl
         _requestBox.Enabled = true;
         _requestBox.Clear();
         _runButton.Enabled = true;
+        _runButton.BackColor = Color.FromArgb(0, 114, 198);
         _runButton.Text = "Run assistant";
         _isRunning = false;
         ApplyRequestPlaceholder();
         ScheduleDeferredStatusRefresh();
+        try { _contentBrowser.Document?.InvokeScript("clearProgress", Array.Empty<object>()); } catch { }
     }
 
     private static string BuildRunStateText(AssistantRunSnapshot snapshot)
@@ -608,15 +625,25 @@ public sealed class TaskPaneControl : UserControl
         }
     }
 
+    private static string BuildQuickActionsHtml() =>
+        "<div class=\"quick-actions\">" +
+        "<button class=\"quick-btn\" onclick=\"window.external.QuickAction('diagnose')\">Diagnose</button>" +
+        "<button class=\"quick-btn\" onclick=\"window.external.QuickAction('mates')\">Mates</button>" +
+        "<button class=\"quick-btn\" onclick=\"window.external.QuickAction('dims')\">Dimensions</button>" +
+        "<button class=\"quick-btn\" onclick=\"window.external.QuickAction('props')\">Properties</button>" +
+        "</div>";
+
     private string BuildConversationHtml()
     {
         var history = HostState.GetChatHistory();
         if (history.Count == 0 && string.IsNullOrEmpty(_lastErrorMessage))
         {
-            return "<p class=\"muted\">Open a document and ask a question. Adze will inspect the live session and ground an answer.</p>";
+            return BuildQuickActionsHtml() +
+                "<p class=\"muted\">Open a document and ask a question above, or tap a quick action.</p>";
         }
 
         var sb = new System.Text.StringBuilder();
+        sb.Append(BuildQuickActionsHtml());
 
         foreach (var entry in history)
         {
@@ -1039,271 +1066,340 @@ public sealed class TaskPaneControl : UserControl
     font-family: 'Segoe UI', sans-serif;
     font-size: 13px;
     line-height: 1.5;
-    color: #22292F;
-    background: #F4F6F8;
+    color: #1A2332;
+    background: #EFF1F5;
     overflow-y: auto;
   }
 
-  /* --- Chat area --- */
-  .chat-user, .chat-assistant { margin: 0 0 10px 0; }
-  .chat-label {
+  /* --- Quick action toolbar --- */
+  .quick-actions {
+    display: -ms-flexbox; display: flex;
+    -ms-flex-wrap: wrap; flex-wrap: wrap;
+    gap: 5px;
+    padding: 10px 12px 10px 12px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #DDE6F0;
+  }
+  .quick-btn {
+    padding: 4px 11px;
     font-size: 11px;
     font-weight: 600;
-    color: #566370;
-    margin: 0 0 2px 4px;
+    color: #0058A3;
+    background: #EBF3FF;
+    border: 1px solid #B3D4F5;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: 0.2px;
+    -ms-user-select: none;
+  }
+  .quick-btn:hover { background: #D0E6FF; color: #003E78; border-color: #85BBEE; }
+  .quick-btn:active { background: #B3D4F5; }
+
+  /* --- Chat area --- */
+  .content-area { padding: 12px 12px 6px 12px; }
+  .chat-user, .chat-assistant { margin: 0 0 12px 0; }
+  .chat-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #8A9AAA;
+    margin: 0 0 3px 2px;
   }
   .chat-bubble {
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 9px 13px;
+    border-radius: 8px;
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.55;
   }
   .user-bubble {
-    background: #E3EAF2;
-    color: #18304C;
+    background: #1B3A6B;
+    color: #FFFFFF;
     white-space: pre-wrap;
     word-wrap: break-word;
+    border-radius: 8px 8px 8px 2px;
   }
   .assistant-bubble {
     background: #FFFFFF;
-    color: #22292F;
-    border: 1px solid #E8EAED;
+    color: #1A2332;
+    border: 1px solid #E0E6EF;
+    box-shadow: 0 1px 4px rgba(0,30,70,.07);
+    border-radius: 8px 8px 2px 8px;
   }
   .error-bubble {
-    background: #FFF5F5;
-    border-color: #E8BFBF;
-    color: #8B2020;
+    background: #FEF2F2;
+    border-color: #FECACA;
+    color: #991B1B;
+    box-shadow: none;
   }
   .chat-footer {
     font-size: 10px;
-    color: #98A0A8;
-    margin: 2px 0 0 4px;
+    color: #9AAAB8;
+    margin: 3px 0 0 4px;
   }
+  .muted { color: #8A9AAA; font-size: 12px; font-style: italic; padding: 8px 0; }
+
+  /* --- Agent progress chips --- */
+  #agent-progress { margin: 2px 0 8px 0; min-height: 0; }
+  .tool-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin: 0 3px 4px 0;
+    font-family: Consolas, monospace;
+    letter-spacing: 0.2px;
+  }
+  .chip-read    { background: #E8F3FF; color: #0058A3; border: 1px solid #BAD7F5; }
+  .chip-write   { background: #FFF3E0; color: #B54A00; border: 1px solid #FFCC80; }
+  .chip-thinking{ background: #F0F4FF; color: #3B4EAA; border: 1px solid #C5CCEE; }
+  @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+  .dot { animation: blink 1.4s infinite both; display: inline-block; }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .4s; }
 
   /* --- Markdown in assistant bubbles --- */
-  .assistant-bubble h1 { font-size: 15px; font-weight: 600; color: #18304C; margin: 10px 0 5px 0; }
-  .assistant-bubble h2 { font-size: 14px; font-weight: 600; color: #18304C; margin: 8px 0 4px 0; }
-  .assistant-bubble h3 { font-size: 13px; font-weight: 600; color: #22292F; margin: 6px 0 3px 0; }
+  .assistant-bubble h1 { font-size: 15px; font-weight: 700; color: #0D1F35; margin: 10px 0 5px 0; }
+  .assistant-bubble h2 { font-size: 14px; font-weight: 700; color: #0D1F35; margin: 8px 0 4px 0; }
+  .assistant-bubble h3 { font-size: 13px; font-weight: 600; color: #1A2332; margin: 6px 0 3px 0; }
   .assistant-bubble p { margin: 0 0 7px 0; }
-  .assistant-bubble strong, .assistant-bubble b { font-weight: 600; }
-  .assistant-bubble ul, .assistant-bubble ol { margin: 3px 0 7px 18px; }
-  .assistant-bubble li { margin: 1px 0; }
+  .assistant-bubble strong, .assistant-bubble b { font-weight: 700; color: #0D1F35; }
+  .assistant-bubble ul, .assistant-bubble ol { margin: 3px 0 7px 20px; }
+  .assistant-bubble li { margin: 2px 0; }
   .assistant-bubble code {
     font-family: Consolas, monospace;
     font-size: 12px;
-    background: #F0F2F4;
-    padding: 1px 4px;
-    border-radius: 2px;
+    background: #EBF1FF;
+    color: #1B3A6B;
+    padding: 1px 5px;
+    border-radius: 3px;
   }
   .assistant-bubble pre {
     font-family: Consolas, monospace;
     font-size: 11px;
-    background: #F4F6F8;
-    padding: 8px 10px;
+    background: #F4F7FB;
+    padding: 9px 11px;
     margin: 4px 0 8px 0;
-    border-radius: 3px;
+    border-radius: 5px;
+    border: 1px solid #DDE6F0;
     overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
-    line-height: 1.4;
+    line-height: 1.45;
   }
   .assistant-bubble table { border-collapse: collapse; margin: 4px 0 8px 0; font-size: 12px; width: 100%; }
-  .assistant-bubble th, .assistant-bubble td { border: 1px solid #DDE1E6; padding: 3px 6px; text-align: left; }
-  .assistant-bubble th { background: #F4F6F8; font-weight: 600; }
+  .assistant-bubble th, .assistant-bubble td { border: 1px solid #DDE6F0; padding: 4px 7px; text-align: left; }
+  .assistant-bubble th { background: #EBF1FF; font-weight: 700; color: #1B3A6B; }
+  .assistant-bubble tr:nth-child(even) td { background: #F7FAFF; }
 
   /* --- Collapsible sections --- */
   .sections-area {
-    border-top: 1px solid #DDE1E6;
-    background: #EBEDF0;
+    border-top: 2px solid #D0DAE8;
+    background: #E8ECF2;
   }
   .section-header {
     padding: 7px 12px;
     font-size: 11px;
-    font-weight: 600;
-    color: #566370;
+    font-weight: 700;
+    color: #3D4F60;
     cursor: pointer;
-    border-bottom: 1px solid #DDE1E6;
+    border-bottom: 1px solid #D0DAE8;
+    border-left: 3px solid #0072C6;
     -ms-user-select: none;
+    letter-spacing: 0.3px;
   }
-  .section-header:hover { color: #22292F; background: #E0E3E7; }
-  .section-arrow { font-size: 10px; }
+  .section-header:hover { color: #0072C6; background: #EBF3FF; }
+  .section-arrow { font-size: 10px; color: #8A9AAA; }
   .section-body {
     background: #FFFFFF;
-    padding: 8px 12px;
-    border-bottom: 1px solid #DDE1E6;
+    padding: 9px 13px;
+    border-bottom: 1px solid #D0DAE8;
     max-height: 300px;
     overflow-y: auto;
   }
   .section-body pre {
     font-family: Consolas, monospace;
     font-size: 11px;
-    background: #F4F6F8;
+    background: #F4F7FB;
     padding: 8px 10px;
     margin: 4px 0;
-    border-radius: 3px;
+    border-radius: 4px;
+    border: 1px solid #DDE6F0;
     white-space: pre-wrap;
     word-wrap: break-word;
     line-height: 1.4;
   }
   .history-entry {
-    padding: 4px 0;
-    border-bottom: 1px solid #F0F2F4;
+    padding: 5px 0;
+    border-bottom: 1px solid #EEF2F7;
     font-size: 12px;
   }
   .history-entry:last-child { border-bottom: none; }
-  .history-tool { font-family: Consolas, monospace; font-size: 11px; color: #18304C; font-weight: 600; }
-  .history-summary { color: #22292F; }
-  .history-result { color: #2E7D32; font-size: 11px; }
-  .history-undo { color: #5B7083; font-size: 10px; font-style: italic; }
-  .history-time { color: #98A0A8; font-size: 10px; }
+  .history-tool { font-family: Consolas, monospace; font-size: 11px; color: #0058A3; font-weight: 700; }
+  .history-summary { color: #1A2332; }
+  .history-result { color: #16A34A; font-size: 11px; }
+  .history-undo { color: #6B7A8A; font-size: 10px; font-style: italic; }
+  .history-time { color: #9AAAB8; font-size: 10px; }
 
   /* --- Write plan header --- */
-  .plan-header { font-size: 13px; font-weight: 600; color: #18304C; padding: 8px 0 4px 0; }
+  .plan-header { font-size: 13px; font-weight: 700; color: #1B3A6B; padding: 8px 0 4px 0; }
   .plan-actions { margin: 0 0 6px 0; }
   .plan-actions .btn-apply, .plan-actions .btn-cancel { margin-right: 6px; }
 
   /* --- Write confirmation cards --- */
   .write-card {
     margin: 8px 0;
-    padding: 10px 12px;
-    background: #FFFDF5;
-    border: 1px solid #E8D9A0;
-    border-radius: 6px;
+    padding: 11px 13px;
+    background: #FFFEF5;
+    border: 1px solid #E4D38A;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(160,120,0,.08);
   }
   .write-card-elevated {
     background: #FFF8E1;
     border-color: #F9A825;
     border-width: 2px;
+    box-shadow: 0 2px 8px rgba(180,80,0,.10);
   }
   .write-header {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 700;
     color: #8B6914;
     text-transform: uppercase;
-    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
   }
-  .write-header-elevated {
-    color: #E65100;
-  }
-  .write-summary { margin-bottom: 6px; }
+  .write-header-elevated { color: #C84B00; }
+  .write-summary { margin-bottom: 7px; font-size: 13px; }
   .write-changes {
     border-collapse: collapse;
     width: 100%;
     font-size: 12px;
-    margin: 4px 0 6px 0;
+    margin: 4px 0 7px 0;
   }
   .write-changes th, .write-changes td {
-    border: 1px solid #E8D9A0;
-    padding: 3px 6px;
+    border: 1px solid #E4D38A;
+    padding: 4px 7px;
     text-align: left;
   }
-  .write-changes th { background: #FFF8E1; font-weight: 600; }
+  .write-changes th { background: #FFF3CC; font-weight: 700; }
+  .write-changes tr:nth-child(even) td { background: #FFFDF0; }
   .write-warning {
     font-size: 11px;
-    color: #A66B00;
+    color: #9A6200;
     margin: 3px 0;
-    padding-left: 4px;
-    border-left: 2px solid #E8A500;
+    padding: 3px 6px;
+    border-left: 3px solid #F59E0B;
+    background: #FFFBEB;
+    border-radius: 0 3px 3px 0;
   }
-  .write-actions { margin-top: 8px; }
+  .write-actions { margin-top: 9px; }
   .btn-apply {
-    padding: 4px 16px;
+    padding: 5px 18px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #FFFFFF;
+    background: #16A34A;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 7px;
+    letter-spacing: 0.2px;
+  }
+  .btn-apply:hover { background: #15803D; }
+  .btn-apply:active { background: #166534; }
+  .btn-cancel {
+    padding: 5px 18px;
     font-size: 12px;
     font-weight: 600;
-    color: #FFFFFF;
-    background: #2E7D32;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    margin-right: 6px;
-  }
-  .btn-apply:hover { background: #1B5E20; }
-  .btn-cancel {
-    padding: 4px 16px;
-    font-size: 12px;
-    color: #566370;
-    background: #EBEDF0;
-    border: 1px solid #DDE1E6;
-    border-radius: 3px;
+    color: #4A5568;
+    background: #EBF0F7;
+    border: 1px solid #C8D4E3;
+    border-radius: 5px;
     cursor: pointer;
   }
-  .btn-cancel:hover { background: #DDE1E6; }
+  .btn-cancel:hover { background: #D8E3F0; }
   .write-status {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 4px;
   }
-  .write-status.applied { color: #2E7D32; }
-  .write-status.cancelled { color: #78808A; }
+  .write-status.applied { color: #16A34A; }
+  .write-status.cancelled { color: #6B7A8A; }
   .write-result {
     font-size: 12px;
-    color: #2E7D32;
-    margin-top: 4px;
+    color: #16A34A;
+    margin-top: 5px;
   }
 
   /* --- Recipe suggestions --- */
   .recipe-card {
-    padding: 8px 10px;
-    margin: 4px 0;
-    border-radius: 4px;
-    border: 1px solid #DDE1E6;
+    padding: 9px 11px;
+    margin: 5px 0;
+    border-radius: 6px;
+    border: 1px solid #D0DAE8;
     background: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(0,30,70,.05);
   }
-  .recipe-promoted { border-left: 3px solid #2E7D32; }
-  .recipe-review { border-left: 3px solid #E8A500; }
-  .recipe-title { font-size: 12px; font-weight: 600; color: #18304C; }
-  .recipe-state { font-size: 10px; color: #78808A; margin: 2px 0; }
-  .recipe-tools { margin: 4px 0; }
+  .recipe-promoted { border-left: 3px solid #16A34A; }
+  .recipe-review { border-left: 3px solid #D97706; }
+  .recipe-title { font-size: 12px; font-weight: 700; color: #1B3A6B; }
+  .recipe-state { font-size: 10px; color: #6B7A8A; margin: 2px 0; letter-spacing: 0.3px; }
+  .recipe-tools { margin: 5px 0; }
   .recipe-tool-tag {
     display: inline-block;
     font-family: Consolas, monospace;
     font-size: 10px;
-    background: #F0F2F4;
+    background: #EBF3FF;
+    color: #0058A3;
     padding: 1px 5px;
-    border-radius: 2px;
+    border-radius: 3px;
     margin: 1px 2px 1px 0;
-    color: #566370;
+    border: 1px solid #BAD7F5;
   }
-  .recipe-actions { margin-top: 6px; }
+  .recipe-actions { margin-top: 7px; }
   .btn-recipe-run {
-    padding: 3px 12px;
+    padding: 4px 13px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #FFFFFF;
+    background: #0072C6;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+    letter-spacing: 0.2px;
+  }
+  .btn-recipe-run:hover { background: #005EA3; }
+  .btn-recipe-promote {
+    padding: 4px 13px;
     font-size: 11px;
     font-weight: 600;
-    color: #FFFFFF;
-    background: #1976D2;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    margin-right: 4px;
-  }
-  .btn-recipe-run:hover { background: #1565C0; }
-  .btn-recipe-promote {
-    padding: 3px 12px;
-    font-size: 11px;
-    color: #566370;
-    background: #EBEDF0;
-    border: 1px solid #DDE1E6;
-    border-radius: 3px;
+    color: #3D4F60;
+    background: #EBF0F7;
+    border: 1px solid #C8D4E3;
+    border-radius: 4px;
     cursor: pointer;
   }
-  .btn-recipe-promote:hover { background: #DDE1E6; }
-
-  .muted { color: #78808A; font-style: italic; }
-  .content-area { padding: 8px 10px 6px 10px; }
+  .btn-recipe-promote:hover { background: #D8E3F0; }
 
   /* --- Health check banners --- */
-  .health-banner { padding: 6px 10px; margin: 0 0 6px 0; border-radius: 4px; font-size: 12px; line-height: 1.4; }
-  .health-ready { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
-  .health-warning { background: #FFF8E1; color: #F57F17; border: 1px solid #FFE082; }
-  .health-error { background: #FFF5F5; color: #C62828; border: 1px solid #FFCDD2; }
+  .health-banner { padding: 7px 11px; margin: 0 0 7px 0; border-radius: 6px; font-size: 12px; line-height: 1.45; }
+  .health-ready   { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+  .health-warning { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+  .health-error   { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
   .health-guidance { font-size: 11px; margin-top: 3px; opacity: 0.85; }
-  .telemetry-dashboard { padding: 8px 10px; margin: 0 0 6px 0; background: #F0F4F8; border: 1px solid #D2D8E0; border-radius: 4px; font-size: 12px; line-height: 1.5; }
-  .telemetry-title { font-weight: 600; color: #2D3748; margin-bottom: 4px; }
-  .telemetry-row { color: #4A5568; }
-  .telemetry-label { font-weight: 600; color: #2D3748; }
-  .telemetry-tool { padding-left: 12px; color: #4A5568; font-family: 'Consolas', monospace; font-size: 11px; }
-  .budget-bar { height: 6px; background: #E2E8F0; border-radius: 3px; margin: 3px 0 4px 0; overflow: hidden; }
-  .budget-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+  /* --- Telemetry / budget --- */
+  .telemetry-dashboard { padding: 9px 11px; margin: 0 0 7px 0; background: #F4F7FB; border: 1px solid #D0DAE8; border-radius: 6px; font-size: 12px; line-height: 1.5; }
+  .telemetry-title { font-weight: 700; color: #1B3A6B; margin-bottom: 4px; }
+  .telemetry-row { color: #3D4F60; }
+  .telemetry-label { font-weight: 700; color: #1B3A6B; }
+  .telemetry-tool { padding-left: 12px; color: #3D4F60; font-family: 'Consolas', monospace; font-size: 11px; }
+  .budget-bar { height: 7px; background: #DDE6F0; border-radius: 4px; margin: 3px 0 5px 0; overflow: hidden; }
+  .budget-fill { height: 100%; border-radius: 4px; -webkit-transition: width .3s; transition: width .3s; }
 </style>
 </head><body>
 <div id=""chat-area"" class=""content-area"">" + conversationHtml + @"</div>
@@ -1334,10 +1430,38 @@ function updateSectionContent(sectionId, html) {
 function scrollToBottom() {
   window.scrollTo(0, document.body.scrollHeight);
 }
+function showToolChip(toolName, kind) {
+  var prog = document.getElementById('agent-progress');
+  if (!prog) return;
+  var chip = document.createElement('span');
+  chip.className = 'tool-chip ' + (kind === 'write' ? 'chip-write' : 'chip-read');
+  chip.appendChild(document.createTextNode(toolName));
+  prog.appendChild(chip);
+  scrollToBottom();
+}
+function showThinking(turn) {
+  var prog = document.getElementById('agent-progress');
+  if (!prog) return;
+  var existing = document.getElementById('thinking-ind');
+  if (existing) existing.parentNode.removeChild(existing);
+  var ind = document.createElement('span');
+  ind.id = 'thinking-ind';
+  ind.className = 'tool-chip chip-thinking';
+  var label = turn > 0 ? 'turn ' + turn : 'thinking';
+  ind.innerHTML = label + ' <span class=""dot"">.</span><span class=""dot"">.</span><span class=""dot"">.</span>';
+  prog.appendChild(ind);
+  scrollToBottom();
+}
+function clearProgress() {
+  var prog = document.getElementById('agent-progress');
+  if (prog) prog.innerHTML = '';
+}
 function startStreaming(userHtml) {
   var chat = document.getElementById('chat-area');
   if (!chat) return;
+  clearProgress();
   chat.innerHTML = chat.innerHTML + userHtml +
+    '<div id=""agent-progress""></div>' +
     '<div class=""chat-assistant""><div class=""chat-label"">Adze</div>' +
     '<div class=""chat-bubble assistant-bubble"">' +
     '<pre id=""stream-target"" style=""margin:0;padding:0;background:transparent;' +
@@ -1507,6 +1631,26 @@ scrollToBottom();
             _runStateLabel.Text = "Recipe promoted: " + recipe.Title;
             RenderContent();
         }
+    }
+
+    public void QuickAction(string actionKey)
+    {
+        string prompt = actionKey switch
+        {
+            "diagnose" => "What's wrong with this assembly? List all mate errors, over-constraints, dangling references, and rebuild failures.",
+            "mates"    => "List all mates in this assembly. Show each mate's type, the components it connects, and whether it's healthy or has an error.",
+            "dims"     => "Show me all the key dimensions in this document, their current values, and which features they control.",
+            "props"    => "Show all custom properties for this document and their current values.",
+            _          => ""
+        };
+        if (string.IsNullOrEmpty(prompt)) return;
+        PostToUi(() =>
+        {
+            _requestBox.Text = prompt;
+            _requestBox.ForeColor = Color.FromArgb(34, 41, 47);
+            _requestPlaceholderActive = false;
+            RunAssistant();
+        });
     }
 
     // -----------------------------------------------------------------------
