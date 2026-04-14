@@ -62,8 +62,10 @@ SYSTEM-OVERVIEW.md
 
 # Local workspace tooling
 .ava/
+.gitnexus/
 .stfolder/
 .mcp.json
 
 # Partner application (confidential business docs)
 solidworks-partner/
+.gitnexus
