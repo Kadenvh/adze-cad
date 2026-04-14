@@ -2,9 +2,9 @@
 
 **Native AI assistant for SOLIDWORKS** — grounded in your live CAD session, not generic chat.
 
-Adze is a free, in-process SOLIDWORKS add-in. It reads your active document through 19 typed tools, reasons over the results with an agentic AI loop, and delivers grounded answers in a conversational Task Pane. Write operations follow an 8-step safety lifecycle: plan, preview, approve, apply, verify, trace, undo-label, and history. Nothing leaves your machine unless you choose a cloud provider.
+Adze is a free, in-process SOLIDWORKS add-in. It reads your active document through 18 typed tools, reasons over the results with an agentic AI loop, and delivers grounded answers in a conversational Task Pane. Write operations follow an 8-step safety lifecycle: plan, preview, approve, apply, verify, trace, undo-label, and history. Nothing leaves your machine unless you choose a cloud provider.
 
-> **Current status:** v0.1.1 public beta. 19 tools, 666 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required. SOLIDWORKS Solution Partner application in progress.
+> **Current status:** v0.1.1 public beta. 18 typed tools (10 read + 1 retrieval + 7 write), 666 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required. SOLIDWORKS Solution Partner application in progress.
 
 ---
 
@@ -135,7 +135,7 @@ See [SETUP.md](SETUP.md) for all provider options, feature gates, and environmen
 SOLIDWORKS (host process)
   └── Adze.Host (COM add-in, Task Pane UI)
         ├── Adze.Broker (AI orchestration, provider routing, agentic loop)
-        ├── Adze.Tools (19 typed tool implementations)
+        ├── Adze.Tools (18 typed tool implementations)
         ├── Adze.Trace (traces, recipes, progression, memory)
         ├── Adze.Index (closed-file OLE indexer, no COM dependency)
         └── Adze.Contracts (shared types, schemas, tool contracts)
@@ -184,6 +184,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-**v0.1.1** — Public beta. 19 tools (11 read + 7 write + 1 retrieval), 666 unit tests, agentic loop, governed write lifecycle, SSE streaming, 5 AI providers, AgentPolicyEngine trust tiers, quick-action toolbar, live tool execution chips.
+**v0.1.1** — Public beta. 18 typed tools (10 read + 1 retrieval + 7 write), 666 unit tests, agentic loop, governed write lifecycle, SSE streaming, 5 AI providers, AgentPolicyEngine trust tiers, quick-action toolbar, live tool execution chips.
 
 Built by [VH Tech](https://github.com/Kadenvh) as a free tool for the SOLIDWORKS engineering community.
