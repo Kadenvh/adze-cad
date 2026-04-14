@@ -6,7 +6,22 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $nugetExe = Join-Path $repoRoot 'tools\nuget.exe'
 $nugetUrl = 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe'
-$msbuildExe = 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe'
+# MSBuild discovery: prefer local VS 2025 Community, fall back to vswhere, then PATH.
+function Resolve-MSBuild {
+    $candidates = @(
+        'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe',
+        'C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe'
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { return $c }
+    }
+    $cmd = Get-Command -Name MSBuild.exe -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    throw 'MSBuild.exe not found. Install Visual Studio or run microsoft/setup-msbuild action in CI.'
+}
+$msbuildExe = Resolve-MSBuild
 $testProject = Join-Path $repoRoot 'tests\Adze.Tests\Adze.Tests.csproj'
 $packagesConfig = Join-Path $repoRoot 'tests\Adze.Tests\packages.config'
 $packagesDir = Join-Path $repoRoot 'packages'
