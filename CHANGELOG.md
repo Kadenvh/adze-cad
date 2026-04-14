@@ -4,6 +4,30 @@ All notable changes to Adze are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-04-14
+
+### Added
+- **AgentPolicyEngine** — trust-gated tool access enforcing read-always-allowed, first-wave writes at Assisted tier, advanced writes at Reviewed tier. 27 unit tests.
+- **Quick-action toolbar** — persistent Diagnose / Mates / Dimensions / Properties buttons in Task Pane; one tap fires a full agentic run with a pre-built prompt.
+- **Tool execution chips** — inline colored pills in the conversation thread showing each tool as it fires (blue for read tools, amber for write tools). Animated thinking indicator during model turns.
+- **Large assembly pagination** — `get_dimensions` and `get_mates` now support `offset`/`limit` with `total_count`, `returned_count`, `has_more` in the response envelope. Max 200 per page.
+- **MCP server design** — 638-line design document for Phase 10 sidecar architecture (.NET 8 console app communicating with .NET 4.8 add-in over named pipes). See `plans/design-mcp-server.md`.
+- **Install Adze.bat** — double-click installer for Windows Explorer; no command line required.
+- **Dev mode in installer** — `install\install-adze.ps1` auto-detects when run from the repo, builds Debug config via MSBuild, and registers from build output instead of requiring a pre-staged zip.
+- **Public repo files** — README.md, LICENSE (MIT), CONTRIBUTING.md, SECURITY.md, issue and PR templates under `.github/`.
+- **Adze.Index.dll** added to installer required-DLL list (missing since Phase 6).
+
+### Changed
+- **UI visual redesign** — deep navy user bubbles (#1B3A6B), white assistant cards with box-shadow, SOLIDWORKS blue (#0072C6) accent throughout. Section headers with left-border accent. Alternating table rows. Write confirmation cards with rounded shadows. Recipe tags as blue pills.
+- **Run button** — SOLIDWORKS blue flat style with hover/press states.
+- **Header** — dark navy background with "Adze — SOLIDWORKS AI" title in white.
+- **Test suite** — 616 → 666 unit tests (50 new tests for AgentPolicyEngine, pagination, and supporting infrastructure).
+
+### Fixed
+- **Install script encoding** — non-ASCII characters (em dashes, box-drawing) caused Windows PowerShell 5.1 to misparse strings on Windows-1252 systems. All non-ASCII characters replaced with ASCII equivalents.
+- **.NET registry check** — now probes both `HKLM\SOFTWARE\...` and `WOW6432Node` paths for 32-bit PowerShell compatibility.
+- **SOLIDWORKS registry check** — also checks WOW6432Node path.
+
 ## [0.1.0] — 2026-03-24
 
 First tagged release. Native AI assistant for SOLIDWORKS with agentic tool loop, governed writes, and production hardening.

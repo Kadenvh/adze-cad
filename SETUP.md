@@ -44,7 +44,13 @@ Build the full solution from source:
 pwsh -NoProfile -File scripts\setup\build-all.ps1 -StopSolidWorks
 ```
 
-Register the add-in per user. This does not require admin rights:
+Register the add-in per user (no admin rights required). The installer auto-detects the repo and registers from the Debug build output:
+
+```powershell
+powershell.exe -NoProfile -File install\install-adze.ps1
+```
+
+Alternatively, for a lighter dev-only registration that skips the DLL copy step:
 
 ```powershell
 powershell.exe -NoProfile -File scripts\setup\register-host-addin.ps1
