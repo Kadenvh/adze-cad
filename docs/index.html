@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Adze — Native AI assistant for SOLIDWORKS</title>
+  <meta name="description" content="Native AI assistant for SOLIDWORKS. In-process COM add-in with 18 typed tools, agentic loop, governed writes, 5 AI providers. Free and open source.">
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #11192b;
+      --ink: #e7eef7;
+      --ink-dim: #9fb0c7;
+      --accent: #0072c6;
+      --navy: #1b3a6b;
+      --border: #223253;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    header { background: var(--navy); padding: 72px 24px 48px; border-bottom: 1px solid var(--border); }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+    header h1 { margin: 0 0 12px; font-size: 44px; letter-spacing: -0.01em; }
+    header .sub { color: var(--ink-dim); font-size: 19px; max-width: 680px; margin: 0; }
+    .badges { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge { display: inline-block; padding: 4px 10px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 999px; font-size: 13px; color: var(--ink-dim); }
+    .cta { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn { display: inline-block; padding: 12px 22px; background: var(--accent); color: white; text-decoration: none; border-radius: 6px; font-weight: 500; border: 1px solid transparent; }
+    .btn.secondary { background: transparent; border-color: var(--border); color: var(--ink); }
+    .btn:hover { filter: brightness(1.1); }
+    section { padding: 56px 24px; border-bottom: 1px solid var(--border); }
+    section h2 { margin: 0 0 20px; font-size: 26px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .card h3 { margin: 0 0 8px; font-size: 17px; color: var(--accent); }
+    .card p { margin: 0; color: var(--ink-dim); font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table th, table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    table th { color: var(--ink-dim); font-weight: 500; }
+    code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    footer { padding: 32px 24px; color: var(--ink-dim); font-size: 14px; text-align: center; }
+    footer a { color: var(--ink-dim); }
+    .kpis { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 20px; }
+    .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; min-width: 140px; }
+    .kpi .n { font-size: 26px; font-weight: 600; color: var(--ink); }
+    .kpi .l { font-size: 13px; color: var(--ink-dim); margin-top: 4px; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>Adze</h1>
+    <p class="sub">Native AI assistant for SOLIDWORKS. An in-process COM add-in grounded in your live CAD session, not a chat window beside it.</p>
+    <div class="badges">
+      <span class="badge">v0.1.1 public beta</span>
+      <span class="badge">MIT licensed</span>
+      <span class="badge">.NET 4.8 COM add-in</span>
+      <span class="badge">Free</span>
+      <span class="badge">Works offline</span>
+    </div>
+    <div class="cta">
+      <a class="btn" href="https://github.com/Kadenvh/adze-cad">View on GitHub</a>
+      <a class="btn secondary" href="https://github.com/Kadenvh/adze-cad/releases/latest">Download v0.1.1</a>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="n">18</div><div class="l">typed tools</div></div>
+      <div class="kpi"><div class="n">666</div><div class="l">unit tests</div></div>
+      <div class="kpi"><div class="n">5</div><div class="l">AI providers</div></div>
+      <div class="kpi"><div class="n">8</div><div class="l">step write safety lifecycle</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <h2>What it does</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Reads your document</h3>
+        <p>Feature trees, dimensions, mates, configurations, rebuild diagnostics, reference graphs, custom properties, and closed-file search through 18 typed tools.</p>
+      </div>
+      <div class="card">
+        <h3>Runs an agentic loop</h3>
+        <p>The model calls tools, observes results, and iterates. Every tool execution shows up as a live chip in the Task Pane.</p>
+      </div>
+      <div class="card">
+        <h3>Governs writes</h3>
+        <p>Preview before apply, verification after, cascade analysis, trust-tier gating, and undo labels for every modification.</p>
+      </div>
+      <div class="card">
+        <h3>Multi-provider AI</h3>
+        <p>OpenAI, Anthropic, OpenRouter, Ollama, and LM Studio. Deterministic fallback runs with no provider configured.</p>
+      </div>
+      <div class="card">
+        <h3>Runs local models</h3>
+        <p>Ollama and LM Studio support means no data leaves your machine. Capability gating and health checks built in.</p>
+      </div>
+      <div class="card">
+        <h3>Streams answers</h3>
+        <p>SSE streaming for real-time answer synthesis, across cloud and local providers alike.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Tool surface</h2>
+    <table>
+      <thead><tr><th>Class</th><th>Tools</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Read (10)</strong></td><td>get_active_document, get_document_summary, get_selection_context, get_feature_tree_slice, get_dimensions, get_configurations, get_custom_properties, get_mates, get_rebuild_diagnostics, get_reference_graph</td></tr>
+        <tr><td><strong>Retrieval (1)</strong></td><td>search_project_files (closed-file OLE indexer)</td></tr>
+        <tr><td><strong>Write standard (4)</strong></td><td>set_custom_property, set_dimension_value, suppress_feature, unsuppress_feature</td></tr>
+        <tr><td><strong>Write advanced (3)</strong></td><td>rename_object, insert_component, create_drawing_view</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Install</h2>
+    <p>Download the latest release, extract the zip, and double-click <code>Install Adze.bat</code>. Launch SOLIDWORKS and the Adze Task Pane appears automatically.</p>
+    <p>Works on SOLIDWORKS 2025 and later, including the <strong>3DEXPERIENCE SOLIDWORKS for Makers</strong> consumer tier.</p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/Kadenvh/adze-cad/releases/latest">Get the installer</a>
+      <a class="btn secondary" href="https://github.com/Kadenvh/adze-cad/blob/main/SETUP.md">Full setup guide</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    Built by <a href="https://github.com/Kadenvh">Kaden VanHoecke</a> (VH Tech LLC) as a free tool for the SOLIDWORKS engineering community.
+    Source and issue tracker: <a href="https://github.com/Kadenvh/adze-cad">github.com/Kadenvh/adze-cad</a>.
+  </div>
+</footer>
+
+</body>
+</html>
