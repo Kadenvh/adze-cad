@@ -10,7 +10,7 @@ $headers = @{ Authorization = "token $Token"; Accept = 'application/vnd.github+j
 
 $body = @{
   description = 'Native AI assistant for SOLIDWORKS - 18 typed tools, agentic loop, governed writes, 5 AI providers. Free and open source.'
-  homepage    = 'https://github.com/Kadenvh/adze-cad'
+  homepage    = 'https://kadenvh.github.io/adze-cad/'
 } | ConvertTo-Json -Compress
 
 $resp = Invoke-RestMethod -Uri 'https://api.github.com/repos/Kadenvh/adze-cad' -Method Patch -Headers $headers -Body $body -ContentType 'application/json'
