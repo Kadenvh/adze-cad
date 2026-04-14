@@ -46,7 +46,7 @@ jobs:
       # Adze.Host depends on SOLIDWORKS COM interop DLLs that are not
       # available on the runner. Analyze all CI-buildable projects instead.
       - name: Build test project and dependencies
-        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU" /nologo /m
+        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /nologo /m
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

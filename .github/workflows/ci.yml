@@ -33,7 +33,7 @@ jobs:
       # transitively builds all CI-buildable projects: Contracts, Index,
       # Tools, Trace, Broker, and Adze.Tests.
       - name: Build test project and dependencies
-        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Build /p:Configuration=Debug /p:Platform="Any CPU" /nologo /m
+        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Build /p:Configuration=Debug /p:Platform=AnyCPU /nologo /m
 
       - name: Run unit tests
         shell: pwsh
