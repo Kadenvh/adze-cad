@@ -18,7 +18,7 @@ This project contains the orchestration boundary that reasons over typed session
 
 - Keep this layer free of COM, registry, and UI dependencies.
 - Consume `SessionContext` and emit typed turn state, recovery guidance, recommendations, or future execution plans.
-- Treat provider access as API-key-based custom-app usage; do not assume Claude subscription plans apply here.
+- Treat provider access as API-key-based custom-app usage; do not assume consumer chat subscriptions apply here.
 - Prefer small, testable orchestration units over host-coupled logic.
 
 ## Adding New Items

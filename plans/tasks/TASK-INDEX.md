@@ -355,7 +355,7 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 - **Reference:** `research-streaming-ux-patterns.md`
 
 ### TX-04: Documentation updates per phase
-- [ ] Update CLAUDE.md commands and baseline after each phase
+- [ ] Update operator docs and baseline commands after each phase
 - [ ] Update IMPLEMENTATION_PLAN.md checklist and handoff notes
 - [ ] Update PROJECT_ROADMAP.md milestone table
 - [ ] Update SETUP.md if new configuration is added
@@ -393,7 +393,7 @@ This is the comprehensive task breakdown for the full agentic implementation. Ta
 
 ### T9-04: MCP server exposure (future)
 - [ ] Expose Adze's 14 tools as an MCP server
-- [ ] External agents (Claude Code, Cursor, etc.) can inspect/modify SOLIDWORKS models
+- [ ] External MCP-capable agents and IDE assistants can inspect/modify SOLIDWORKS models
 - [ ] Authentication and trust boundary for external tool callers
 - **Why:** Autodesk is adopting MCP for Fusion AI extensibility. This is an industry-direction signal. Adze's typed tool surface is already MCP-shaped.
 - **Reference:** research-solidworks-ai-ecosystem.md (Autodesk MCP adoption)

@@ -35,7 +35,7 @@ Environment rules for implementation:
 - It can learn from approved traces by turning them into reusable recipes and governed automations.
 - It exposes progression mechanics that improve trust and onboarding without weakening safety.
 - PowerShell, registration, and installer permission behavior are validated early so script/installer failures do not derail host setup.
-- It is ready for `/bootstrap` to derive the permanent project docs and implementation plan.
+- It is ready to derive the permanent project docs and implementation plan from this discovery brief.
 
 ## Scope
 ### In Scope
@@ -477,7 +477,7 @@ Unlock inputs:
 - passing eval thresholds
 
 ## Key Decisions Made
-These are the recommended defaults that `/bootstrap` should encode:
+These are the recommended defaults that the initial project bootstrap should encode:
 
 - **Primary target:** start with the locally installed `SOLIDWORKS 3DEXPERIENCE R2026x` environment.
 - **Product shell:** native C# in-process add-in.
@@ -508,7 +508,7 @@ These are the recommended defaults that `/bootstrap` should encode:
 - Permission confusion can waste time unless script launch behavior, execution policy, and elevation requirements are made explicit up front.
 
 ## Recommended Next Step
-Run `/bootstrap` and use this document as the authoritative input. Bootstrap should convert this brief into the permanent `CLAUDE.md`, `PROJECT_ROADMAP.md`, and `IMPLEMENTATION_PLAN.md`, with the early implementation focused on:
+Use this document as the authoritative input for the permanent project handbook and implementation plans, with the early implementation focused on:
 
 1. repo structure and ADRs
 2. add-in host spike
@@ -519,7 +519,7 @@ Run `/bootstrap` and use this document as the authoritative input. Bootstrap sho
 7. learning/progression system definitions
 
 ## Bootstrap Notes
-What `/bootstrap` needs to preserve:
+What the initial project bootstrap needs to preserve:
 
 - The local machine paths and environment assumptions.
 - The phase order and exit criteria.

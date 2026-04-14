@@ -397,7 +397,7 @@ OpenRouter uses the **OpenAI-compatible format** for all providers. You send Ope
 ### 3.2 Provider Coverage
 
 OpenRouter supports tool calling for models that natively support it, including:
-- Anthropic Claude models (3.5 Sonnet, 3.5 Haiku, Opus, Sonnet 4, etc.)
+- Anthropic models (3.5 Sonnet, 3.5 Haiku, Opus, Sonnet 4, etc.)
 - OpenAI GPT-4o, GPT-4 Turbo, GPT-4.1 series
 - Google Gemini models
 - Mistral models with function calling support

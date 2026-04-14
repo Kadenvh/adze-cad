@@ -13,7 +13,7 @@
 
 ## 1. Executive Summary
 
-This document designs how Adze's 19 SOLIDWORKS tools (11 read, 7 write, 1 retrieval) should be exposed as a Model Context Protocol server, enabling external MCP clients (Claude Desktop, Claude Code, Cursor, VS Code Copilot, etc.) to inspect and modify the active SOLIDWORKS session through Adze's governed tool surface.
+This document designs how Adze's 19 SOLIDWORKS tools (11 read, 7 write, 1 retrieval) should be exposed as a Model Context Protocol server, enabling external MCP clients (desktop MCP clients, coding agents, IDE assistants, etc.) to inspect and modify the active SOLIDWORKS session through Adze's governed tool surface.
 
 The core challenge is architectural: Adze runs as an in-process COM add-in inside SOLIDWORKS on the STA/UI thread, while an MCP server must handle async JSON-RPC requests from external processes. The solution is a **sidecar process** connected to the add-in via named pipes, with the sidecar hosting the MCP server (stdio or Streamable HTTP transport) and the add-in marshaling tool execution to the COM/UI thread.
 
@@ -34,8 +34,8 @@ Additionally, hosting an HTTP server or stdio loop inside the SOLIDWORKS process
 
 ```
  External MCP Client          Adze MCP Sidecar              Adze Add-In
- (Claude Desktop,       <-->  (Adze.Mcp.Server.exe)   <-->  (Adze.Host.dll)
-  Claude Code, etc.)           .NET 8 console app            .NET 4.8 in SOLIDWORKS
+ (Desktop/IDE clients,  <-->  (Adze.Mcp.Server.exe)   <-->  (Adze.Host.dll)
+  coding agents, etc.)         .NET 8 console app            .NET 4.8 in SOLIDWORKS
                                MCP protocol handler          COM/STA thread
                                stdio or HTTP transport        Named pipe client
 
@@ -61,7 +61,7 @@ The sidecar should support **both** MCP transports:
 
 | Transport | Use Case | How |
 |-----------|----------|-----|
-| **stdio** | Claude Desktop, Claude Code, most CLI clients | Sidecar is launched as a subprocess by the client. Reads JSON-RPC from stdin, writes to stdout. |
+| **stdio** | Desktop MCP clients, coding agents, most CLI clients | Sidecar is launched as a subprocess by the client. Reads JSON-RPC from stdin, writes to stdout. |
 | **Streamable HTTP** | VS Code extensions, web-based clients, multi-client scenarios | Sidecar hosts HTTP endpoint on `http://127.0.0.1:{port}/mcp`. Bind to localhost only. |
 
 The stdio transport is the primary target for Phase 1; Streamable HTTP is Phase 2.
@@ -290,7 +290,7 @@ The MCP server is gated behind `SOLIDWORKS_AI_MCP_SERVER=true`. Write tools in M
 6. Pipe discovery via `%LOCALAPPDATA%\Adze\mcp-pipe-name` file
 7. Auth token generation and validation
 8. Feature gate: `SOLIDWORKS_AI_MCP_SERVER=true`
-9. Integration test: Claude Desktop config pointing to sidecar, read tools callable
+9. Integration test: desktop MCP client config pointing to sidecar, read tools callable
 
 **Estimated scope:** ~800 lines new code + ~200 lines modifications
 
@@ -477,7 +477,7 @@ public sealed class AdzeMcpToolHandler
 | `SOLIDWORKS_AI_MCP_HTTP_ENABLED` | `false` | Enable HTTP transport in sidecar |
 | `SOLIDWORKS_AI_MCP_WRITE_TOOLS` | `false` | Expose write tools via MCP (independent of internal write gate) |
 
-### Claude Desktop Configuration (stdio)
+### Example Desktop MCP Client Configuration (stdio)
 
 ```json
 {

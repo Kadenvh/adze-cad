@@ -115,7 +115,7 @@ Backward compatibility:
 
 Those older names still work as fallback aliases.
 
-Note: Adze uses provider API billing. A Claude Max subscription does not provide usage for this application, and the same applies to consumer ChatGPT plans.
+Note: Adze uses provider API billing. Consumer chat subscriptions do not provide usage for this application.
 
 ## Data and Privacy
 
@@ -123,6 +123,8 @@ Note: Adze uses provider API billing. A Claude Max subscription does not provide
 - Nothing leaves the machine unless the model path is enabled.
 - When the model path is enabled, session context and tool results are sent to the configured provider API for planning and answer synthesis.
 - Traces, logs, snapshots, support bundles, and progression state are stored locally under `%LOCALAPPDATA%\Adze\`.
+- Snapshot and trace files can include document paths, machine name, selection metadata, reference paths, custom properties, and tool-result payloads captured from the active SOLIDWORKS session.
+- `logs\host.log` stores operational metadata for local troubleshooting. It does not store full answer text or plan text, but local trace/snapshot files can still contain detailed session context.
 - The repo does not include telemetry, cloud storage, or external data collection.
 
 ## Validation Commands

@@ -8,7 +8,7 @@
 
 ## Context
 
-The codebase has no hardcoded secrets — API keys are loaded from environment variables, and `.claude/hooks` blocks edits to credential files. However, repository hygiene issues must be resolved before the first commit to `adze-cad`.
+The codebase has no hardcoded secrets — API keys are loaded from environment variables, and local tooling blocks edits to credential files. However, repository hygiene issues must be resolved before the first commit to `adze-cad`.
 
 Execution result:
 - `.gitignore` was added and extended for local tooling/state.
@@ -73,8 +73,8 @@ secrets.*
 # NuGet
 packages/
 
-# Claude Code local state (agent scratch)
-.claude/settings.json
+# Local internal tooling state
+.internal-tooling/
 ```
 
 ## Step 2: Remove files that must not be committed
@@ -137,7 +137,7 @@ Recommended: Option A. Reports are generated artifacts.
 
 Check these files for machine-specific info and replace if needed:
 
-- `CLAUDE.md` — Check for any machine-specific validation wording and generalize if needed.
+- Internal project docs — Check for any machine-specific validation wording and generalize if needed.
 - `documentation/IMPLEMENTATION_PLAN.md` — May reference machine name in validation results.
 - `documentation/PROJECT_ROADMAP.md` — Check for local-specific paths.
 - `benchmarks/grounding/starter-corpus.manifest.json` — Contains local paths like `C:\SOLIDWORKS\samples\` and `C:\Program Files\Dassault Systemes\...`. These are fixture references, not secrets, but consider whether they should be in a public repo.

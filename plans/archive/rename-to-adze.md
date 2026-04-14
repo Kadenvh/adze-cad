@@ -93,7 +93,7 @@ In all files under `schemas/`:
 - `https://sw-plugin.local/schemas/` → `https://adze.dev/schemas/` (or chosen domain)
 
 ### Documentation
-- `CLAUDE.md` — Update title, all references to "SolidWorksAi" and "SolidWorks AI Assistant"
+- Internal project handbook — Update title, all references to "SolidWorksAi" and "SolidWorks AI Assistant"
 - `documentation/PROJECT_ROADMAP.md` — Update product name references
 - `documentation/IMPLEMENTATION_PLAN.md` — Update product name references
 - `documentation/BUILD_SPEC.md` — Update product name references

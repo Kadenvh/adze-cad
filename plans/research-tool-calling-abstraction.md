@@ -319,7 +319,7 @@ Identical to OpenAI Chat Completions. Tool definitions use the `{"type": "functi
 #### Provider Coverage for Tool Calling
 
 OpenRouter translates tool calling for models that natively support it:
-- **Anthropic Claude** models (3.5 Sonnet, 3.5 Haiku, Opus, Sonnet 4, Haiku 4, etc.) -- reliable
+- **Anthropic** models (3.5 Sonnet, 3.5 Haiku, Opus, Sonnet 4, Haiku 4, etc.) -- reliable
 - **OpenAI GPT-4o, GPT-4.1 series, GPT-4 Turbo** -- reliable (native pass-through)
 - **Google Gemini 1.5, 2.0** models -- generally works; occasional schema strictness differences
 - **Mistral Large, Medium** with function calling -- works but some models are less reliable

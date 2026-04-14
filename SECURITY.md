@@ -20,7 +20,7 @@ Adze runs as an in-process COM add-in inside SOLIDWORKS. Security-relevant areas
 - **API key handling** — keys are read from environment variables, never stored by Adze
 - **Data transmission** — when using cloud AI providers, SOLIDWORKS session data is sent to the user's chosen provider. Users can use local models (Ollama/LM Studio) for complete privacy.
 - **Write operations** — all write tools follow an 8-step safety lifecycle with preview, approval, and verification
-- **Local storage** — traces, logs, and progression data are stored under `%LOCALAPPDATA%\Adze`
+- **Local storage** — traces, logs, snapshots, and progression data are stored under `%LOCALAPPDATA%\Adze`. These files can include document paths, machine name, selection/reference metadata, custom properties, and tool-result payloads. `host.log` is intended for operational metadata rather than full answer/plan transcripts.
 
 ## Supported Versions
 

@@ -627,7 +627,11 @@ internal static class HostState
             ISldWorks? application = GetApplicationSnapshot();
             GroundingDashboardSnapshot snapshot = BuildSnapshotUnsafe(application);
 
-            FileLogger.Info(reason + System.Environment.NewLine + snapshot.Text);
+            FileLogger.Info(
+                "Snapshot captured. reason=" + reason +
+                " tool_count=" + snapshot.ToolResults.Count +
+                " achievements=" + snapshot.AchievementCount +
+                " review_ready_recipes=" + snapshot.ReviewReadyCandidateCount);
             GroundingSnapshotStore.WriteLatest(new GroundingSnapshotRecord
             {
                 Reason = reason,
@@ -847,8 +851,8 @@ internal static class HostState
             "Agent run completed. outcome=" + result.Outcome +
             " tools=" + toolsSummary +
             " tokens=" + runUsage.TotalTokens +
-            failureInfo +
-            System.Environment.NewLine + answerText);
+            " pending_writes=" + writeTracker.CapturedWrites.Count +
+            failureInfo);
 
         return new AssistantRunSnapshot
         {
@@ -999,10 +1003,10 @@ internal static class HostState
             answerSourceText +
             " tokens=" +
             runUsage.TotalTokens +
-            System.Environment.NewLine +
-            answerText +
-            System.Environment.NewLine +
-            planText);
+            " tool_count=" +
+            report.ToolResults.Count +
+            " synthesis_fallback=" +
+            (!string.IsNullOrWhiteSpace(synthesis.FailureReason)).ToString());
 
         return new AssistantRunSnapshot
         {

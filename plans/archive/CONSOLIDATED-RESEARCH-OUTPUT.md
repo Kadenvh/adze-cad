@@ -2179,7 +2179,7 @@ Identical to OpenAI Chat Completions. Tool definitions use the `{"type": "functi
 #### Provider Coverage for Tool Calling
 
 OpenRouter translates tool calling for models that natively support it:
-- **Anthropic Claude** models (3.5 Sonnet, 3.5 Haiku, Opus, Sonnet 4, Haiku 4, etc.) -- reliable
+- **Anthropic** models (3.5 Sonnet, 3.5 Haiku, Opus, Sonnet 4, Haiku 4, etc.) -- reliable
 - **OpenAI GPT-4o, GPT-4.1 series, GPT-4 Turbo** -- reliable (native pass-through)
 - **Google Gemini 1.5, 2.0** models -- generally works; occasional schema strictness differences
 - **Mistral Large, Medium** with function calling -- works but some models are less reliable
@@ -3809,7 +3809,7 @@ The key insight is that **Adze's existing architecture already handles this grac
 
 ## What OpenClaw Actually Is
 
-OpenClaw is a **developer-workflow orchestration layer for AI coding agents**. It is not a general-purpose agent SDK, embeddable runtime library, or model-routing framework. Its purpose is to coordinate AI development sessions (such as Claude Code, Cursor, Aider, or similar tools) by providing persistent context, memory, and identity files that the orchestrating agent maintains across sessions.
+OpenClaw is a **developer-workflow orchestration layer for AI coding agents**. It is not a general-purpose agent SDK, embeddable runtime library, or model-routing framework. Its purpose is to coordinate AI development sessions (such as terminal coding agents, IDE copilots, or similar tools) by providing persistent context, memory, and identity files that the orchestrating agent maintains across sessions.
 
 ### Evidence from this repo
 
@@ -3825,7 +3825,7 @@ The project's own `block-protected-files.js` hook identifies these OpenClaw arti
 | `USER.md` | User profile for the orchestrating agent |
 | `memory/` directory | Daily logs and session memory |
 
-The bootstrap prompt (`documentation/.prompts/bootstrap.md`) explicitly states: *"These belong to the orchestrating agent, not to Claude Code sessions."* This confirms OpenClaw operates **above** the development tool layer -- it is the orchestrator that manages how AI agents interact with a codebase, not something that runs inside a shipped product.
+The bootstrap prompt explicitly states: *"These belong to the orchestrating agent, not to interactive coding sessions."* This confirms OpenClaw operates **above** the development tool layer -- it is the orchestrator that manages how AI agents interact with a codebase, not something that runs inside a shipped product.
 
 ### What OpenClaw provides
 
@@ -3900,7 +3900,7 @@ No. OpenClaw has no provider abstraction. Adze already has `ModelClientFactory` 
 
 ## Should OpenClaw Be an Optional Integration?
 
-OpenClaw is already in use in the correct way: as the **development-time orchestrator** that manages how AI coding agents work on the Adze codebase. The `block-protected-files.js` hook correctly prevents Claude Code sessions from modifying OpenClaw's own state files.
+OpenClaw is already in use in the correct way: as the **development-time orchestrator** that manages how AI coding agents work on the Adze codebase. The `block-protected-files.js` hook correctly prevents interactive coding sessions from modifying OpenClaw's own state files.
 
 This is the right relationship. OpenClaw helps build Adze. OpenClaw does not run inside Adze.
 
@@ -4467,14 +4467,14 @@ This research identifies concrete UI patterns for presenting intermediate agent 
 
 ## 2. Existing Agentic UI Patterns
 
-### 2.1 Claude Code (Terminal)
+### 2.1 Terminal Coding Agents
 
-Claude Code presents agent activity as a streaming vertical log in the terminal. Key patterns:
+Terminal coding agents present activity as a streaming vertical log in the terminal. Key patterns:
 
 - **Tool calls are labeled blocks.** Each tool invocation appears as a distinct block with a header ("Read file.cs", "Search for X", "Edit file.cs") followed by a collapsed or expanded body showing the tool input/output.
 - **Thinking is collapsed by default.** Extended reasoning appears as a separate collapsible section, not inline with tool output. Users can expand it if they want to see the chain of thought.
 - **Streaming text for the final answer.** The assistant's text response streams token-by-token. Tool call blocks appear atomically (after the call completes), not streamed.
-- **Permission gates are inline.** When Claude Code needs to run a command or edit a file, it shows the proposed action and waits for user approval with a simple yes/no prompt. The approval is a single line, not a modal dialog.
+- **Permission gates are inline.** When the agent needs to run a command or edit a file, it shows the proposed action and waits for user approval with a simple yes/no prompt. The approval is a single line, not a modal dialog.
 - **Progressive disclosure.** The log is append-only. Earlier steps scroll up naturally. The user sees the current activity at the bottom of the viewport.
 
 **Applicable lesson:** The append-only vertical log maps well to a narrow sidebar. Tool activities are blocks, not inline text. Approval gates are minimal (one line, two buttons).

@@ -18,14 +18,14 @@ This research identifies concrete UI patterns for presenting intermediate agent 
 
 ## 2. Existing Agentic UI Patterns
 
-### 2.1 Claude Code (Terminal)
+### 2.1 Terminal Coding Agents
 
-Claude Code presents agent activity as a streaming vertical log in the terminal. Key patterns:
+Terminal coding agents present activity as a streaming vertical log in the terminal. Key patterns:
 
 - **Tool calls are labeled blocks.** Each tool invocation appears as a distinct block with a header ("Read file.cs", "Search for X", "Edit file.cs") followed by a collapsed or expanded body showing the tool input/output.
 - **Thinking is collapsed by default.** Extended reasoning appears as a separate collapsible section, not inline with tool output. Users can expand it if they want to see the chain of thought.
 - **Streaming text for the final answer.** The assistant's text response streams token-by-token. Tool call blocks appear atomically (after the call completes), not streamed.
-- **Permission gates are inline.** When Claude Code needs to run a command or edit a file, it shows the proposed action and waits for user approval with a simple yes/no prompt. The approval is a single line, not a modal dialog.
+- **Permission gates are inline.** When the agent needs to run a command or edit a file, it shows the proposed action and waits for user approval with a simple yes/no prompt. The approval is a single line, not a modal dialog.
 - **Progressive disclosure.** The log is append-only. Earlier steps scroll up naturally. The user sees the current activity at the bottom of the viewport.
 
 **Applicable lesson:** The append-only vertical log maps well to a narrow sidebar. Tool activities are blocks, not inline text. Approval gates are minimal (one line, two buttons).

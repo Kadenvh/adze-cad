@@ -55,7 +55,7 @@ install/*.zip
 # NuGet
 packages/
 
-# Claude Code / AI tooling (local only, not public)
+# Local internal tooling/docs (not public)
 CLAUDE.md
 SYSTEM-OVERVIEW.md
 .claude/
