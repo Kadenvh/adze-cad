@@ -29,8 +29,8 @@ desktop.ini
 *.log
 
 # Diagnostic logs and downloads
-documentation/plans/diagnostics/logs/
-documentation/plans/diagnostics/downloads/
+plans/diagnostics/logs/
+plans/diagnostics/downloads/
 
 # Benchmark reports
 benchmarks/reports/*-report-*.json
@@ -59,6 +59,7 @@ packages/
 .claude/settings.json
 .claude/settings.local.json
 .claude/hooks/hook-log.jsonl
+.claude/memory/
 
 # Local workspace tooling
 .ava/
