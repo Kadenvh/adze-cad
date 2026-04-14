@@ -4,7 +4,7 @@
 
 Adze is a free, in-process SOLIDWORKS add-in. It reads your active document through 19 typed tools, reasons over the results with an agentic AI loop, and delivers grounded answers in a conversational Task Pane. Write operations follow an 8-step safety lifecycle: plan, preview, approve, apply, verify, trace, undo-label, and history. Nothing leaves your machine unless you choose a cloud provider.
 
-> **Current status:** v0.1.1 public beta. 19 tools, 666 tests, agentic loop, governed writes, streaming, multi-provider AI. SOLIDWORKS Solution Partner application in progress.
+> **Current status:** v0.1.1 public beta. 19 tools, 666 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required. SOLIDWORKS Solution Partner application in progress.
 
 ---
 
