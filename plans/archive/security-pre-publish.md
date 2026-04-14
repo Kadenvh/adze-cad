@@ -140,7 +140,7 @@ Check these files for machine-specific info and replace if needed:
 - `CLAUDE.md` — Check for any machine-specific validation wording and generalize if needed.
 - `documentation/IMPLEMENTATION_PLAN.md` — May reference machine name in validation results.
 - `documentation/PROJECT_ROADMAP.md` — Check for local-specific paths.
-- `benchmarks/grounding/starter-corpus.manifest.json` — Contains local paths like `C:\SOLIDWORKS\penjamin\` and `C:\Program Files\Dassault Systemes\...`. These are fixture references, not secrets, but consider whether they should be in a public repo.
+- `benchmarks/grounding/starter-corpus.manifest.json` — Contains local paths like `C:\SOLIDWORKS\samples\` and `C:\Program Files\Dassault Systemes\...`. These are fixture references, not secrets, but consider whether they should be in a public repo.
 
 ## Step 5: Verify before first commit
 

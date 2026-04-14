@@ -1,16 +1,16 @@
 [
   {
-    "task_id": "penjamin-active-document",
-    "corpus_source_id": "penjamin_native_part",
+    "task_id": "local-active-document",
+    "corpus_source_id": "local_native_part",
     "description": "Confirm the active document identity and top-level metadata for the validated local Part1 fixture.",
     "document_type": "part",
-    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "entry_path": "C:\\SOLIDWORKS\\samples\\Part1.SLDPRT",
     "question": "What document is currently open and what are its key metadata fields?",
     "expected_tool": "get_active_document",
     "expected_assertions": [
       "title == Part1.SLDPRT",
       "type == part",
-      "path == C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+      "path == C:\\SOLIDWORKS\\samples\\Part1.SLDPRT",
       "active_configuration == Default",
       "is_dirty == false"
     ],
@@ -81,11 +81,11 @@
     "status": "curated_verified"
   },
   {
-    "task_id": "penjamin-feature-tree-slice",
-    "corpus_source_id": "penjamin_native_part",
+    "task_id": "local-feature-tree-slice",
+    "corpus_source_id": "local_native_part",
     "description": "Confirm that the host can extract a stable feature-tree preview from the validated local Part1 fixture.",
     "document_type": "part",
-    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "entry_path": "C:\\SOLIDWORKS\\samples\\Part1.SLDPRT",
     "question": "What feature-tree slice is available for the active Part1 document?",
     "expected_tool": "get_feature_tree_slice",
     "expected_assertions": [
@@ -97,11 +97,11 @@
     "status": "curated_verified"
   },
   {
-    "task_id": "penjamin-configurations",
-    "corpus_source_id": "penjamin_native_part",
+    "task_id": "local-configurations",
+    "corpus_source_id": "local_native_part",
     "description": "Confirm that the host resolves configuration metadata for the validated local Part1 fixture.",
     "document_type": "part",
-    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "entry_path": "C:\\SOLIDWORKS\\samples\\Part1.SLDPRT",
     "question": "What configurations are available for the active Part1 document?",
     "expected_tool": "get_configurations",
     "expected_assertions": [
@@ -113,11 +113,11 @@
     "status": "curated_verified"
   },
   {
-    "task_id": "penjamin-rebuild-diagnostics",
-    "corpus_source_id": "penjamin_native_part",
+    "task_id": "local-rebuild-diagnostics",
+    "corpus_source_id": "local_native_part",
     "description": "Confirm that rebuild diagnostics can be extracted for the validated local Part1 fixture.",
     "document_type": "part",
-    "entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+    "entry_path": "C:\\SOLIDWORKS\\samples\\Part1.SLDPRT",
     "question": "What is the rebuild/diagnostic state of the active Part1 document?",
     "expected_tool": "get_rebuild_diagnostics",
     "expected_assertions": [

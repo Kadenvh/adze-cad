@@ -55,11 +55,10 @@ install/*.zip
 # NuGet
 packages/
 
-# Claude Code local state
-.claude/settings.json
-.claude/settings.local.json
-.claude/hooks/hook-log.jsonl
-.claude/memory/
+# Claude Code / AI tooling (local only, not public)
+CLAUDE.md
+SYSTEM-OVERVIEW.md
+.claude/
 
 # Local workspace tooling
 .ava/

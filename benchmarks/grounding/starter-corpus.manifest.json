@@ -5,9 +5,9 @@
   "description": "Starter grounding corpus manifest. Source CAD files remain on the local machine; this repo stores only metadata, validation notes, and curation status.",
   "sources": [
     {
-      "id": "penjamin_native_part",
-      "root_path": "C:\\SOLIDWORKS\\penjamin",
-      "default_entry_path": "C:\\SOLIDWORKS\\penjamin\\Part1.SLDPRT",
+      "id": "local_native_part",
+      "root_path": "C:\\SOLIDWORKS\\samples",
+      "default_entry_path": "C:\\SOLIDWORKS\\samples\\Part1.SLDPRT",
       "status": "curated_verified",
       "source_class": "user_data",
       "target_document_types": ["part"],

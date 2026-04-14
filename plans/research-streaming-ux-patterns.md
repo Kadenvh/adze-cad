@@ -233,7 +233,7 @@ The Tools tab (`_toolsBox`) is updated after each tool completes, not just at th
 ```
 --- get_active_document (23ms) ---
 Document: Part1.SLDPRT (part)
-Path: C:\SOLIDWORKS\penjamin\Part1.SLDPRT
+Path: C:\SOLIDWORKS\samples\Part1.SLDPRT
 Units: millimeters
 
 --- get_dimensions (45ms) ---

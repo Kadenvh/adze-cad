@@ -1,5 +1,5 @@
 param(
-    [string]$SamplePath = "C:\SOLIDWORKS\penjamin\Part1.SLDPRT"
+    [string]$SamplePath = "C:\SOLIDWORKS\samples\Part1.SLDPRT"
 )
 
 $ErrorActionPreference = "Stop"
