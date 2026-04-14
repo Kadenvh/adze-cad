@@ -283,6 +283,21 @@ internal static class SessionContextBuilder
             return mates;
         }
 
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        CollectMatesFromAssembly(model, mates, visited, maxMates);
+        mates.Count = mates.Items.Count;
+        return mates;
+    }
+
+    // Recursively walks MateGroups in the given assembly and its subassemblies.
+    // Subassemblies are visited by path so the same referenced assembly is only walked once.
+    private static void CollectMatesFromAssembly(ModelDoc2 model, MatesInfo mates, HashSet<string> visited, int maxMates)
+    {
+        if (model == null || mates.Items.Count >= maxMates) return;
+
+        string key = model.GetPathName() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(key) && !visited.Add(key)) return;
+
         Feature? feature = null;
         try
         {
@@ -343,8 +358,51 @@ internal static class SessionContextBuilder
             ReleaseComObject(feature);
         }
 
-        mates.Count = mates.Items.Count;
-        return mates;
+        if (mates.Items.Count >= maxMates) return;
+
+        // Descend into subassembly components so their internal mates are surfaced.
+        AssemblyDoc? assembly = model as AssemblyDoc;
+        if (assembly == null) return;
+
+        object[]? rawComponents = null;
+        try
+        {
+            rawComponents = assembly.GetComponents(false) as object[];
+        }
+        catch (Exception ex)
+        {
+            LogContextError("Component enumeration for mate recursion failed.", ex);
+            return;
+        }
+
+        if (rawComponents == null) return;
+
+        foreach (object raw in rawComponents)
+        {
+            if (mates.Items.Count >= maxMates) break;
+            Component2? component = raw as Component2;
+            if (component == null) continue;
+
+            ModelDoc2? childModel = null;
+            try
+            {
+                if (component.IsSuppressed()) continue;
+                childModel = component.GetModelDoc2() as ModelDoc2;
+                if (childModel == null) continue;
+                if (childModel.GetType() != (int)swDocumentTypes_e.swDocASSEMBLY) continue;
+
+                CollectMatesFromAssembly(childModel, mates, visited, maxMates);
+            }
+            catch (Exception ex)
+            {
+                LogContextError("Subassembly mate recursion failed.", ex);
+            }
+            finally
+            {
+                ReleaseComObject(childModel);
+                ReleaseComObject(component);
+            }
+        }
     }
 
     private static DimensionsInfo BuildDimensions(ModelDoc2 model)
