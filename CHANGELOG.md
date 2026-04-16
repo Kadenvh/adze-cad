@@ -13,6 +13,8 @@ Target: v0.1.2 on 2026-04-20.
 - **Feature-tree context menu** — right-click any feature in the FeatureManager tree → "Ask Adze about this feature." Right-click in the graphics area → "Diagnose this model." Selected entity name flows into the prompt automatically. Feature-gated behind `SOLIDWORKS_AI_CONTEXT_MENU=true`.
 - **`PRIVACY.md`** — formal privacy policy documenting zero telemetry transmission, local-only trace storage, and cloud-provider data flow explanation.
 - **`docs/index.html`** — single-page landing at https://kadenvh.github.io/adze-cad/. Overview, tool surface, install instructions.
+- **Tray toast notifications** — optional balloon popup on run completion when the SOLIDWORKS window is not foregrounded. Feature-gated behind `SOLIDWORKS_AI_TOAST=true`.
+- **PropertyManager Page write confirmation (proof-of-path)** — optional native SW PropertyManager Page for `set_dimension_value`. When enabled, writes surface in a native modal instead of the Task Pane HTML card. Feature-gated behind `SOLIDWORKS_AI_PMP_WRITES=true`. Full coverage for the other 6 write tools lands in v0.2.0.
 
 ### Fixed
 - **`get_mates` subassembly recursion** — previously returned empty on assemblies whose mates live inside subassembly components (observed on SpdrBot v14.SLDASM). `SessionContextBuilder.BuildMates` now walks `AssemblyDoc.GetComponents(false)` and recurses into each subassembly ModelDoc, deduping by PathName and respecting the 150-mate budget.
