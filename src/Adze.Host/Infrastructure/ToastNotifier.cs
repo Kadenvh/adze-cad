@@ -122,9 +122,14 @@ public static class ToastNotifier
             GetWindowThreadProcessId(hwnd, out uint pid);
             if (pid == 0) return false;
 
-            System.Diagnostics.Process proc = System.Diagnostics.Process.GetProcessById((int)pid);
-            string name = proc.ProcessName ?? string.Empty;
-            return name.IndexOf("SLDWORKS", StringComparison.OrdinalIgnoreCase) >= 0;
+            // Process implements IDisposable and holds a kernel handle; without
+            // `using`, every ShowCompletion call leaks a process handle. Toasts
+            // fire on every assistant run, so this path is high-frequency.
+            using (System.Diagnostics.Process proc = System.Diagnostics.Process.GetProcessById((int)pid))
+            {
+                string name = proc.ProcessName ?? string.Empty;
+                return name.IndexOf("SLDWORKS", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
         }
         catch
         {

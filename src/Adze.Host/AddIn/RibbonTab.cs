@@ -41,7 +41,7 @@ internal sealed class RibbonTab
 
     private ICommandManager? _commandManager;
     private ICommandGroup? _commandGroup;
-    private ICommandTab? _commandTab;
+    private readonly System.Collections.Generic.List<ICommandTab> _commandTabs = new();
     private int _userGroupId;
     private bool _registered;
 
@@ -114,17 +114,22 @@ internal sealed class RibbonTab
                 FileLogger.Info("RibbonTab: CommandGroup.Activate returned false.");
             }
 
-            _commandTab = _commandManager.GetCommandTab((int)swDocumentTypes_e.swDocASSEMBLY, "Adze")
-                           ?? _commandManager.AddCommandTab((int)swDocumentTypes_e.swDocASSEMBLY, "Adze");
-            AttachAllButtonsToTab(_commandTab);
-
-            _commandTab = _commandManager.GetCommandTab((int)swDocumentTypes_e.swDocPART, "Adze")
-                           ?? _commandManager.AddCommandTab((int)swDocumentTypes_e.swDocPART, "Adze");
-            AttachAllButtonsToTab(_commandTab);
-
-            _commandTab = _commandManager.GetCommandTab((int)swDocumentTypes_e.swDocDRAWING, "Adze")
-                           ?? _commandManager.AddCommandTab((int)swDocumentTypes_e.swDocDRAWING, "Adze");
-            AttachAllButtonsToTab(_commandTab);
+            // Attach one tab per document type. Each call to AddCommandTab
+            // produces a distinct COM object; we track ALL of them so
+            // Unregister releases every ref, not just the last-assigned one.
+            foreach (swDocumentTypes_e docType in new[] {
+                swDocumentTypes_e.swDocASSEMBLY,
+                swDocumentTypes_e.swDocPART,
+                swDocumentTypes_e.swDocDRAWING })
+            {
+                ICommandTab? tab = _commandManager.GetCommandTab((int)docType, "Adze")
+                                 ?? _commandManager.AddCommandTab((int)docType, "Adze");
+                if (tab != null)
+                {
+                    _commandTabs.Add(tab);
+                    AttachAllButtonsToTab(tab);
+                }
+            }
 
             _registered = true;
             FileLogger.Info("RibbonTab: registered successfully across part/assembly/drawing contexts.");
@@ -185,11 +190,11 @@ internal sealed class RibbonTab
         }
         finally
         {
-            if (_commandTab != null)
+            foreach (ICommandTab tab in _commandTabs)
             {
-                Marshal.FinalReleaseComObject(_commandTab);
-                _commandTab = null;
+                try { Marshal.FinalReleaseComObject(tab); } catch { /* already released */ }
             }
+            _commandTabs.Clear();
             if (_commandGroup != null)
             {
                 Marshal.FinalReleaseComObject(_commandGroup);

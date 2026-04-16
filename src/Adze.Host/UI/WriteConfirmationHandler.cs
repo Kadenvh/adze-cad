@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using SolidWorks.Interop.swconst;
 using Adze.Host.Infrastructure;
 
@@ -19,7 +20,10 @@ namespace Adze.Host.UI;
 public sealed class WriteConfirmationHandler
 {
     private readonly int _pendingWriteIndex;
-    private volatile bool _disposed;
+    // 0 = not disposed, 1 = dispose in-flight. Use Interlocked.CompareExchange
+    // so a double OnClose (SW dispatch race, rapid double-click) routes to the
+    // pipeline exactly once instead of racing two ApplyPendingWrite calls.
+    private int _disposed;
 
     public WriteConfirmationHandler(int pendingWriteIndex)
     {
@@ -33,8 +37,7 @@ public sealed class WriteConfirmationHandler
     /// </summary>
     public void OnClose(int reason)
     {
-        if (_disposed) return;
-        _disposed = true;
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0) return;
 
         try
         {

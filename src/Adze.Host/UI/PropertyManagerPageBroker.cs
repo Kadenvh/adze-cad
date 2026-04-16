@@ -93,6 +93,7 @@ public static class PropertyManagerPageBroker
             {
                 FileLogger.Error("PMP: PopulateControls failed; closing page and falling back.", ex);
                 try { page.Close(false); } catch { }
+                try { Marshal.FinalReleaseComObject(page); } catch { }
                 return false;
             }
 
