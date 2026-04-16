@@ -163,10 +163,10 @@ public class BudgetStatusTests
 public class FeatureGateRegistryTests
 {
     [Test]
-    public void GetAllStates_Returns5Gates()
+    public void GetAllStates_Returns7Gates()
     {
         Dictionary<string, bool> states = FeatureGateRegistry.GetAllStates();
-        Assert.AreEqual(5, states.Count);
+        Assert.AreEqual(7, states.Count);
     }
 
     [Test]
@@ -178,6 +178,20 @@ public class FeatureGateRegistryTests
         Assert.That(summary, Does.Contain("RETRIEVAL"));
         Assert.That(summary, Does.Contain("LOCAL_MODELS"));
         Assert.That(summary, Does.Contain("STREAM_FINAL_TEXT"));
+        Assert.That(summary, Does.Contain("RIBBON"));
+        Assert.That(summary, Does.Contain("CONTEXT_MENU"));
+    }
+
+    [Test]
+    public void RibbonGate_KnownConstantValue()
+    {
+        Assert.AreEqual("SOLIDWORKS_AI_RIBBON", FeatureGateRegistry.RibbonTab);
+    }
+
+    [Test]
+    public void ContextMenuGate_KnownConstantValue()
+    {
+        Assert.AreEqual("SOLIDWORKS_AI_CONTEXT_MENU", FeatureGateRegistry.ContextMenu);
     }
 
     [Test]

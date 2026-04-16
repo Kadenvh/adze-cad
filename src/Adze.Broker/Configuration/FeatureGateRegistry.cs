@@ -10,6 +10,8 @@ public static class FeatureGateRegistry
     public const string Retrieval = "SOLIDWORKS_AI_RETRIEVAL";
     public const string LocalModels = "SOLIDWORKS_AI_LOCAL_MODELS";
     public const string StreamFinalText = "SOLIDWORKS_AI_STREAM_FINAL_TEXT";
+    public const string RibbonTab = "SOLIDWORKS_AI_RIBBON";
+    public const string ContextMenu = "SOLIDWORKS_AI_CONTEXT_MENU";
 
     private static readonly string[] AllGates =
     {
@@ -17,7 +19,9 @@ public static class FeatureGateRegistry
         FirstWaveWrites,
         Retrieval,
         LocalModels,
-        StreamFinalText
+        StreamFinalText,
+        RibbonTab,
+        ContextMenu
     };
 
     public static bool IsEnabled(string gateName)

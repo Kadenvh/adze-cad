@@ -114,6 +114,8 @@ internal static class HostState
     private static LocalHealthResult? _localHealthResult;
     private static volatile bool _localHealthChecked;
     private static IUiThreadInvoker? _uiThreadInvoker;
+    private static Action<string>? _quickActionInvoker;
+    private static Action? _taskPaneFocusInvoker;
     private static readonly SessionTelemetry _telemetry = new();
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
@@ -167,6 +169,53 @@ internal static class HostState
         {
             return _uiThreadInvoker;
         }
+    }
+
+    /// <summary>
+    /// Register a callback that fires a QuickAction in the Task Pane UI.
+    /// Called by TaskPaneControl during initialization; invoked by ribbon/context-menu
+    /// handlers to route user intent into the same prompt composer the Task Pane uses.
+    /// </summary>
+    public static void SetQuickActionInvoker(Action<string>? invoker)
+    {
+        lock (Sync)
+        {
+            _quickActionInvoker = invoker;
+        }
+    }
+
+    public static void InvokeQuickAction(string actionKey)
+    {
+        Action<string>? invoker;
+        lock (Sync)
+        {
+            invoker = _quickActionInvoker;
+        }
+
+        invoker?.Invoke(actionKey ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Register a callback that brings the Task Pane into focus (used by the
+    /// ribbon "Ask" button when no prompt is supplied).
+    /// </summary>
+    public static void SetTaskPaneFocusInvoker(Action? invoker)
+    {
+        lock (Sync)
+        {
+            _taskPaneFocusInvoker = invoker;
+        }
+    }
+
+    public static void InvokeTaskPaneFocus()
+    {
+        Action? invoker;
+        lock (Sync)
+        {
+            invoker = _taskPaneFocusInvoker;
+        }
+
+        invoker?.Invoke();
     }
 
     public static string GetTelemetrySummary()

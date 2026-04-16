@@ -256,6 +256,22 @@ public sealed class TaskPaneControl : UserControl
 
             // Register UI-thread invoker for COM write marshaling
             HostState.SetUiThreadInvoker(new WinFormsUiThreadInvoker(this));
+
+            // Register ribbon / context-menu routing hooks so external surfaces
+            // (CommandManager tab, feature-tree context menu) drive the same
+            // QuickAction prompt composer the in-pane toolbar uses.
+            HostState.SetQuickActionInvoker(key => PostToUi(() => QuickAction(key)));
+            HostState.SetTaskPaneFocusInvoker(() => PostToUi(() =>
+            {
+                try
+                {
+                    _requestBox.Focus();
+                }
+                catch
+                {
+                    // Focus is best-effort; swallowing is safe.
+                }
+            }));
         }
         catch (Exception ex)
         {
@@ -287,6 +303,11 @@ public sealed class TaskPaneControl : UserControl
         {
             _refreshTimer.Stop();
             _refreshTimer.Dispose();
+
+            // Clear HostState hooks that reference this control so ribbon /
+            // context-menu callbacks do not invoke a disposed instance.
+            HostState.SetQuickActionInvoker(null);
+            HostState.SetTaskPaneFocusInvoker(null);
         }
         base.Dispose(disposing);
     }
@@ -1641,6 +1662,7 @@ scrollToBottom();
             "mates"    => "List all mates in this assembly. Show each mate's type, the components it connects, and whether it's healthy or has an error.",
             "dims"     => "Show me all the key dimensions in this document, their current values, and which features they control.",
             "props"    => "Show all custom properties for this document and their current values.",
+            "explain"  => "Explain the currently selected feature or entity in detail. If nothing is selected, summarize the active document.",
             _          => ""
         };
         if (string.IsNullOrEmpty(prompt)) return;

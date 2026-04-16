@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swpublished;
+using Adze.Broker.Configuration;
 using Adze.Host.Infrastructure;
 using Adze.Host.UI;
 
@@ -35,6 +36,7 @@ public sealed class AdzeAddIn : ISwAddin
     private DDrawingDocEvents_Event? _drawingDocEvents;
     private DDrawingDocEvents_NewSelectionNotifyEventHandler? _drawingNewSelectionHandler;
     private DDrawingDocEvents_ClearSelectionsNotifyEventHandler? _drawingClearSelectionsHandler;
+    private RibbonTab? _ribbonTab;
 
     public bool ConnectToSW(object thisSw, int cookie)
     {
@@ -49,6 +51,7 @@ public sealed class AdzeAddIn : ISwAddin
             AttachApplicationEvents();
             AttachActiveDocumentEvents();
             CreateTaskPane();
+            TryRegisterRibbon();
             HostState.LogSnapshot("Initial context snapshot");
             FileLogger.Info("ConnectToSW completed.");
             return true;
@@ -65,6 +68,7 @@ public sealed class AdzeAddIn : ISwAddin
         try
         {
             FileLogger.Info("DisconnectFromSW starting.");
+            TryUnregisterRibbon();
             DetachApplicationEvents();
             DetachActiveDocumentEvents();
             DestroyTaskPane();
@@ -396,4 +400,56 @@ public sealed class AdzeAddIn : ISwAddin
         HostState.LogSnapshot("DrawingDoc ClearSelectionsNotify");
         return 0;
     }
+
+    // -----------------------------------------------------------------------
+    // CommandManager ribbon tab (feature-gated)
+    // -----------------------------------------------------------------------
+
+    private void TryRegisterRibbon()
+    {
+        if (!FeatureGateRegistry.IsEnabled(FeatureGateRegistry.RibbonTab))
+        {
+            FileLogger.Info("Ribbon gate SOLIDWORKS_AI_RIBBON is off; skipping tab.");
+            return;
+        }
+
+        if (_application == null)
+        {
+            return;
+        }
+
+        _ribbonTab = new RibbonTab();
+        bool ok = _ribbonTab.Register(_application, _cookie);
+        if (!ok)
+        {
+            // Register returns false on known failure; error already logged.
+            _ribbonTab = null;
+        }
+    }
+
+    private void TryUnregisterRibbon()
+    {
+        if (_ribbonTab == null) return;
+        try
+        {
+            _ribbonTab.Unregister();
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("Ribbon unregister failed.", ex);
+        }
+        finally
+        {
+            _ribbonTab = null;
+        }
+    }
+
+    // Public callback methods invoked by the SOLIDWORKS CommandManager dispatcher.
+    // Names must match the CallbackFunction strings in RibbonTab.Buttons exactly.
+    public void RibbonAsk()       => HostState.InvokeTaskPaneFocus();
+    public void RibbonDiagnose()  => HostState.InvokeQuickAction("diagnose");
+    public void RibbonMates()     => HostState.InvokeQuickAction("mates");
+    public void RibbonDimensions()=> HostState.InvokeQuickAction("dims");
+    public void RibbonProperties()=> HostState.InvokeQuickAction("props");
+    public void RibbonExplain()   => HostState.InvokeQuickAction("explain");
 }
