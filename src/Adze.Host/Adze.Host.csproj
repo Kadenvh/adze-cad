@@ -83,6 +83,7 @@
   <ItemGroup>
     <Compile Include="AddIn\AdzeAddIn.cs" />
     <Compile Include="AddIn\RibbonTab.cs" />
+    <Compile Include="AddIn\ContextMenu.cs" />
     <Compile Include="Infrastructure\HostState.cs" />
     <Compile Include="Infrastructure\FileLogger.cs" />
     <Compile Include="Infrastructure\TaskPaneIcon.cs" />

@@ -37,6 +37,7 @@ public sealed class AdzeAddIn : ISwAddin
     private DDrawingDocEvents_NewSelectionNotifyEventHandler? _drawingNewSelectionHandler;
     private DDrawingDocEvents_ClearSelectionsNotifyEventHandler? _drawingClearSelectionsHandler;
     private RibbonTab? _ribbonTab;
+    private ContextMenu? _contextMenu;
 
     public bool ConnectToSW(object thisSw, int cookie)
     {
@@ -52,6 +53,7 @@ public sealed class AdzeAddIn : ISwAddin
             AttachActiveDocumentEvents();
             CreateTaskPane();
             TryRegisterRibbon();
+            TryRegisterContextMenu();
             HostState.LogSnapshot("Initial context snapshot");
             FileLogger.Info("ConnectToSW completed.");
             return true;
@@ -68,6 +70,7 @@ public sealed class AdzeAddIn : ISwAddin
         try
         {
             FileLogger.Info("DisconnectFromSW starting.");
+            TryUnregisterContextMenu();
             TryUnregisterRibbon();
             DetachApplicationEvents();
             DetachActiveDocumentEvents();
@@ -452,4 +455,49 @@ public sealed class AdzeAddIn : ISwAddin
     public void RibbonDimensions()=> HostState.InvokeQuickAction("dims");
     public void RibbonProperties()=> HostState.InvokeQuickAction("props");
     public void RibbonExplain()   => HostState.InvokeQuickAction("explain");
+
+    // -----------------------------------------------------------------------
+    // Context menu registration (feature-gated)
+    // -----------------------------------------------------------------------
+
+    private void TryRegisterContextMenu()
+    {
+        if (!FeatureGateRegistry.IsEnabled(FeatureGateRegistry.ContextMenu))
+        {
+            FileLogger.Info("Context-menu gate SOLIDWORKS_AI_CONTEXT_MENU is off; skipping.");
+            return;
+        }
+
+        if (_application == null) return;
+
+        _contextMenu = new ContextMenu();
+        bool ok = _contextMenu.Register(_application, _cookie);
+        if (!ok)
+        {
+            _contextMenu = null;
+        }
+    }
+
+    private void TryUnregisterContextMenu()
+    {
+        if (_contextMenu == null) return;
+        try
+        {
+            _contextMenu.Unregister();
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("Context menu unregister failed.", ex);
+        }
+        finally
+        {
+            _contextMenu = null;
+        }
+    }
+
+    // Public callback methods invoked by the SOLIDWORKS context-menu dispatcher.
+    // Names must match the CallbackFunction strings in ContextMenu.TryRegisterMenu exactly.
+    public void ContextMenuExplainFeature()   => HostState.InvokeQuickAction("explain");
+    public void ContextMenuExplainComponent() => HostState.InvokeQuickAction("explain");
+    public void ContextMenuDiagnoseDocument() => HostState.InvokeQuickAction("diagnose");
 }
