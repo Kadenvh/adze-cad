@@ -4,6 +4,24 @@ All notable changes to Adze are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Target: v0.1.2 on 2026-04-20.
+
+### Added
+- **CommandManager ribbon tab** — persistent "Adze" tab in the SOLIDWORKS ribbon with Ask, Diagnose, Mates, Dimensions, Properties, and Explain buttons. Routes through the existing QuickAction COM bridge so intent parsing stays centralized. Feature-gated behind `SOLIDWORKS_AI_RIBBON=true`.
+- **Feature-tree context menu** — right-click any feature in the FeatureManager tree → "Ask Adze about this feature." Right-click in the graphics area → "Diagnose this model." Selected entity name flows into the prompt automatically. Feature-gated behind `SOLIDWORKS_AI_CONTEXT_MENU=true`.
+- **`PRIVACY.md`** — formal privacy policy documenting zero telemetry transmission, local-only trace storage, and cloud-provider data flow explanation.
+- **`docs/index.html`** — single-page landing at https://kadenvh.github.io/adze-cad/. Overview, tool surface, install instructions.
+
+### Fixed
+- **`get_mates` subassembly recursion** — previously returned empty on assemblies whose mates live inside subassembly components (observed on SpdrBot v14.SLDASM). `SessionContextBuilder.BuildMates` now walks `AssemblyDoc.GetComponents(false)` and recurses into each subassembly ModelDoc, deduping by PathName and respecting the 150-mate budget.
+
+### Changed
+- **Tool count** — public count reconciled from "19" to honest **18** (10 read + 1 retrieval + 7 write). `search_project_files` is retrieval, not double-counted as read + retrieval. Reflected in README, CLAUDE.md, brain.db identity, and the partner application draft.
+- **GitHub repo metadata** — description updated to reflect 18 tools, `mcp` added to topics (8 total), homepage pointed at the new Pages landing page.
+- **DAL MCP wrapper** (`.ava/mcp-server.mjs`) — `dal_continuity_brief` now composes from 5 CLI calls instead of falling through to CLI help output. `dal_session_export` routed to `vault-export session`.
+
 ## [0.1.1] — 2026-04-14
 
 ### Added
