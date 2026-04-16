@@ -75,6 +75,7 @@ public sealed class AdzeAddIn : ISwAddin
             DetachApplicationEvents();
             DetachActiveDocumentEvents();
             DestroyTaskPane();
+            ToastNotifier.Shutdown();
             HostState.SetApplication(null);
             _application = null;
             FileLogger.Info("DisconnectFromSW completed.");

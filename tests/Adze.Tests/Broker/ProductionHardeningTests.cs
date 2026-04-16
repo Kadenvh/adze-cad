@@ -163,10 +163,22 @@ public class BudgetStatusTests
 public class FeatureGateRegistryTests
 {
     [Test]
-    public void GetAllStates_Returns7Gates()
+    public void GetAllStates_Returns9Gates()
     {
         Dictionary<string, bool> states = FeatureGateRegistry.GetAllStates();
-        Assert.AreEqual(7, states.Count);
+        Assert.AreEqual(9, states.Count);
+    }
+
+    [Test]
+    public void ToastGate_KnownConstantValue()
+    {
+        Assert.AreEqual("SOLIDWORKS_AI_TOAST", FeatureGateRegistry.ToastNotifications);
+    }
+
+    [Test]
+    public void PmpWritesGate_KnownConstantValue()
+    {
+        Assert.AreEqual("SOLIDWORKS_AI_PMP_WRITES", FeatureGateRegistry.PropertyManagerPageWrites);
     }
 
     [Test]

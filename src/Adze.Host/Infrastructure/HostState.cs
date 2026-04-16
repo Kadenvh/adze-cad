@@ -155,6 +155,14 @@ internal static class HostState
         }
     }
 
+    public static ISldWorks? GetApplication()
+    {
+        lock (Sync)
+        {
+            return _application;
+        }
+    }
+
     public static void SetUiThreadInvoker(IUiThreadInvoker? invoker)
     {
         lock (Sync)
@@ -887,13 +895,37 @@ internal static class HostState
         // Capture any write previews as pending actions
         if (writeTracker.CapturedWrites.Count > 0)
         {
+            int firstPendingIndex;
             lock (Sync)
             {
                 _pendingWrites.Clear();
                 _pendingWrites.AddRange(writeTracker.CapturedWrites);
+                firstPendingIndex = _pendingWrites.Count > 0 ? 0 : -1;
             }
 
             FileLogger.Info("Captured " + writeTracker.CapturedWrites.Count + " pending write action(s) for confirmation.");
+
+            // Feature-gated PMP path: if enabled and supported, surface the
+            // first pending write in a native PropertyManager Page. Must be
+            // invoked on the UI thread — marshal via the existing invoker.
+            if (firstPendingIndex >= 0 && Adze.Host.UI.PropertyManagerPageBroker.IsEnabled)
+            {
+                IUiThreadInvoker? invoker = GetUiThreadInvoker();
+                if (invoker != null)
+                {
+                    invoker.Invoke(() =>
+                    {
+                        try
+                        {
+                            Adze.Host.UI.PropertyManagerPageBroker.TryShow(firstPendingIndex);
+                        }
+                        catch (Exception ex)
+                        {
+                            FileLogger.Error("PMP trigger failed; Task Pane card remains available.", ex);
+                        }
+                    });
+                }
+            }
         }
 
         FileLogger.Info(

@@ -12,6 +12,8 @@ public static class FeatureGateRegistry
     public const string StreamFinalText = "SOLIDWORKS_AI_STREAM_FINAL_TEXT";
     public const string RibbonTab = "SOLIDWORKS_AI_RIBBON";
     public const string ContextMenu = "SOLIDWORKS_AI_CONTEXT_MENU";
+    public const string ToastNotifications = "SOLIDWORKS_AI_TOAST";
+    public const string PropertyManagerPageWrites = "SOLIDWORKS_AI_PMP_WRITES";
 
     private static readonly string[] AllGates =
     {
@@ -21,7 +23,9 @@ public static class FeatureGateRegistry
         LocalModels,
         StreamFinalText,
         RibbonTab,
-        ContextMenu
+        ContextMenu,
+        ToastNotifications,
+        PropertyManagerPageWrites
     };
 
     public static bool IsEnabled(string gateName)

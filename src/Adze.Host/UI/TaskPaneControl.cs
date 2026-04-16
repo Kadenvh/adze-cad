@@ -552,6 +552,7 @@ public sealed class TaskPaneControl : UserControl
         _toolsText = snapshot.ToolsText ?? "";
         _runStateLabel.Text = BuildRunStateText(snapshot);
         RenderContent();
+        ToastNotifier.ShowCompletion("Adze run complete", BuildToastBody(snapshot), isError: false);
     }
 
     private void ShowRunFailure(Exception ex)
@@ -561,6 +562,21 @@ public sealed class TaskPaneControl : UserControl
         _lastErrorMessage = ErrorClassifier.FormatForUser(classified);
         FileLogger.Error("Classified error (tier=" + classified.Tier + "): " + (classified.TechnicalDetail ?? ex.Message), ex);
         RenderContent();
+        ToastNotifier.ShowCompletion("Adze run failed", _lastErrorMessage ?? "See Task Pane for details.", isError: true);
+    }
+
+    private static string BuildToastBody(AssistantRunSnapshot snapshot)
+    {
+        string answer = snapshot.AnswerText ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            return "Results are available in the Task Pane.";
+        }
+
+        // Keep toast body short; balloon tips truncate around 255 chars anyway.
+        int max = 180;
+        string trimmed = answer.Length > max ? answer.Substring(0, max - 1) + "\u2026" : answer;
+        return trimmed;
     }
 
     private void FinishRun()

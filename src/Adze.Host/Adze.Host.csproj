@@ -86,6 +86,7 @@
     <Compile Include="AddIn\ContextMenu.cs" />
     <Compile Include="Infrastructure\HostState.cs" />
     <Compile Include="Infrastructure\FileLogger.cs" />
+    <Compile Include="Infrastructure\ToastNotifier.cs" />
     <Compile Include="Infrastructure\TaskPaneIcon.cs" />
     <Compile Include="Infrastructure\WinFormsUiThreadInvoker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -96,6 +97,8 @@
     <Compile Include="UI\TaskPaneControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="UI\PropertyManagerPageBroker.cs" />
+    <Compile Include="UI\WriteConfirmationHandler.cs" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
