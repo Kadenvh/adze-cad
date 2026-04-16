@@ -117,6 +117,23 @@ Those older names still work as fallback aliases.
 
 Note: Adze uses provider API billing. Consumer chat subscriptions do not provide usage for this application.
 
+## Feature Gates
+
+All gates are environment variables. The value `true`, `1`, `yes`, or `on` enables the feature; any other value (or absence) leaves it disabled. Default for every gate is off.
+
+| Variable | Enables |
+|---|---|
+| `SOLIDWORKS_AI_ENABLE_MODEL` | AI-powered answers (required for anything beyond the deterministic fallback) |
+| `SOLIDWORKS_AI_AGENT_LOOP` | Iterative agentic tool-calling loop |
+| `SOLIDWORKS_AI_FIRST_WAVE_WRITES` | Write tool definitions in the agent loop (requires `AGENT_LOOP`) |
+| `SOLIDWORKS_AI_RETRIEVAL` | Closed-file search via `search_project_files` tool |
+| `SOLIDWORKS_AI_LOCAL_MODELS` | Ollama / LM Studio providers |
+| `SOLIDWORKS_AI_STREAM_FINAL_TEXT` | SSE streaming for the final answer synthesis pass |
+| `SOLIDWORKS_AI_RIBBON` | "Adze" CommandManager ribbon tab with six quick-action buttons |
+| `SOLIDWORKS_AI_CONTEXT_MENU` | Right-click context menu items on features, components, and empty canvas |
+
+Gates fail safely: turning a gate on never breaks the add-in if the feature cannot initialize (the Task Pane stays fully functional either way).
+
 ## Data and Privacy
 
 - All SOLIDWORKS data is read locally through in-process COM.
