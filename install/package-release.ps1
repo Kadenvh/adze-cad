@@ -4,11 +4,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot   = Split-Path -Parent $PSScriptRoot
-$msbuild    = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
-$solution   = Join-Path $repoRoot 'Adze.sln'
-$releaseDir = Join-Path $repoRoot 'src\Adze.Host\bin\Release'
-$distDir    = Join-Path $repoRoot 'install\dist'
+$repoRoot      = Split-Path -Parent $PSScriptRoot
+$msbuild       = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
+$solution      = Join-Path $repoRoot 'Adze.sln'
+$releaseDir    = Join-Path $repoRoot 'src\Adze.Host\bin\Release'
+$managerDir    = Join-Path $repoRoot 'src\Adze.Manager\bin\Release'
+$distDir       = Join-Path $repoRoot 'install\dist'
 
 # --- Build -------------------------------------------------------------------
 
@@ -65,8 +66,16 @@ foreach ($dll in $requiredDlls) {
     Copy-Item (Join-Path $releaseDir $dll) -Destination $distDir
 }
 
+# Copy Adze.Manager.exe — the end-user installer/manager UI
+$managerExe = Join-Path $managerDir 'Adze.Manager.exe'
+if (Test-Path $managerExe) {
+    Copy-Item $managerExe -Destination $distDir
+} else {
+    Write-Warning "Adze.Manager.exe not found at $managerExe — zip will lack the manager UI"
+}
+
 # Copy install/uninstall scripts
-$installScripts = @('install-adze.ps1', 'uninstall-adze.ps1')
+$installScripts = @('install-adze.ps1', 'uninstall-adze.ps1', 'install-adze.bat', 'uninstall-adze.bat')
 foreach ($script in $installScripts) {
     $scriptPath = Join-Path $PSScriptRoot $script
     if (Test-Path $scriptPath) {

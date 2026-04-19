@@ -64,8 +64,11 @@ SYSTEM-OVERVIEW.md
 .ava/
 .gitnexus/
 .stfolder/
+.stignore
 .mcp.json
+
+# Internal agent operating manual (not for public consumption)
+AGENTS.md
 
 # Partner application (confidential business docs)
 solidworks-partner/
-.gitnexus

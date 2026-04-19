@@ -6,23 +6,35 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Target: v0.1.2 on 2026-04-20.
+Target: v1.0.0. **Not released** — blocked on SOLIDWORKS / 3DEXPERIENCE update-lifecycle compatibility. Enabling Adze after an R2026x update crashes SW on this developer's machine; reproduction + root cause + fix must land, plus an end-user install/uninstall/update UI (no PowerShell) and a pre-update self-eject mechanism, before this version ships.
+
+Zero-config first-run work below is code-complete in the tree but unshipped.
 
 ### Added
-- **CommandManager ribbon tab** — persistent "Adze" tab in the SOLIDWORKS ribbon with Ask, Diagnose, Mates, Dimensions, Properties, and Explain buttons. Routes through the existing QuickAction COM bridge so intent parsing stays centralized. Feature-gated behind `SOLIDWORKS_AI_RIBBON=true`.
-- **Feature-tree context menu** — right-click any feature in the FeatureManager tree → "Ask Adze about this feature." Right-click in the graphics area → "Diagnose this model." Selected entity name flows into the prompt automatically. Feature-gated behind `SOLIDWORKS_AI_CONTEXT_MENU=true`.
+- **In-app Settings panel** — collapsible section in the Task Pane. Provider dropdown (OpenAI, Anthropic, Ollama, LM Studio), masked API key input, Save button. Stored provider displayed; Clear button removes stored key. Live read-only view of all feature gate states.
+- **DPAPI-encrypted API key store** — keys saved at `%LOCALAPPDATA%\Adze\keys.dat`, encrypted under the current Windows user scope. Never leaves your machine, never syncs, never appears in env vars or logs.
+- **User-facing feature gate config** — `%LOCALAPPDATA%\Adze\config.json` holds gate preferences. Resolution order: environment variable → config file → baked-in default. Power users keep their env var overrides; casual users never see env vars.
+- **Safe defaults for zero-config first run** — ribbon tab, feature-tree context menu, AI model, agent loop, write tools, streaming, and retrieval are ON by default. Toast notifications, PropertyManager Page writes, and local-model providers remain opt-in.
+- **Double-click installer wrappers** — `install-adze.bat` and `uninstall-adze.bat` ship alongside the PowerShell scripts. End users never have to open a terminal.
+- **CommandManager ribbon tab** — persistent "Adze" tab in the SOLIDWORKS ribbon with Ask, Diagnose, Mates, Dimensions, Properties, and Explain buttons. Routes through the QuickAction COM bridge so intent parsing stays centralized. Default on; disable via Settings or `SOLIDWORKS_AI_RIBBON=false`.
+- **Feature-tree context menu** — right-click any feature in the FeatureManager tree → "Ask Adze about this feature." Right-click in the graphics area → "Diagnose this model." Selected entity name flows into the prompt automatically. Default on.
+- **Tray toast notifications** — optional balloon popup on run completion when the SOLIDWORKS window is not foregrounded. Opt-in via Settings.
+- **PropertyManager Page write confirmation (proof-of-path)** — optional native SW PropertyManager Page for `set_dimension_value`. When enabled, writes surface in a native modal instead of the Task Pane HTML card. Opt-in via Settings. Full coverage for the other 6 write tools lands in v1.1.
 - **`PRIVACY.md`** — formal privacy policy documenting zero telemetry transmission, local-only trace storage, and cloud-provider data flow explanation.
-- **`docs/index.html`** — single-page landing at https://kadenvh.github.io/adze-cad/. Overview, tool surface, install instructions.
-- **Tray toast notifications** — optional balloon popup on run completion when the SOLIDWORKS window is not foregrounded. Feature-gated behind `SOLIDWORKS_AI_TOAST=true`.
-- **PropertyManager Page write confirmation (proof-of-path)** — optional native SW PropertyManager Page for `set_dimension_value`. When enabled, writes surface in a native modal instead of the Task Pane HTML card. Feature-gated behind `SOLIDWORKS_AI_PMP_WRITES=true`. Full coverage for the other 6 write tools lands in v0.2.0.
+- **`CODE_OF_CONDUCT.md`** — Contributor Covenant 2.1 reference, reporting contact.
+- **`docs/index.html`** — single-page landing at https://kadenvh.github.io/adze-cad/.
 
 ### Fixed
 - **`get_mates` subassembly recursion** — previously returned empty on assemblies whose mates live inside subassembly components (observed on SpdrBot v14.SLDASM). `SessionContextBuilder.BuildMates` now walks `AssemblyDoc.GetComponents(false)` and recurses into each subassembly ModelDoc, deduping by PathName and respecting the 150-mate budget.
 
 ### Changed
-- **Tool count** — public count reconciled from "19" to honest **18** (10 read + 1 retrieval + 7 write). `search_project_files` is retrieval, not double-counted as read + retrieval. Reflected in README, CLAUDE.md, brain.db identity, and the partner application draft.
-- **GitHub repo metadata** — description updated to reflect 18 tools, `mcp` added to topics (8 total), homepage pointed at the new Pages landing page.
-- **DAL MCP wrapper** (`.ava/mcp-server.mjs`) — `dal_continuity_brief` now composes from 5 CLI calls instead of falling through to CLI help output. `dal_session_export` routed to `vault-export session`.
+- **User-facing tool outcome labels** — 10 grounding tools now report in plain language (for example "Read the active document" instead of "Active document resolved", "Read the feature tree" instead of "Feature-tree slice generated"). Internal identifiers in traces are unchanged.
+- **Answer source footer** — internal identifiers like `deterministic_fallback` and `model_openai` now render as "Built-in broker" and "OpenAI" in the Task Pane. Traces continue to store the internal identifier.
+- **Task Pane sub-header** — replaced the redundant "Adze — SOLIDWORKS AI" line (SOLIDWORKS already assigns "Adze for SOLIDWORKS" as the outer title) with the action-oriented "Ask anything about your model".
+- **Suggested Recipes section** — count removed from the header to reduce noise on large recipe lists. List still expands on click.
+- **Tool count** — public count reconciled from "19" to honest **18** (10 read + 1 retrieval + 7 write). `search_project_files` is retrieval, not double-counted as read + retrieval.
+- **GitHub repo metadata** — description updated to reflect 18 tools, `mcp` added to topics (8 total), homepage pointed at the Pages landing page.
+- **Test count** — 666 → 684 unit tests (18 new tests for FeatureGateConfigService, ApiKeyStore, and the updated gate registry).
 
 ## [0.1.1] — 2026-04-14
 

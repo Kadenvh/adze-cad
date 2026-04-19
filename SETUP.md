@@ -1,6 +1,22 @@
 # Adze Setup
 
-This guide is for someone who has the Adze source code and wants to build, register, run, validate, and troubleshoot the add-in locally.
+## Simplest path to first run
+
+Not a developer? This is the fast lane.
+
+1. Download the `.zip` from [Releases](https://github.com/Kadenvh/adze-cad/releases).
+2. Extract it anywhere.
+3. Double-click **`install-adze.bat`**. A console window opens, installs Adze per-user (no admin needed), then closes.
+4. Launch SOLIDWORKS.
+5. The **Adze** panel appears in the right sidebar. Type any question about your active document and click **Run assistant**.
+
+That's it. Adze runs locally with a built-in deterministic broker that reads the document via its 11 read tools. AI provider keys (OpenAI, Anthropic, Ollama, LM Studio) are optional — configure them from the in-app Settings panel when you're ready.
+
+To uninstall, double-click **`uninstall-adze.bat`**.
+
+---
+
+The rest of this guide is for someone who has the Adze source code and wants to build, register, run, validate, and troubleshoot the add-in locally.
 
 ## Prerequisites
 

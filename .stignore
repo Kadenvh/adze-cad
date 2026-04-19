@@ -1,5 +1,0 @@
-// Syncthing ignore patterns
-.ava/node_modules
-.ava/brain.db-shm
-.ava/brain.db-wal
-node_modules

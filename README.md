@@ -4,7 +4,9 @@
 
 Adze is a free, in-process SOLIDWORKS add-in. It reads your active document through 18 typed tools, reasons over the results with an agentic AI loop, and delivers grounded answers in a conversational Task Pane. Write operations follow an 8-step safety lifecycle: plan, preview, approve, apply, verify, trace, undo-label, and history. Nothing leaves your machine unless you choose a cloud provider.
 
-> **Current status:** v0.1.1 public beta. 18 typed tools (10 read + 1 retrieval + 7 write), 666 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required. SOLIDWORKS Solution Partner application in progress.
+> **Current status:** v0.1.1 shipped. **v1.0.0 in development, not yet released.** An update-lifecycle compatibility issue is being investigated — Adze must cooperate with SOLIDWORKS / 3DEXPERIENCE updates without causing crashes or blocking the updater. No new public release until that is resolved. The v0.1.1 public-beta release remains the last stable build.
+>
+> 18 typed tools (10 read + 1 retrieval + 7 write), 684 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required.
 
 ---
 
@@ -54,21 +56,27 @@ All write tools: preview → user approves → apply → verify → trace → un
 
 ---
 
-## Quick Start
+## Just trying it out (no configuration)
 
-### Install (double-click, no admin required)
+If you just want to see what Adze does on your SOLIDWORKS install, three steps:
 
-1. Download the latest release from [Releases](https://github.com/Kadenvh/adze-cad/releases)
-2. Extract the zip
-3. Double-click **`Install Adze.bat`** — or run:
+1. Download the latest release zip from [Releases](https://github.com/Kadenvh/adze-cad/releases)
+2. Extract it, then **double-click `install-adze.bat`**
+3. Launch SOLIDWORKS — the **Adze** panel appears in the right sidebar. Type a question about the active document, click **Run assistant**.
+
+No API key needed. Adze runs a built-in deterministic broker that reads your document and returns grounded answers using the 11 read tools. To enable AI-powered answers (OpenAI, Anthropic, OpenRouter, Ollama, LM Studio), use the in-app Settings panel or see [AI Configuration](#ai-configuration) below.
+
+Installed per-user at `%LOCALAPPDATA%\Adze\bin` — no admin privileges required. To uninstall, double-click `uninstall-adze.bat`.
+
+## Quick Start (for developers)
+
+### Install from a release zip
 
 ```powershell
 powershell.exe -NoProfile -File install-adze.ps1
 ```
 
-4. Launch SOLIDWORKS — the **Adze** task pane appears automatically
-
-Installs per-user to `%LOCALAPPDATA%\Adze\bin`. Uninstall: `powershell.exe -NoProfile -File install-adze.ps1 -Uninstall`
+Equivalent to double-clicking `install-adze.bat` — same HKCU COM registration, same target path.
 
 ### Build from Source
 
@@ -154,7 +162,7 @@ SOLIDWORKS (host process)
 
 ## Test Coverage
 
-666 NUnit unit tests across all layers:
+684 NUnit unit tests across all layers:
 
 - Broker orchestration, model response parsing, prompt composition
 - All 11 read tools and all 7 write tools
@@ -184,6 +192,8 @@ MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-**v0.1.1** — Public beta. 18 typed tools (10 read + 1 retrieval + 7 write), 666 unit tests, agentic loop, governed write lifecycle, SSE streaming, 5 AI providers, AgentPolicyEngine trust tiers, quick-action toolbar, live tool execution chips.
+**v0.1.1 (last shipped)** — Public beta. 18 typed tools, 670 unit tests, agentic loop, governed write lifecycle, SSE streaming, 5 AI providers, AgentPolicyEngine trust tiers, quick-action toolbar, live tool execution chips.
+
+**v1.0.0 (in development, not yet released)** — Adds in-app Settings panel, DPAPI-encrypted API key storage, zero-config defaults, double-click `.bat` installers, user-facing label polish. Release blocked on SOLIDWORKS / 3DEXPERIENCE update-lifecycle compatibility work.
 
 Built by [VH Tech](https://github.com/Kadenvh) as a free tool for the SOLIDWORKS engineering community.
