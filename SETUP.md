@@ -6,13 +6,15 @@ Not a developer? This is the fast lane.
 
 1. Download the `.zip` from [Releases](https://github.com/Kadenvh/adze-cad/releases).
 2. Extract it anywhere.
-3. Double-click **`install-adze.bat`**. A console window opens, installs Adze per-user (no admin needed), then closes.
+3. Double-click **`install-adze.bat`**. The **Adze Manager** opens — a small Windows Forms window with Install / Uninstall / Eject for Update / Refresh buttons. Click **Install / Reinstall**; the log panel streams progress and completes in a few seconds.
 4. Launch SOLIDWORKS.
 5. The **Adze** panel appears in the right sidebar. Type any question about your active document and click **Run assistant**.
 
 That's it. Adze runs locally with a built-in deterministic broker that reads the document via its 11 read tools. AI provider keys (OpenAI, Anthropic, Ollama, LM Studio) are optional — configure them from the in-app Settings panel when you're ready.
 
-To uninstall, double-click **`uninstall-adze.bat`**.
+To uninstall: double-click **`uninstall-adze.bat`** (opens the Manager pre-armed to uninstall), or use the Manager's **Uninstall** button directly.
+
+**Before a SOLIDWORKS or 3DEXPERIENCE update:** open the Manager and click **Eject for Update**. Adze unregisters itself and clears its persisted compatibility state so the updater runs cleanly and Adze's next launch re-verifies against the updated SW binaries.
 
 ---
 
@@ -32,25 +34,26 @@ The rest of this guide is for someone who has the Adze source code and wants to 
 If you received a packaged release zip (`adze-v*.zip`):
 
 1. Extract the zip to any folder.
-2. Open PowerShell and run:
+2. Double-click `install-adze.bat` → the **Adze Manager** opens → click **Install / Reinstall**.
 
-```powershell
-powershell.exe -NoProfile -File install-adze.ps1
-```
+   Or, for headless install (CI, scripting, no GUI):
 
-This copies binaries to `%LOCALAPPDATA%\Adze\bin\`, registers the add-in per user (no admin required), and runs pre-flight checks.
+   ```powershell
+   powershell.exe -NoProfile -File install-adze.ps1
+   ```
+
+   Both paths copy binaries to `%LOCALAPPDATA%\Adze\bin\`, register the add-in per user (no admin required), and run pre-flight checks.
 
 3. Launch SOLIDWORKS. The `Adze for SOLIDWORKS` tab should appear in the right sidebar.
 
-To update, extract the new zip over the old one and rerun `install-adze.ps1`.
+To update, extract the new zip over the old one and either click **Install / Reinstall** in the Manager, or rerun `install-adze.ps1`.
 
 To uninstall:
 
-```powershell
-powershell.exe -NoProfile -File uninstall-adze.ps1
-```
+- GUI: double-click `uninstall-adze.bat` → Manager opens → click **Uninstall**.
+- Headless: `powershell.exe -NoProfile -File uninstall-adze.ps1` (add `-RemoveUserData` to also remove traces, logs, and progression state).
 
-Add `-RemoveUserData` to also remove traces, logs, and progression state.
+To prepare for a SOLIDWORKS or 3DEXPERIENCE update, use the Manager's **Eject for Update** button — it runs the uninstaller and clears Adze's persisted compatibility state so the next launch re-verifies against whatever binaries the updater leaves behind.
 
 ## Developer Build and Install
 

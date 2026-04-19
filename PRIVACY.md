@@ -76,9 +76,26 @@ Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Adze"
 
 ## API keys and credentials
 
-Adze reads API keys from environment variables (`SOLIDWORKS_AI_OPENAI_API_KEY`, etc.) or a `.env` file at the repository root. Keys are used to authenticate requests to the provider you chose. Keys are not logged, cached, or transmitted anywhere except the provider endpoint they are for.
+Adze reads API keys in priority order:
+
+1. Environment variables (`SOLIDWORKS_AI_OPENAI_API_KEY`, `SOLIDWORKS_AI_ANTHROPIC_API_KEY`, or their non-prefixed variants).
+2. A `.env` file at the repository root (developer setups only; not shipped in the release zip).
+3. The DPAPI-encrypted key store at `%LOCALAPPDATA%\Adze\keys.dat`, populated when you enter a key in the Task Pane Settings panel.
+
+The DPAPI store uses Windows' user-scope data protection — the encrypted bytes can only be decrypted by the same Windows user on the same machine. Keys stored there are not retrievable from a backup restored to a different machine or account. Keys are not logged, cached, or transmitted anywhere except the provider endpoint they authenticate against.
 
 Never commit `.env` files to a public repository. The Adze repository's `.gitignore` excludes `.env` by default.
+
+---
+
+## Update lifecycle and compatibility state
+
+Adze runs a read-only compatibility probe at SOLIDWORKS launch that asks the live SW COM API for its revision number, gets its command manager, and creates + immediately removes a throwaway command group. The probe detects when a 3DEXPERIENCE / SOLIDWORKS update has broken interop so Adze can refuse to register damaging UI hooks instead of crashing.
+
+- The probe output (revision + pass/fail + failed step) is written to `%LOCALAPPDATA%\Adze\logs\host.log` on your machine. It never leaves your computer.
+- The last-verified SW build string is persisted to `%LOCALAPPDATA%\Adze\state\sw-build.txt` so Adze can detect build changes on next launch. It never leaves your computer.
+- During uninstall or when the 3DX updater (`swxdesktopupdate.exe`) is detected running, Adze clears the persisted build so the next launch re-verifies from scratch.
+- The Adze Manager utility detects whether `sldworks.exe` and `swxdesktopupdate.exe` are currently running (local process enumeration only) to help you pick a safe time to install, uninstall, or eject before an update. No process list or update status ever leaves your machine.
 
 ---
 

@@ -58,25 +58,31 @@ All write tools: preview → user approves → apply → verify → trace → un
 
 ## Just trying it out (no configuration)
 
-If you just want to see what Adze does on your SOLIDWORKS install, three steps:
+If you just want to see what Adze does on your SOLIDWORKS install:
 
 1. Download the latest release zip from [Releases](https://github.com/Kadenvh/adze-cad/releases)
-2. Extract it, then **double-click `install-adze.bat`**
+2. Extract it, then **double-click `install-adze.bat`**. The **Adze Manager** window opens — click **Install / Reinstall**.
 3. Launch SOLIDWORKS — the **Adze** panel appears in the right sidebar. Type a question about the active document, click **Run assistant**.
 
 No API key needed. Adze runs a built-in deterministic broker that reads your document and returns grounded answers using the 11 read tools. To enable AI-powered answers (OpenAI, Anthropic, OpenRouter, Ollama, LM Studio), use the in-app Settings panel or see [AI Configuration](#ai-configuration) below.
 
-Installed per-user at `%LOCALAPPDATA%\Adze\bin` — no admin privileges required. To uninstall, double-click `uninstall-adze.bat`.
+The Adze Manager is a small Windows Forms utility bundled with the release zip. It shows install state, whether SOLIDWORKS or the 3DEXPERIENCE updater are running, the last-verified SW build, and your config path. Use it to install, uninstall, or **Eject for Update** (safely detaches Adze before you apply a 3DX update, so the updater can run cleanly).
+
+Installed per-user at `%LOCALAPPDATA%\Adze\bin` — no admin privileges required. To uninstall, double-click `uninstall-adze.bat` or click **Uninstall** in the Manager.
 
 ## Quick Start (for developers)
 
 ### Install from a release zip
 
+The GUI path is `install-adze.bat` → opens the Adze Manager → click **Install / Reinstall**.
+
+For a headless install (CI, scripting, no GUI):
+
 ```powershell
 powershell.exe -NoProfile -File install-adze.ps1
 ```
 
-Equivalent to double-clicking `install-adze.bat` — same HKCU COM registration, same target path.
+Both paths perform the same HKCU COM registration and DLL copy to `%LOCALAPPDATA%\Adze\bin`.
 
 ### Build from Source
 
