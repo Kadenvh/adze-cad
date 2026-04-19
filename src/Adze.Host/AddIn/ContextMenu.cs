@@ -1,5 +1,7 @@
 using System;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Security;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swconst;
 using Adze.Host.Infrastructure;
@@ -36,6 +38,8 @@ internal sealed class ContextMenu
 
     public bool IsRegistered => _registered;
 
+    [HandleProcessCorruptedStateExceptions]
+    [SecurityCritical]
     public bool Register(ISldWorks application, int cookie)
     {
         if (application == null) return false;
@@ -67,6 +71,8 @@ internal sealed class ContextMenu
         }
     }
 
+    [HandleProcessCorruptedStateExceptions]
+    [SecurityCritical]
     private ICommandGroup? TryRegisterMenu(int userId, string title, swSelectType_e selectType, string label, string tooltip, string callbackName)
     {
         try

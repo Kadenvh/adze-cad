@@ -52,6 +52,14 @@ public sealed class AdzeAddIn : ISwAddin
             AttachApplicationEvents();
             AttachActiveDocumentEvents();
             CreateTaskPane();
+
+            // Run the compatibility probe once up front. Cheap (~100ms),
+            // produces a typed result that both ribbon and context-menu
+            // registration gate against. When the SW build has changed since
+            // the last verified launch, we log the transition so post-update
+            // incidents are traceable in the host log.
+            RunCompatibilityProbe();
+
             TryRegisterRibbon();
             TryRegisterContextMenu();
             HostState.LogSnapshot("Initial context snapshot");
@@ -422,6 +430,13 @@ public sealed class AdzeAddIn : ISwAddin
             return;
         }
 
+        if (_lastProbeResult != null && !_lastProbeResult.IsCompatible)
+        {
+            FileLogger.Info("Ribbon skipped: compatibility probe previously failed at step '" +
+                _lastProbeResult.FailedStep + "'. " + _lastProbeResult.Message);
+            return;
+        }
+
         _ribbonTab = new RibbonTab();
         bool ok = _ribbonTab.Register(_application, _cookie);
         if (!ok)
@@ -461,6 +476,39 @@ public sealed class AdzeAddIn : ISwAddin
     // Context menu registration (feature-gated)
     // -----------------------------------------------------------------------
 
+    /// <summary>
+    /// Runs <see cref="CompatibilityProbe.Check"/> once up front and stashes the
+    /// result. Compares the current SW revision to the persisted "last verified"
+    /// build via <see cref="SwBuildStateService"/>; on a successful probe the
+    /// current build is persisted so subsequent launches can detect updates
+    /// just by diffing the file against the live revision.
+    /// </summary>
+    private void RunCompatibilityProbe()
+    {
+        if (_application == null) return;
+
+        CompatibilityProbeResult probe = CompatibilityProbe.Check(_application, _cookie);
+        _lastProbeResult = probe;
+
+        if (probe.IsCompatible)
+        {
+            string currentBuild = probe.RevisionNumber;
+            string persistedBuild = SwBuildStateService.GetLastVerifiedBuild();
+            if (SwBuildStateService.HasBuildChangedSinceLastVerification(currentBuild))
+            {
+                FileLogger.Info("SW build changed since last verification: persisted='" +
+                    (string.IsNullOrWhiteSpace(persistedBuild) ? "(none)" : persistedBuild) +
+                    "' current='" + currentBuild + "'. Probe passed, persisting.");
+                SwBuildStateService.SaveLastVerifiedBuild(currentBuild);
+            }
+        }
+        else
+        {
+            FileLogger.Info("Compatibility probe failed at step '" + probe.FailedStep +
+                "'. Ribbon and context-menu registration will be skipped. " + probe.Message);
+        }
+    }
+
     private void TryRegisterContextMenu()
     {
         if (!FeatureGateRegistry.IsEnabled(FeatureGateRegistry.ContextMenu))
@@ -471,6 +519,13 @@ public sealed class AdzeAddIn : ISwAddin
 
         if (_application == null) return;
 
+        if (_lastProbeResult != null && !_lastProbeResult.IsCompatible)
+        {
+            FileLogger.Info("Context-menu skipped: compatibility probe previously failed at step '" +
+                _lastProbeResult.FailedStep + "'. " + _lastProbeResult.Message);
+            return;
+        }
+
         _contextMenu = new ContextMenu();
         bool ok = _contextMenu.Register(_application, _cookie);
         if (!ok)
@@ -478,6 +533,18 @@ public sealed class AdzeAddIn : ISwAddin
             _contextMenu = null;
         }
     }
+
+    /// <summary>
+    /// Exposed for the Task Pane to surface compatibility state (e.g. show a
+    /// banner when context-menu registration was skipped because the probe
+    /// detected a broken SW interop surface).
+    /// </summary>
+    public bool LastProbeIsCompatible => _lastProbeResult?.IsCompatible ?? true;
+
+    /// <summary>Human-readable reason from the last probe, or empty when compatible.</summary>
+    public string LastProbeMessage => _lastProbeResult?.Message ?? string.Empty;
+
+    private CompatibilityProbeResult? _lastProbeResult;
 
     private void TryUnregisterContextMenu()
     {
