@@ -6,9 +6,17 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Target: v1.0.0. **Not released** — blocked on SOLIDWORKS / 3DEXPERIENCE update-lifecycle compatibility. Enabling Adze after an R2026x update crashes SW on this developer's machine; reproduction + root cause + fix must land, plus an end-user install/uninstall/update UI (no PowerShell) and a pre-update self-eject mechanism, before this version ships.
+Target: v1.0.0. **Not released** — release code is complete and R2026x crash is resolved; gated only on R5 live update-cycle validation (applying a real 3DX update against an installed Adze build, end to end) before tagging. See `plans/polish-and-v1-path.md`.
 
-Zero-config first-run work below is code-complete in the tree but unshipped.
+Zero-config first-run work below is code-complete in the tree.
+
+### R-phase (2026-04-19) — R2026x crash resolution + update-lifecycle cooperation
+- **`CompatibilityProbe`** — `src/Adze.Host/AddIn/CompatibilityProbe.cs` runs a read-only smoke test at `ConnectToSW` (RevisionNumber → GetCommandManager → CreateCommandGroup2 → RemoveCommandGroup2). Decorated with `[HandleProcessCorruptedStateExceptions]` + `[SecurityCritical]` so native CSEs surface as typed results instead of silent process termination. Probe gates ribbon + context-menu registration. Confirmed that `CreateCommandGroup2` is the R2026x SW 34.1.0.0140 interop break.
+- **Task Pane probe-failure banner** — `health-warning` banner above the conversation area when the probe detected incompatibility. Users see which SOLIDWORKS build and which step failed; Task Pane remains fully functional.
+- **`SwBuildStateService`** — persists last-verified SW build at `%LOCALAPPDATA%\Adze\state\sw-build.txt`. Changes trigger re-verification on next launch.
+- **Pre-update eject (`PreUpdateEjectService`)** — detects `swxdesktopupdate.exe` during disconnect and clears the persisted build so the next launch re-verifies. Production uses `Process.GetProcessesByName`; tests inject a fake.
+- **`Adze.Manager`** — new WinForms installer/manager app. Single window with install state, SW + 3DX-updater process state, last-verified SW build, API key presence, config path, and Install / Uninstall / Eject for Update / Refresh buttons. When the updater is detected running: Install disables + grays, Eject promotes to red bold with a ⚠ prefix. Release zip bundles `Adze.Manager.exe`; `.bat` wrappers prefer the Manager and fall back to the PowerShell script for headless environments.
+- **R3.4 docs** — `SETUP.md` and `PRIVACY.md` document the update flow, the Eject-for-Update button, and what the compatibility probe reads/writes locally.
 
 ### Added
 - **In-app Settings panel** — collapsible section in the Task Pane. Provider dropdown (OpenAI, Anthropic, Ollama, LM Studio), masked API key input, Save button. Stored provider displayed; Clear button removes stored key. Live read-only view of all feature gate states.
@@ -34,7 +42,7 @@ Zero-config first-run work below is code-complete in the tree but unshipped.
 - **Suggested Recipes section** — count removed from the header to reduce noise on large recipe lists. List still expands on click.
 - **Tool count** — public count reconciled from "19" to honest **18** (10 read + 1 retrieval + 7 write). `search_project_files` is retrieval, not double-counted as read + retrieval.
 - **GitHub repo metadata** — description updated to reflect 18 tools, `mcp` added to topics (8 total), homepage pointed at the Pages landing page.
-- **Test count** — 666 → 684 unit tests (18 new tests for FeatureGateConfigService, ApiKeyStore, and the updated gate registry).
+- **Test count** — 666 → 702 unit tests (18 new tests for FeatureGateConfigService + ApiKeyStore + updated gate registry; 8 tests for SwBuildStateService; 10 tests for HostState probe state + PreUpdateEjectService detection/clear-state/exception-tolerance).
 
 ## [0.1.1] — 2026-04-14
 
