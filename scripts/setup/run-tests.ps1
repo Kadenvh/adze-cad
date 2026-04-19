@@ -1,5 +1,8 @@
 param(
-    [switch]$SkipRestore
+    [switch]$SkipRestore,
+    # Pass -IncludeHostTests:$false on CI (no SOLIDWORKS interop DLLs available).
+    # Local dev runs all 702 tests including the 10 Host-dependent ones.
+    [bool]$IncludeHostTests = $true
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,7 +62,8 @@ if (-not $SkipRestore) {
 # 3. Build the test project (and its dependencies)
 Write-Host ''
 Write-Host 'Building test project ...'
-& $msbuildExe $testProject /p:Configuration=Debug /t:Build /v:minimal /nologo
+$includeHostFlag = if ($IncludeHostTests) { 'true' } else { 'false' }
+& $msbuildExe $testProject /p:Configuration=Debug "/p:IncludeHostTests=$includeHostFlag" /t:Build /v:minimal /nologo
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 Write-Host 'Build succeeded.' -ForegroundColor Green
 

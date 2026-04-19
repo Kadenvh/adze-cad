@@ -37,7 +37,7 @@ jobs:
 
       - name: Run unit tests
         shell: pwsh
-        run: pwsh -NoProfile -File scripts\setup\run-tests.ps1 -SkipRestore
+        run: pwsh -NoProfile -File scripts\setup\run-tests.ps1 -SkipRestore -IncludeHostTests:$false
 
       - name: Upload test results
         if: always()
