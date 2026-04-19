@@ -51,7 +51,7 @@ public class RateLimitHelperTests
     [Test]
     public void WaitForRetry_ReturnsFalse_WhenCancelled()
     {
-        var cts = new System.Threading.CancellationTokenSource();
+        using var cts = new System.Threading.CancellationTokenSource();
         cts.Cancel();
         var ex = new WebException("Rate limited", WebExceptionStatus.ProtocolError);
         bool result = RateLimitHelper.WaitForRetry(ex, cts.Token);
@@ -64,7 +64,7 @@ public class RateLimitHelperTests
         var ex = new WebException("Rate limited", WebExceptionStatus.ProtocolError);
         // Default retry-after with no response is 2s — too slow for a unit test.
         // We just verify it completes without error by using a cancelled token approach.
-        var cts = new System.Threading.CancellationTokenSource(50); // cancel after 50ms
+        using var cts = new System.Threading.CancellationTokenSource(50); // cancel after 50ms
         bool result = RateLimitHelper.WaitForRetry(ex, cts.Token);
         // Either true (if 50ms wait completed the 2s delay — unlikely) or false (cancelled).
         // The point is it doesn't throw.
@@ -111,7 +111,7 @@ public class RateLimitHelperTests
     {
         RateLimitHelper.ResetWindow();
         RateLimitHelper.RecordRateLimitWindow(5000);
-        var cts = new System.Threading.CancellationTokenSource();
+        using var cts = new System.Threading.CancellationTokenSource();
         cts.Cancel();
 
         bool result = RateLimitHelper.WaitIfRateLimited(cts.Token);

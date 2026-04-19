@@ -63,7 +63,6 @@ public static class OlePropertySetParser
     {
         if (sectionOffset + 8 > data.Length) return;
 
-        int sectionSize = ReadInt32(data, sectionOffset);
         int propertyCount = ReadInt32(data, sectionOffset + 4);
 
         if (propertyCount < 0 || propertyCount > 1000) return;

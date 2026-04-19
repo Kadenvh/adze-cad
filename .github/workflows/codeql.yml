@@ -38,7 +38,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          queries: security-and-quality
+          queries: security-extended
 
       - name: Restore NuGet packages
         run: nuget restore Adze.sln

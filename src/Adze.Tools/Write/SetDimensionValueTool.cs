@@ -77,21 +77,18 @@ public sealed class SetDimensionValueTool : IWriteTool<SetDimensionValueParamete
                 };
             }
 
-            double previousValue = dimension.SystemValue;
-
             // SetSystemValue3 sets in meters (system units)
             // For user-facing values, use the document units conversion
-            int result;
             if (!string.IsNullOrWhiteSpace(parameters.ConfigurationName))
             {
-                result = dimension.SetSystemValue3(
+                dimension.SetSystemValue3(
                     parameters.NewValue,
                     1, // swSetValue_InSpecifiedConfigurations
                     parameters.ConfigurationName);
             }
             else
             {
-                result = dimension.SetSystemValue3(
+                dimension.SetSystemValue3(
                     parameters.NewValue,
                     2, // swSetValue_InAllConfigurations — use active config
                     null);

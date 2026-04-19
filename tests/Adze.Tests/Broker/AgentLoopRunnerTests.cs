@@ -330,7 +330,7 @@ public sealed class AgentLoopRunnerTests
     [Test]
     public void Run_CancellationBeforeFirstTurn_ReturnsCancelled()
     {
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         var modelClient = new StubAgentModelClient();

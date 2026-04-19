@@ -154,7 +154,7 @@ public class AgentRecipeCaptureServiceTests
         string uniqueIntent = "unique_test_" + Guid.NewGuid().ToString("N");
         var toolSequence = new List<string> { "get_active_document" };
 
-        var result1 = AgentRecipeCaptureService.CaptureFromAgentRun(
+        AgentRecipeCaptureService.CaptureFromAgentRun(
             uniqueIntent, toolSequence, true, "trace_a", "testuser");
 
         var result2 = AgentRecipeCaptureService.CaptureFromAgentRun(

@@ -80,7 +80,7 @@ public sealed class SetCustomPropertyTool : IWriteTool<SetCustomPropertyParamete
             if (setResult != 0)
             {
                 // Property doesn't exist, add it
-                int addResult = customPropMgr.Add3(
+                customPropMgr.Add3(
                     parameters.PropertyName,
                     30, // swCustomInfoText
                     parameters.PropertyValue,
