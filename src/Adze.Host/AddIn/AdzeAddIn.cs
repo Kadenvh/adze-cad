@@ -52,14 +52,17 @@ public sealed class AdzeAddIn : ISwAddin
             _application.SetAddinCallbackInfo2(0, new DispatchWrapper(this), _cookie);
             AttachApplicationEvents();
             AttachActiveDocumentEvents();
-            CreateTaskPane();
 
-            // Run the compatibility probe once up front. Cheap (~100ms),
-            // produces a typed result that both ribbon and context-menu
-            // registration gate against. When the SW build has changed since
-            // the last verified launch, we log the transition so post-update
-            // incidents are traceable in the host log.
+            // Run the compatibility probe BEFORE CreateTaskPane so that the
+            // Task Pane's first render sees the probe outcome in HostState and
+            // can surface the R2.5 banner on initial load instead of only
+            // after the first assistant run. Cheap (~100ms). Produces a typed
+            // result that ribbon + context-menu registration gate against.
+            // When the SW build has changed since the last verified launch,
+            // the transition is logged so post-update incidents are traceable.
             RunCompatibilityProbe();
+
+            CreateTaskPane();
 
             TryRegisterRibbon();
             TryRegisterContextMenu();
