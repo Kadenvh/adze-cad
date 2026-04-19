@@ -1,4 +1,7 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Adze.Tests")]
 
 [assembly: AssemblyTitle("Adze.Host")]
 [assembly: AssemblyDescription("Native SOLIDWORKS add-in host for Adze.")]

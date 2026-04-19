@@ -1,9 +1,17 @@
 # v1.0.0 Release Path — Postponed Pending Update-Lifecycle Fix
 
-**Created:** 2026-04-18 | **Status:** Active — Monday submission cancelled | **Updated:** 2026-04-19
+**Created:** 2026-04-18 | **Status:** Active — R1/R2 resolved, R5 live validation outstanding | **Updated:** 2026-04-19
 **Author/owner:** Kaden VanHoecke (VH Tech LLC)
-**New target:** TBD (after R1–R5 below are complete)
+**New target:** TBD (after R5 live-validation cycle passes)
 **Supersedes:** `solidworks-partner/RELEASE-4-20.md` (archived)
+
+---
+
+## 2026-04-19 late-session status
+
+R1 closed. `CreateCommandGroup2` confirmed as the R2026x 34.1.0.0140 interop break via live probe (Outcome B). R2 (CompatibilityProbe + CSE attrs), R2.5 (Task Pane banner), R3.1 (pre-update eject), R3.4 (SETUP + PRIVACY docs), R4.5 (README/SETUP around Manager UI), and R4.6 (Manager Eject emphasis) all landed. R3.1 awaits R5.5 live update-cycle test. 702 tests green. GitHub #7 filed + closed as post-mortem. Linear VHT-5..VHT-10 epics + sub-issues current. 8 local commits ahead of origin.
+
+**Remaining release gates:** R5.1–R5.7 (user-driven live validation on real 3DX update cycle) → R6 partner resubmission (new date TBD, not before R5 is green).
 
 ---
 

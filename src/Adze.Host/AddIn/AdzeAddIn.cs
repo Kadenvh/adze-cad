@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using SolidWorks.Interop.sldworks;
@@ -489,29 +488,10 @@ public sealed class AdzeAddIn : ISwAddin
     /// just by diffing the file against the live revision.
     /// </summary>
     /// <summary>
-    /// R3.1 — when the 3DX desktop updater (<c>swxdesktopupdate.exe</c>) is
-    /// running at disconnect time, SOLIDWORKS is almost certainly closing in
-    /// preparation for an update. Clear the persisted "last verified" build
-    /// so the next launch re-runs the compatibility probe against whatever
-    /// SW binary the updater leaves behind. Failure here must never block the
-    /// rest of disconnect.
+    /// R3.1 — delegates to <see cref="PreUpdateEjectService"/> so the
+    /// detection + clear-state logic stays unit-testable.
     /// </summary>
-    private static void HandlePreUpdateEjectIfNeeded()
-    {
-        try
-        {
-            Process[] updater = Process.GetProcessesByName("swxdesktopupdate");
-            if (updater.Length == 0) return;
-
-            FileLogger.Info("Pre-update eject: swxdesktopupdate.exe detected (PID " + updater[0].Id +
-                "). Clearing last-verified SW build so the next launch re-runs the compatibility probe.");
-            SwBuildStateService.ClearLastVerifiedBuild();
-        }
-        catch (Exception ex)
-        {
-            FileLogger.Error("Pre-update eject check failed; continuing with normal disconnect.", ex);
-        }
-    }
+    private static void HandlePreUpdateEjectIfNeeded() => PreUpdateEjectService.RunIfNeeded();
 
     private void RunCompatibilityProbe()
     {

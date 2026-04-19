@@ -85,6 +85,7 @@
     <Compile Include="AddIn\RibbonTab.cs" />
     <Compile Include="AddIn\ContextMenu.cs" />
     <Compile Include="AddIn\CompatibilityProbe.cs" />
+    <Compile Include="AddIn\PreUpdateEjectService.cs" />
     <Compile Include="Infrastructure\HostState.cs" />
     <Compile Include="Infrastructure\FileLogger.cs" />
     <Compile Include="Infrastructure\ToastNotifier.cs" />

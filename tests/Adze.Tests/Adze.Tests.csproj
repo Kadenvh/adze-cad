@@ -68,6 +68,10 @@
       <Project>{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}</Project>
       <Name>Adze.Index</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Adze.Host\Adze.Host.csproj">
+      <Project>{B7F93753-6E26-4D58-9B54-353B8321F7B7}</Project>
+      <Name>Adze.Host</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -112,6 +116,8 @@
     <Compile Include="Tools\DependencyAnalyzerTests.cs" />
     <Compile Include="Broker\AgentPolicyEngineTests.cs" />
     <Compile Include="Tools\LargeAssemblyTests.cs" />
+    <Compile Include="Host\HostProbeStateTests.cs" />
+    <Compile Include="Host\PreUpdateEjectServiceTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
