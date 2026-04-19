@@ -117,8 +117,35 @@ internal static class HostState
     private static Action<string>? _quickActionInvoker;
     private static Action? _taskPaneFocusInvoker;
     private static readonly SessionTelemetry _telemetry = new();
+    private static string? _probeFailureMessage;
+    private static string? _probeFailedStep;
+    private static string? _probeRevision;
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
+
+    /// <summary>
+    /// Records the compatibility-probe outcome so the Task Pane can surface a
+    /// banner when ribbon/context-menu were skipped. Pass null message on a
+    /// healthy probe; pass the failure message on incompatibility.
+    /// </summary>
+    public static void SetProbeResult(bool isCompatible, string? failedStep, string? message, string? revision)
+    {
+        lock (Sync)
+        {
+            _probeFailureMessage = isCompatible ? null : message;
+            _probeFailedStep = isCompatible ? null : failedStep;
+            _probeRevision = revision;
+        }
+    }
+
+    /// <summary>Null when probe passed or has not yet run; otherwise the reason.</summary>
+    public static (string? Message, string? FailedStep, string? Revision) GetProbeFailure()
+    {
+        lock (Sync)
+        {
+            return (_probeFailureMessage, _probeFailedStep, _probeRevision);
+        }
+    }
 
     public static void BeginRun()
     {

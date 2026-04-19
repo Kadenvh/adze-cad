@@ -1128,12 +1128,27 @@ public sealed class TaskPaneControl : UserControl
         return sb.ToString();
     }
 
+    private static string BuildProbeBannerHtml()
+    {
+        var (message, failedStep, revision) = HostState.GetProbeFailure();
+        if (string.IsNullOrWhiteSpace(message)) return string.Empty;
+
+        string revLabel = string.IsNullOrWhiteSpace(revision) ? "this SOLIDWORKS build" : "SOLIDWORKS build " + HtmlEncode(revision!);
+        string stepLabel = string.IsNullOrWhiteSpace(failedStep) ? string.Empty : " (failed step: <code>" + HtmlEncode(failedStep!) + "</code>)";
+
+        return "<div class=\"health-banner health-warning\">&#9888; " +
+            "Adze detected a compatibility issue with " + revLabel + stepLabel + ". " +
+            "The ribbon tab and context menu are unavailable; the Task Pane remains fully functional." +
+            "</div>";
+    }
+
     private string BuildFullPageHtml()
     {
         string conversationHtml = BuildConversationHtml();
         string recipeHtml = BuildRecipeSuggestionsHtml();
         string writeHistoryHtml = BuildWriteHistoryHtml();
         string settingsHtml = BuildSettingsHtml();
+        string probeBanner = BuildProbeBannerHtml();
 
         string planSection = string.Empty;
         if (!string.IsNullOrWhiteSpace(_planText))
@@ -1526,7 +1541,7 @@ public sealed class TaskPaneControl : UserControl
   .settings-gates .gate-off { color: #A1A8B5; }
   .settings-footer { padding: 8px 14px; font-size: 11px; color: #6B7A8F; font-style: italic; }
 </style>
-</head><body>
+</head><body>" + probeBanner + @"
 <div id=""chat-area"" class=""content-area"">" + conversationHtml + @"</div>
 <div class=""sections-area"">"
     + recipeHtml

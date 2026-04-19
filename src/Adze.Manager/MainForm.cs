@@ -25,6 +25,13 @@ public sealed class MainForm : Form
     private const string AdzeSwAddIn = @"Software\SolidWorks\AddIns\{A2E09EE4-BB43-4A0C-945F-14711F792EFA}";
     private const string AdzeBinDirRelative = @"Adze\bin";
 
+    private static readonly Color InstallColorNormal = Color.FromArgb(0, 114, 198);
+    private static readonly Color InstallColorDisabled = Color.FromArgb(200, 205, 215);
+    private static readonly Color EjectColorNormal = Color.FromArgb(255, 193, 7);
+    private static readonly Color EjectColorPromoted = Color.FromArgb(220, 53, 69);
+    private const string EjectLabelNormal = "Eject for Update";
+    private const string EjectLabelPromoted = "\u26A0  Eject for Update";
+
     private readonly Label _lblInstallState;
     private readonly Label _lblSwProcess;
     private readonly Label _lblSwBuild;
@@ -197,7 +204,8 @@ public sealed class MainForm : Form
         // SOLIDWORKS running?
         Process[] sw = Process.GetProcessesByName("sldworks");
         Process[] updater = Process.GetProcessesByName("swxdesktopupdate");
-        if (sw.Length > 0 && updater.Length > 0)
+        bool updaterRunning = updater.Length > 0;
+        if (sw.Length > 0 && updaterRunning)
         {
             _lblSwProcess.Text = "SOLIDWORKS: RUNNING (PID " + sw[0].Id + ") · Updater also running — do not install/uninstall now";
             _lblSwProcess.ForeColor = Color.FromArgb(180, 30, 30);
@@ -207,16 +215,18 @@ public sealed class MainForm : Form
             _lblSwProcess.Text = "SOLIDWORKS: RUNNING (PID " + sw[0].Id + ") — close it before install/uninstall";
             _lblSwProcess.ForeColor = Color.FromArgb(200, 140, 0);
         }
-        else if (updater.Length > 0)
+        else if (updaterRunning)
         {
-            _lblSwProcess.Text = "SOLIDWORKS: not running · 3DX updater is running (PID " + updater[0].Id + ")";
-            _lblSwProcess.ForeColor = Color.FromArgb(200, 140, 0);
+            _lblSwProcess.Text = "SOLIDWORKS: not running · 3DX updater is running (PID " + updater[0].Id + ") — Eject before the updater applies changes";
+            _lblSwProcess.ForeColor = Color.FromArgb(180, 30, 30);
         }
         else
         {
             _lblSwProcess.Text = "SOLIDWORKS: not running";
             _lblSwProcess.ForeColor = Color.FromArgb(50, 60, 80);
         }
+
+        ApplyUpdaterEmphasis(updaterRunning);
 
         // Last verified build
         string verified = SwBuildStateService.GetLastVerifiedBuild();
@@ -296,6 +306,40 @@ public sealed class MainForm : Form
         _btnUninstall.Enabled = enabled;
         _btnEject.Enabled = enabled;
         _btnRefresh.Enabled = enabled;
+    }
+
+    /// <summary>
+    /// When swxdesktopupdate.exe is running, installing Adze on top of a
+    /// pending update is a footgun — the updater will clobber the COM
+    /// registration half-way through. Swap the visual emphasis so Eject is
+    /// the obvious action and Install is visibly unavailable.
+    /// </summary>
+    private void ApplyUpdaterEmphasis(bool updaterRunning)
+    {
+        if (updaterRunning)
+        {
+            _btnInstall.Enabled = false;
+            _btnInstall.BackColor = InstallColorDisabled;
+            _btnInstall.FlatAppearance.BorderColor = InstallColorDisabled;
+
+            _btnEject.BackColor = EjectColorPromoted;
+            _btnEject.ForeColor = Color.White;
+            _btnEject.FlatAppearance.BorderColor = EjectColorPromoted;
+            _btnEject.Text = EjectLabelPromoted;
+            _btnEject.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        }
+        else
+        {
+            _btnInstall.Enabled = true;
+            _btnInstall.BackColor = InstallColorNormal;
+            _btnInstall.FlatAppearance.BorderColor = InstallColorNormal;
+
+            _btnEject.BackColor = EjectColorNormal;
+            _btnEject.ForeColor = Color.FromArgb(30, 30, 30);
+            _btnEject.FlatAppearance.BorderColor = EjectColorNormal;
+            _btnEject.Text = EjectLabelNormal;
+            _btnEject.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        }
     }
 
     private string? LocateScript(string scriptName)
