@@ -6,7 +6,7 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Target: v1.0.0. **Not released** — release code is complete and R2026x crash is resolved; gated only on R5 live update-cycle validation (applying a real 3DX update against an installed Adze build, end to end) before tagging. See `plans/polish-and-v1-path.md`.
+Target: v1.0.0. **Not released** — release code is complete and R2026x crash is resolved; gated only on R5 live update-cycle validation (applying a real 3DX update against an installed Adze build, end to end) before tagging.
 
 Zero-config first-run work below is code-complete in the tree.
 
@@ -51,7 +51,7 @@ Zero-config first-run work below is code-complete in the tree.
 - **Quick-action toolbar** — persistent Diagnose / Mates / Dimensions / Properties buttons in Task Pane; one tap fires a full agentic run with a pre-built prompt.
 - **Tool execution chips** — inline colored pills in the conversation thread showing each tool as it fires (blue for read tools, amber for write tools). Animated thinking indicator during model turns.
 - **Large assembly pagination** — `get_dimensions` and `get_mates` now support `offset`/`limit` with `total_count`, `returned_count`, `has_more` in the response envelope. Max 200 per page.
-- **MCP server design** — 638-line design document for Phase 10 sidecar architecture (.NET 8 console app communicating with .NET 4.8 add-in over named pipes). See `plans/design-mcp-server.md`.
+- **MCP server design** — sidecar architecture for Phase 10 (.NET 8 console app communicating with .NET 4.8 add-in over named pipes).
 - **Install Adze.bat** — double-click installer for Windows Explorer; no command line required.
 - **Dev mode in installer** — `install\install-adze.ps1` auto-detects when run from the repo, builds Debug config via MSBuild, and registers from build output instead of requiring a pre-staged zip.
 - **Public repo files** — README.md, LICENSE (MIT), CONTRIBUTING.md, SECURITY.md, issue and PR templates under `.github/`.

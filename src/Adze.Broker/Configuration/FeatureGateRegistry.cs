@@ -57,12 +57,12 @@ public static class FeatureGateRegistry
     ///  - AI + tools + rendering surfaces ON (ribbon, model, agent loop, writes, streaming, retrieval)
     ///  - Opt-in surfaces OFF (context menu until R2 fix, toast, PMP writes, local models)
     ///
-    /// Context menu is temporarily OFF by default pending R1/R2 in plans/polish-and-v1-path.md.
-    /// SW 34.1.0.0140 (3DEXPERIENCE R2026x April 2026 update) changed an interop binary signature
-    /// that our ContextMenu.Register touches; the call crashes SW natively (not a managed exception,
-    /// so the existing try/catch does not catch it). Flip this to true via Settings or
-    /// SOLIDWORKS_AI_CONTEXT_MENU=true once R2 (interop resilience with late binding +
-    /// compatibility probe) lands.
+    /// Context menu defaults OFF pending R2026x interop resolution.
+    /// SW 34.1.0.0140 changed an interop binary signature that ContextMenu.Register touches;
+    /// the CompatibilityProbe now catches this at startup and skips the registration, but
+    /// defaulting the gate off gives clean behavior even if the probe is ever bypassed.
+    /// Flip to true via Settings or SOLIDWORKS_AI_CONTEXT_MENU=true on builds where the
+    /// probe reports clean.
     /// </summary>
     public static bool GetDefault(string gateName)
     {
