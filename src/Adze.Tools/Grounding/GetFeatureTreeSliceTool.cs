@@ -19,7 +19,7 @@ public sealed class GetFeatureTreeSliceTool : IReadOnlyTool<GetFeatureTreeSliceP
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document for feature-tree inspection."
-                : "Feature-tree slice generated."
+                : "Read the feature tree."
         };
 
         if (context.Document == null)

@@ -17,7 +17,7 @@ public sealed class GetSelectionContextTool : IReadOnlyTool<GetSelectionContextP
             Success = true,
             Summary = context.Selection.Count == 0
                 ? "No current selection."
-                : "Selection context generated."
+                : "Read the current selection."
         };
 
         result.Data["count"] = context.Selection.Count;

@@ -19,7 +19,7 @@ public sealed class GetDimensionsTool : IReadOnlyTool<GetDimensionsParameters>
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document for dimension inspection."
-                : "Dimension list generated."
+                : "Read dimensions."
         };
 
         if (context.Document == null)
@@ -51,7 +51,7 @@ public sealed class GetDimensionsTool : IReadOnlyTool<GetDimensionsParameters>
 
         if (items.Count == 0)
         {
-            result.Summary = "No dimensions found for the requested scope.";
+            result.Summary = "No dimensions found on this document.";
         }
 
         bool hasMore = offset + items.Count < totalAvailable;

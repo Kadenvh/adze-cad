@@ -28,11 +28,19 @@ public sealed class BrokerModelSettings
 
     public static BrokerModelSettings LoadFromEnvironment()
     {
+        // Provider preference: env wins; otherwise check the in-app key store
+        // (Settings panel writes there). Empty string falls through to the
+        // legacy auto-pick logic in ResolveProvider.
         string configuredProvider = NormalizeProvider(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_PROVIDER"));
+        if (string.IsNullOrWhiteSpace(configuredProvider))
+        {
+            configuredProvider = NormalizeProvider(ApiKeyStore.GetConfiguredProvider());
+        }
 
         string anthropicApiKey = FirstNonEmpty(
             Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_API_KEY"),
-            Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY"));
+            Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY"),
+            ApiKeyStore.GetKey("anthropic"));
         string anthropicModel = FirstNonEmpty(
             Environment.GetEnvironmentVariable("SOLIDWORKS_AI_ANTHROPIC_MODEL"),
             Environment.GetEnvironmentVariable("ANTHROPIC_MODEL"));
@@ -41,7 +49,8 @@ public sealed class BrokerModelSettings
 
         string openAiApiKey = FirstNonEmpty(
             Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_API_KEY"),
-            Environment.GetEnvironmentVariable("OPENAI_API_KEY"));
+            Environment.GetEnvironmentVariable("OPENAI_API_KEY"),
+            ApiKeyStore.GetKey("openai"));
         string openAiModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_MODEL"));
         string openAiEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_ENDPOINT"));
 

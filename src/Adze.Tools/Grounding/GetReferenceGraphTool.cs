@@ -18,7 +18,7 @@ public sealed class GetReferenceGraphTool : IReadOnlyTool<GetReferenceGraphParam
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document for reference-graph inspection."
-                : "Reference graph generated."
+                : "Read the reference graph."
         };
 
         if (context.Document == null)

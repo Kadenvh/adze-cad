@@ -16,7 +16,7 @@ public sealed class GetDocumentSummaryTool : IReadOnlyTool<GetDocumentSummaryPar
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document to summarize."
-                : "Document summary generated."
+                : "Read the document overview."
         };
 
         if (context.Document == null)

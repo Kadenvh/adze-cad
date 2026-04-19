@@ -875,7 +875,7 @@ internal static class HostState
             answerText = FormatAgentOutcomeMessage(result);
         }
 
-        string source = result.Outcome == AgentRunOutcome.Success ? "agent_loop" : "agent_fallback";
+        string source = FormatAnswerSourceForUser(result.Outcome == AgentRunOutcome.Success ? "agent_loop" : "agent_fallback");
         if (BrokerModelSettings.LoadFromEnvironment().IsLocalProvider)
         {
             source += " [Experimental]";
@@ -946,6 +946,24 @@ internal static class HostState
             AnswerModelId = string.Empty,
             TurnStatus = result.Outcome == AgentRunOutcome.Success ? "ready" : "attention_needed",
             RunUsage = runUsage
+        };
+    }
+
+    /// <summary>
+    /// Maps an internal answer-source identifier to a user-facing label for the footer.
+    /// Suffixes like " (modelId)" and " [Experimental]" are appended by callers after this transform.
+    /// </summary>
+    internal static string FormatAnswerSourceForUser(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source)) return "Unknown";
+        return source switch
+        {
+            "deterministic_fallback" => "Built-in broker",
+            "model_openai" => "OpenAI",
+            "model_anthropic" => "Anthropic",
+            "agent_loop" => "AI agent",
+            "agent_fallback" => "AI agent (fallback)",
+            _ => source
         };
     }
 
@@ -1054,7 +1072,7 @@ internal static class HostState
                 synthesis.FailureReason;
         }
 
-        string answerSourceText = synthesis.Source;
+        string answerSourceText = FormatAnswerSourceForUser(synthesis.Source);
         if (!string.IsNullOrWhiteSpace(synthesis.ModelId))
         {
             answerSourceText += " (" + synthesis.ModelId + ")";

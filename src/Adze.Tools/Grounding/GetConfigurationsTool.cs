@@ -17,7 +17,7 @@ public sealed class GetConfigurationsTool : IReadOnlyTool<GetConfigurationsParam
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document for configuration inspection."
-                : "Configuration list generated."
+                : "Read configurations."
         };
 
         if (context.Document == null)

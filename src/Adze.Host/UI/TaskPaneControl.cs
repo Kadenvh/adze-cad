@@ -64,7 +64,7 @@ public sealed class TaskPaneControl : UserControl
                 Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(24, 48, 76),
-                Text = "Adze  \u2014  SOLIDWORKS AI"
+                Text = "Ask anything about your model"
             };
 
             // --- Request box ---
@@ -807,7 +807,7 @@ public sealed class TaskPaneControl : UserControl
         if (recipes.Count == 0) return string.Empty;
 
         var sb = new System.Text.StringBuilder();
-        sb.Append(BuildCollapsibleHeader("recipes", "Suggested Recipes (" + recipes.Count + ")", false));
+        sb.Append(BuildCollapsibleHeader("recipes", "Suggested Recipes", false));
         sb.Append("<div id=\"recipes-body\" class=\"section-body\" style=\"display:none\">");
         for (int i = 0; i < recipes.Count; i++)
         {
@@ -1062,11 +1062,78 @@ public sealed class TaskPaneControl : UserControl
                "<span class=\"section-arrow\">" + arrow + "</span> " + HtmlEncode(label) + "</div>";
     }
 
+    private static string BuildSettingsHtml()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append(BuildCollapsibleHeader("settings", "Settings", false));
+        sb.Append("<div id=\"settings-body\" class=\"section-body\" style=\"display:none\">");
+
+        // --- AI provider + API key ---
+        sb.Append("<div class=\"settings-block\">");
+        sb.Append("<div class=\"settings-title\">AI provider</div>");
+        sb.Append("<div class=\"settings-hint\">Paste a provider key below to enable AI-powered answers. Adze works without a key using a deterministic built-in broker.</div>");
+
+        (string? currentProvider, string? currentKey) = Adze.Broker.Configuration.ApiKeyStore.Load();
+        bool hasStoredKey = !string.IsNullOrWhiteSpace(currentProvider) && !string.IsNullOrWhiteSpace(currentKey);
+        string currentLabel = hasStoredKey
+            ? "Stored: " + HtmlEncode(currentProvider!) + " (key hidden)"
+            : "No key stored. Using built-in broker.";
+        sb.Append("<div class=\"settings-current\">" + currentLabel + "</div>");
+
+        sb.Append("<div class=\"settings-row\">");
+        sb.Append("<label for=\"adze-provider\">Provider:</label>");
+        sb.Append("<select id=\"adze-provider\">");
+        sb.Append("<option value=\"openai\">OpenAI</option>");
+        sb.Append("<option value=\"anthropic\">Anthropic</option>");
+        sb.Append("<option value=\"ollama\">Ollama (local)</option>");
+        sb.Append("<option value=\"lmstudio\">LM Studio (local)</option>");
+        sb.Append("</select>");
+        sb.Append("</div>");
+
+        sb.Append("<div class=\"settings-row\">");
+        sb.Append("<label for=\"adze-api-key\">API key:</label>");
+        sb.Append("<input id=\"adze-api-key\" type=\"password\" placeholder=\"sk-... (leave blank for Ollama/LM Studio)\" />");
+        sb.Append("</div>");
+
+        sb.Append("<div class=\"settings-row settings-buttons\">");
+        sb.Append("<button class=\"btn-apply\" onclick=\"saveAdzeApiKey()\">Save</button>");
+        if (hasStoredKey)
+        {
+            sb.Append("<button class=\"btn-cancel\" onclick=\"clearAdzeApiKey()\">Clear stored key</button>");
+        }
+        sb.Append("</div>");
+
+        sb.Append("<div id=\"adze-settings-status\" class=\"settings-status\"></div>");
+        sb.Append("</div>");
+
+        // --- Feature gates (read-only view for v1.0; toggles in v1.0.1) ---
+        sb.Append("<div class=\"settings-block\">");
+        sb.Append("<div class=\"settings-title\">Feature gates</div>");
+        sb.Append("<div class=\"settings-hint\">Effective state for this session. Environment variables override the config file. Edit the config file to change defaults.</div>");
+        sb.Append("<table class=\"settings-gates\">");
+        foreach (string gate in Adze.Broker.Configuration.FeatureGateRegistry.KnownGates)
+        {
+            bool state = Adze.Broker.Configuration.FeatureGateRegistry.IsEnabled(gate);
+            string shortName = gate.Replace("SOLIDWORKS_AI_", "");
+            string stateLabel = state ? "on" : "off";
+            string stateClass = state ? "gate-on" : "gate-off";
+            sb.Append("<tr><td>").Append(HtmlEncode(shortName)).Append("</td><td class=\"").Append(stateClass).Append("\">").Append(stateLabel).Append("</td></tr>");
+        }
+        sb.Append("</table>");
+        sb.Append("<div class=\"settings-hint\">Config file: <code>%LOCALAPPDATA%\\Adze\\config.json</code></div>");
+        sb.Append("</div>");
+
+        sb.Append("<div class=\"settings-footer\">Changes take effect after you restart SOLIDWORKS.</div>");
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
     private string BuildFullPageHtml()
     {
         string conversationHtml = BuildConversationHtml();
         string recipeHtml = BuildRecipeSuggestionsHtml();
         string writeHistoryHtml = BuildWriteHistoryHtml();
+        string settingsHtml = BuildSettingsHtml();
 
         string planSection = string.Empty;
         if (!string.IsNullOrWhiteSpace(_planText))
@@ -1137,10 +1204,9 @@ public sealed class TaskPaneControl : UserControl
   .content-area { padding: 12px 12px 6px 12px; }
   .chat-user, .chat-assistant { margin: 0 0 12px 0; }
   .chat-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
     color: #8A9AAA;
     margin: 0 0 3px 2px;
   }
@@ -1437,6 +1503,28 @@ public sealed class TaskPaneControl : UserControl
   .telemetry-tool { padding-left: 12px; color: #3D4F60; font-family: 'Consolas', monospace; font-size: 11px; }
   .budget-bar { height: 7px; background: #DDE6F0; border-radius: 4px; margin: 3px 0 5px 0; overflow: hidden; }
   .budget-fill { height: 100%; border-radius: 4px; -webkit-transition: width .3s; transition: width .3s; }
+
+  /* --- Settings section --- */
+  .settings-block { padding: 10px 14px; border-bottom: 1px solid #E0E5EE; }
+  .settings-block:last-child { border-bottom: none; }
+  .settings-title { font-weight: 600; font-size: 13px; color: #1A2332; margin-bottom: 4px; }
+  .settings-hint { font-size: 11px; color: #6B7A8F; margin-bottom: 8px; line-height: 1.45; }
+  .settings-current { font-size: 12px; color: #2E4466; background: #F3F6FB; border: 1px solid #D9E1EC; border-radius: 4px; padding: 6px 10px; margin-bottom: 10px; }
+  .settings-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .settings-row label { font-size: 12px; color: #3F4B5C; min-width: 64px; }
+  .settings-row select, .settings-row input {
+    flex: 1; padding: 5px 8px; border: 1px solid #C8D0DD; border-radius: 4px;
+    font-size: 12px; background: white; color: #1A2332;
+  }
+  .settings-buttons { justify-content: flex-start; gap: 6px; }
+  .settings-status { font-size: 12px; color: #0A6E3C; min-height: 16px; margin-top: 4px; }
+  .settings-gates { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 4px; }
+  .settings-gates td { padding: 3px 6px; border-bottom: 1px solid #EDF0F5; }
+  .settings-gates td:first-child { color: #3F4B5C; font-family: Consolas, monospace; font-size: 11px; }
+  .settings-gates td:last-child { text-align: right; font-weight: 600; }
+  .settings-gates .gate-on { color: #0A6E3C; }
+  .settings-gates .gate-off { color: #A1A8B5; }
+  .settings-footer { padding: 8px 14px; font-size: 11px; color: #6B7A8F; font-style: italic; }
 </style>
 </head><body>
 <div id=""chat-area"" class=""content-area"">" + conversationHtml + @"</div>
@@ -1445,7 +1533,8 @@ public sealed class TaskPaneControl : UserControl
     + writeHistoryHtml
     + planSection
     + toolsSection
-    + statusSection + @"
+    + statusSection
+    + settingsHtml + @"
 </div>
 <script>
 function toggleSection(bodyId, headerEl) {
@@ -1511,6 +1600,35 @@ function appendStreamChunk(text) {
   if (target) {
     target.appendChild(document.createTextNode(text));
     scrollToBottom();
+  }
+}
+function saveAdzeApiKey() {
+  var sel = document.getElementById('adze-provider');
+  var input = document.getElementById('adze-api-key');
+  var status = document.getElementById('adze-settings-status');
+  if (!sel || !input) return;
+  var provider = sel.value;
+  var key = input.value || '';
+  var isLocalProvider = (provider === 'ollama' || provider === 'lmstudio');
+  if (!key && !isLocalProvider) {
+    if (status) status.innerText = 'Please paste your API key.';
+    return;
+  }
+  try {
+    window.external.SaveApiKey(provider, key);
+    if (status) status.innerText = 'Saved for ' + provider + '. Restart SOLIDWORKS to use AI.';
+    input.value = '';
+  } catch (e) {
+    if (status) status.innerText = 'Save failed. See Task Pane run state.';
+  }
+}
+function clearAdzeApiKey() {
+  var status = document.getElementById('adze-settings-status');
+  try {
+    window.external.ClearApiKey();
+    if (status) status.innerText = 'Stored key cleared. Restart SOLIDWORKS to take effect.';
+  } catch (e) {
+    if (status) status.innerText = 'Clear failed. See Task Pane run state.';
   }
 }
 scrollToBottom();
@@ -1611,6 +1729,65 @@ scrollToBottom();
     public void SwitchTab(string tabName)
     {
         _activeTab = tabName ?? "answer";
+    }
+
+    /// <summary>
+    /// JS bridge — saves the active provider and API key to the DPAPI-encrypted
+    /// store, enables the AI model gate, and refreshes the Task Pane so the
+    /// "Stored" label updates immediately. Restart of SOLIDWORKS is still
+    /// required for BrokerModelSettings to re-read on next ConnectToSW.
+    /// </summary>
+    public void SaveApiKey(string provider, string apiKey)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(provider))
+            {
+                _runStateLabel.Text = "Provider selection is required.";
+                return;
+            }
+
+            string normalizedProvider = provider.Trim().ToLowerInvariant();
+            bool isLocalProvider = normalizedProvider == "ollama" || normalizedProvider == "lmstudio";
+            string keyValue = apiKey ?? string.Empty;
+
+            if (!isLocalProvider && string.IsNullOrWhiteSpace(keyValue))
+            {
+                _runStateLabel.Text = "API key is required for " + normalizedProvider + ".";
+                return;
+            }
+
+            Adze.Broker.Configuration.ApiKeyStore.Save(normalizedProvider, keyValue.Trim());
+            Adze.Broker.Configuration.FeatureGateConfigService.SetGate(
+                Adze.Broker.Configuration.FeatureGateRegistry.EnableModel, true);
+            Adze.Broker.Configuration.FeatureGateRegistry.InvalidateCache();
+
+            _runStateLabel.Text = "API key saved for " + normalizedProvider +
+                ". Restart SOLIDWORKS to activate.";
+            RenderContent();
+        }
+        catch (Exception ex)
+        {
+            _runStateLabel.Text = "Failed to save API key: " + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// JS bridge — deletes the stored API key. Does not disable the EnableModel
+    /// gate in case the user has an env var providing the key.
+    /// </summary>
+    public void ClearApiKey()
+    {
+        try
+        {
+            Adze.Broker.Configuration.ApiKeyStore.Clear();
+            _runStateLabel.Text = "Stored API key cleared.";
+            RenderContent();
+        }
+        catch (Exception ex)
+        {
+            _runStateLabel.Text = "Failed to clear API key: " + ex.Message;
+        }
     }
 
     public void ApplyWrite(int index)

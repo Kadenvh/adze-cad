@@ -21,7 +21,7 @@ public sealed class GetCustomPropertiesTool : IReadOnlyTool<GetCustomPropertiesP
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document for custom property inspection."
-                : "Custom property set generated."
+                : "Read custom properties."
         };
 
         if (context.Document == null)
@@ -54,7 +54,7 @@ public sealed class GetCustomPropertiesTool : IReadOnlyTool<GetCustomPropertiesP
         int totalCount = documentProperties.Count + configurationProperties.Count;
         if (totalCount == 0)
         {
-            result.Summary = "No custom properties found for the requested scope.";
+            result.Summary = "No custom properties found on this document.";
         }
 
         result.Data["scope"] = requestedScope;

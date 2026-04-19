@@ -227,7 +227,7 @@ public sealed class ModelJsonMapperTests
         {
             ToolName = "get_active_document",
             Success = true,
-            Summary = "Active document resolved.",
+            Summary = "Read the active document.",
             Warnings = new List<string> { "warning1" },
             Data = new Dictionary<string, object?> { ["type"] = "part" }
         };
@@ -236,7 +236,7 @@ public sealed class ModelJsonMapperTests
 
         Assert.That(json["tool_name"], Is.EqualTo("get_active_document"));
         Assert.That(json["success"], Is.EqualTo(true));
-        Assert.That(json["summary"], Is.EqualTo("Active document resolved."));
+        Assert.That(json["summary"], Is.EqualTo("Read the active document."));
     }
 
     [Test]

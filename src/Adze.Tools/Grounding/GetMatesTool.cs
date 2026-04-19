@@ -19,7 +19,7 @@ public sealed class GetMatesTool : IReadOnlyTool<GetMatesParameters>
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document for mate inspection."
-                : "Mate list generated."
+                : "Read mates."
         };
 
         if (context.Document == null)
@@ -71,7 +71,7 @@ public sealed class GetMatesTool : IReadOnlyTool<GetMatesParameters>
 
         if (items.Count == 0)
         {
-            result.Summary = "No mates found for the requested scope.";
+            result.Summary = "No mates found on this document.";
         }
 
         bool hasMore = offset + items.Count < totalAvailable;

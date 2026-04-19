@@ -16,7 +16,7 @@ public sealed class GetActiveDocumentTool : IReadOnlyTool<EmptyParameters>
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document."
-                : "Active document resolved."
+                : "Read the active document."
         };
 
         if (context.Document != null)

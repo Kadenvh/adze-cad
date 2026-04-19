@@ -16,7 +16,7 @@ public sealed class GetRebuildDiagnosticsTool : IReadOnlyTool<GetRebuildDiagnost
             Success = context.Document != null,
             Summary = context.Document == null
                 ? "No active document for diagnostics inspection."
-                : "Rebuild diagnostics generated."
+                : "Checked rebuild diagnostics."
         };
 
         if (context.Document == null)
