@@ -28,12 +28,12 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore Adze.sln
 
-      # Adze.Host references SolidWorks.Interop.* (COM interop DLLs that ship
-      # with SOLIDWORKS only), so we build the test project directly. This
-      # transitively builds all CI-buildable projects: Contracts, Index,
-      # Tools, Trace, Broker, and Adze.Tests.
-      - name: Build test project and dependencies
-        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Build /p:Configuration=Debug /p:Platform=AnyCPU /nologo /m
+      # Adze.Host references SolidWorks.Interop.* COM DLLs that ship with
+      # SOLIDWORKS only. Pass IncludeHostTests=false so the test project
+      # skips the Adze.Host ProjectReference and the 10 Host-dependent tests.
+      # 692 CI-runnable tests still execute; the 10 skipped ones run locally.
+      - name: Build test project and CI-buildable dependencies
+        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Build /p:Configuration=Debug /p:Platform=AnyCPU /p:IncludeHostTests=false /nologo /m
 
       - name: Run unit tests
         shell: pwsh

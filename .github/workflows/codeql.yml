@@ -43,10 +43,18 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore Adze.sln
 
-      # Adze.Host depends on SOLIDWORKS COM interop DLLs that are not
-      # available on the runner. Analyze all CI-buildable projects instead.
-      - name: Build test project and dependencies
-        run: msbuild tests\Adze.Tests\Adze.Tests.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /nologo /m
+      # Adze.Host (and transitively Adze.Tests + Adze.Manager) depend on
+      # SOLIDWORKS COM interop DLLs that are not available on the runner.
+      # Build the 5 CI-buildable library projects individually so CodeQL
+      # analyzes all the platform-independent code (broker, tools, trace,
+      # contracts, index) without pulling in the SW-dependent ones.
+      - name: Build CI-buildable projects
+        run: |
+          msbuild src\Adze.Contracts\Adze.Contracts.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /nologo /m
+          msbuild src\Adze.Index\Adze.Index.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /nologo /m
+          msbuild src\Adze.Tools\Adze.Tools.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /nologo /m
+          msbuild src\Adze.Trace\Adze.Trace.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /nologo /m
+          msbuild src\Adze.Broker\Adze.Broker.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /nologo /m
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
