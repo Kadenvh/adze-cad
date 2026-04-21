@@ -1085,6 +1085,7 @@ public sealed class TaskPaneControl : UserControl
         sb.Append("<select id=\"adze-provider\">");
         sb.Append("<option value=\"openai\">OpenAI</option>");
         sb.Append("<option value=\"anthropic\">Anthropic</option>");
+        sb.Append("<option value=\"openrouter\">OpenRouter</option>");
         sb.Append("<option value=\"ollama\">Ollama (local)</option>");
         sb.Append("<option value=\"lmstudio\">LM Studio (local)</option>");
         sb.Append("</select>");

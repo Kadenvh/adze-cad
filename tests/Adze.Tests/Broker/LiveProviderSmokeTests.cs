@@ -19,16 +19,24 @@ public sealed class LiveProviderSmokeTests
     private BrokerModelSettings _settings = null!;
     private IModelClient _client = null!;
 
+    // Preserve the user's ApiKeyStore across live smoke tests. These tests should
+    // only run when API keys are explicitly present in the environment — not when
+    // the Settings panel has a key saved for normal day-to-day usage.
+    private (string? Provider, string? Key) _savedKeyStore;
+
     [SetUp]
     public void SetUp()
     {
+        _savedKeyStore = ApiKeyStore.Load();
+        ApiKeyStore.Clear();
+
         _settings = BrokerModelSettings.LoadFromEnvironment();
 
         if (!_settings.IsUsable())
         {
             Assert.Inconclusive(
                 "No usable provider API key in environment. " +
-                "Set SOLIDWORKS_AI_OPENAI_API_KEY or SOLIDWORKS_AI_ANTHROPIC_API_KEY to run live provider smoke tests.");
+                "Set SOLIDWORKS_AI_OPENAI_API_KEY, SOLIDWORKS_AI_ANTHROPIC_API_KEY, or SOLIDWORKS_AI_OPENROUTER_API_KEY to run live provider smoke tests.");
         }
 
         IModelClient? client = ModelClientFactory.Create(_settings);
@@ -40,12 +48,21 @@ public sealed class LiveProviderSmokeTests
         _client = client;
     }
 
+    [TearDown]
+    public void TearDown()
+    {
+        if (!string.IsNullOrWhiteSpace(_savedKeyStore.Provider) && _savedKeyStore.Key != null)
+        {
+            ApiKeyStore.Save(_savedKeyStore.Provider!, _savedKeyStore.Key);
+        }
+    }
+
     [Test]
     public void Settings_ResolvedCorrectly()
     {
         Assert.That(_settings.Enabled, Is.True, "Model should be enabled");
         Assert.That(_settings.ApiKey, Is.Not.Empty, "API key should be present");
-        Assert.That(_settings.Provider, Is.AnyOf("openai", "anthropic"), "Provider should be openai or anthropic");
+        Assert.That(_settings.Provider, Is.AnyOf("openai", "anthropic", "openrouter"), "Provider should be openai, anthropic, or openrouter");
         Assert.That(_settings.Model, Is.Not.Empty, "Model name should be set");
         Assert.That(_settings.Endpoint, Is.Not.Empty, "Endpoint should be set");
 

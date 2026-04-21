@@ -54,6 +54,14 @@ public sealed class BrokerModelSettings
         string openAiModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_MODEL"));
         string openAiEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENAI_ENDPOINT"));
 
+        // OpenRouter — OpenAI-format API with its own endpoint, key, and model identifiers
+        string openRouterApiKey = FirstNonEmpty(
+            Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENROUTER_API_KEY"),
+            Environment.GetEnvironmentVariable("OPENROUTER_API_KEY"),
+            ApiKeyStore.GetKey("openrouter"));
+        string openRouterModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENROUTER_MODEL"));
+        string openRouterEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OPENROUTER_ENDPOINT"));
+
         // Local provider settings
         string ollamaEndpoint = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OLLAMA_ENDPOINT"));
         string ollamaModel = FirstNonEmpty(Environment.GetEnvironmentVariable("SOLIDWORKS_AI_OLLAMA_MODEL"));
@@ -64,7 +72,7 @@ public sealed class BrokerModelSettings
         int localDefaultTimeoutMs = 60000;
         int localDefaultSynthesisTimeoutMs = 90000;
 
-        string provider = ResolveProvider(configuredProvider, openAiApiKey, anthropicApiKey);
+        string provider = ResolveProvider(configuredProvider, openAiApiKey, anthropicApiKey, openRouterApiKey);
         bool isLocal = IsLocalProviderName(provider);
 
         string activeApiKey;
@@ -94,6 +102,14 @@ public sealed class BrokerModelSettings
             activeApiKey = openAiApiKey;
             activeModel = DefaultIfBlank(openAiModel, "gpt-4o");
             activeEndpoint = EnsureChatCompletionsPath(DefaultIfBlank(openAiEndpoint, "https://api.openai.com/v1/chat/completions"));
+            defaultTimeoutMs = 20000;
+            defaultSynthesisTimeoutMs = 30000;
+        }
+        else if (string.Equals(provider, "openrouter", StringComparison.OrdinalIgnoreCase))
+        {
+            activeApiKey = openRouterApiKey;
+            activeModel = DefaultIfBlank(openRouterModel, "anthropic/claude-sonnet-4");
+            activeEndpoint = EnsureChatCompletionsPath(DefaultIfBlank(openRouterEndpoint, "https://openrouter.ai/api/v1/chat/completions"));
             defaultTimeoutMs = 20000;
             defaultSynthesisTimeoutMs = 30000;
         }
@@ -156,6 +172,7 @@ public sealed class BrokerModelSettings
 
         return string.Equals(Provider, "openai", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(Provider, "anthropic", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(Provider, "openrouter", StringComparison.OrdinalIgnoreCase) ||
                IsLocalProviderName(Provider);
     }
 
@@ -168,16 +185,23 @@ public sealed class BrokerModelSettings
     }
 
     /// <summary>
-    /// Returns true if this provider routes through the OpenAI-compatible client (OpenAI, Ollama, LM Studio).
+    /// Returns true if this provider routes through the OpenAI-compatible client (OpenAI, OpenRouter, Ollama, LM Studio).
     /// </summary>
     public bool UsesOpenAIFormat =>
-        string.Equals(Provider, "openai", StringComparison.OrdinalIgnoreCase) || IsLocalProvider;
+        string.Equals(Provider, "openai", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Provider, "openrouter", StringComparison.OrdinalIgnoreCase) ||
+        IsLocalProvider;
 
-    private static string ResolveProvider(string configuredProvider, string openAiApiKey, string anthropicApiKey)
+    private static string ResolveProvider(string configuredProvider, string openAiApiKey, string anthropicApiKey, string openRouterApiKey)
     {
         if (!string.IsNullOrWhiteSpace(configuredProvider))
         {
             return configuredProvider;
+        }
+
+        if (!string.IsNullOrWhiteSpace(openRouterApiKey) && string.IsNullOrWhiteSpace(openAiApiKey) && string.IsNullOrWhiteSpace(anthropicApiKey))
+        {
+            return "openrouter";
         }
 
         if (!string.IsNullOrWhiteSpace(openAiApiKey) && string.IsNullOrWhiteSpace(anthropicApiKey))
@@ -195,6 +219,11 @@ public sealed class BrokerModelSettings
             return "openai";
         }
 
+        if (!string.IsNullOrWhiteSpace(openRouterApiKey))
+        {
+            return "openrouter";
+        }
+
         return "anthropic";
     }
 
@@ -210,6 +239,7 @@ public sealed class BrokerModelSettings
         {
             "anthropic" => "anthropic",
             "openai" => "openai",
+            "openrouter" or "open-router" or "open_router" => "openrouter",
             "ollama" => "ollama",
             "lmstudio" or "lm-studio" or "lm_studio" => "lmstudio",
             _ => normalizedProvider

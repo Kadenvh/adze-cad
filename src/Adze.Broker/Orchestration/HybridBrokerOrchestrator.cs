@@ -12,6 +12,22 @@ namespace Adze.Broker.Orchestration;
 
 public sealed class HybridBrokerOrchestrator : IBrokerOrchestrator
 {
+    /// <summary>
+    /// Per-run diagnostic string populated during <see cref="CreateGroundingPlan(SessionContext, string, bool)"/>.
+    /// Host layer reads this after each call to surface planning-phase model outcomes
+    /// (success, skipped, or failed with reason) in host.log. Cleared at the start of
+    /// every run. Thread-safety: set via <see cref="System.Threading.Interlocked"/>.
+    /// </summary>
+    public static string LastPlanningOutcome { get; private set; } = string.Empty;
+
+    internal static void SetLastPlanningOutcome(string outcome)
+    {
+        System.Threading.Interlocked.Exchange(ref _lastPlanningOutcome, outcome ?? string.Empty);
+        LastPlanningOutcome = _lastPlanningOutcome;
+    }
+
+    private static string _lastPlanningOutcome = string.Empty;
+
     private readonly KeywordBrokerOrchestrator _fallbackOrchestrator;
     private readonly IModelClient? _modelClient;
 
@@ -36,11 +52,13 @@ public sealed class HybridBrokerOrchestrator : IBrokerOrchestrator
         BrokerResponse fallbackResponse = _fallbackOrchestrator.CreateGroundingPlan(context, userRequest, isApplicationConnected);
         if (!ShouldAttemptModel(fallbackResponse))
         {
+            SetLastPlanningOutcome("skipped — turn_status=" + fallbackResponse.TurnStatus);
             return fallbackResponse;
         }
 
         if (_modelClient == null)
         {
+            SetLastPlanningOutcome("skipped — no model client (provider unconfigured or gate off)");
             return fallbackResponse;
         }
 
@@ -48,9 +66,20 @@ public sealed class HybridBrokerOrchestrator : IBrokerOrchestrator
         ModelTurnResult modelTurn = _modelClient.Complete(prompt);
         if (!modelTurn.Success || modelTurn.Response == null)
         {
+            string reason = string.IsNullOrWhiteSpace(modelTurn.FailureReason)
+                ? "unknown"
+                : modelTurn.FailureReason;
+            SetLastPlanningOutcome(
+                "failed — provider=" + modelTurn.Provider +
+                " model=" + modelTurn.Model +
+                " reason=" + reason);
             return fallbackResponse;
         }
 
+        SetLastPlanningOutcome(
+            "ok — provider=" + modelTurn.Provider +
+            " model=" + modelTurn.Model +
+            " model_tools=" + modelTurn.Response.RecommendedTools.Count);
         return MergeResponses(context, fallbackResponse, modelTurn.Response, modelTurn.Provider, modelTurn.Model);
     }
 

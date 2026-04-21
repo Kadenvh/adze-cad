@@ -21,6 +21,10 @@ public sealed class BrokerModelSettingsTests
         "OPENAI_API_KEY",
         "SOLIDWORKS_AI_OPENAI_MODEL",
         "SOLIDWORKS_AI_OPENAI_ENDPOINT",
+        "SOLIDWORKS_AI_OPENROUTER_API_KEY",
+        "OPENROUTER_API_KEY",
+        "SOLIDWORKS_AI_OPENROUTER_MODEL",
+        "SOLIDWORKS_AI_OPENROUTER_ENDPOINT",
         "SOLIDWORKS_AI_OLLAMA_ENDPOINT",
         "SOLIDWORKS_AI_OLLAMA_MODEL",
         "SOLIDWORKS_AI_LMSTUDIO_ENDPOINT",
@@ -37,9 +41,16 @@ public sealed class BrokerModelSettingsTests
         "SOLIDWORKS_AI_ANTHROPIC_TEMPERATURE"
     };
 
+    // Preserve the user's ApiKeyStore across test runs — tests clear it for
+    // deterministic behavior, then restore it in TearDown so we don't nuke
+    // the key that the Settings panel wrote.
+    private (string? Provider, string? Key) _savedKeyStore;
+
     [SetUp]
     public void SetUp()
     {
+        _savedKeyStore = ApiKeyStore.Load();
+        ApiKeyStore.Clear();
         foreach (string name in EnvVarNames)
         {
             Environment.SetEnvironmentVariable(name, null);
@@ -52,6 +63,10 @@ public sealed class BrokerModelSettingsTests
         foreach (string name in EnvVarNames)
         {
             Environment.SetEnvironmentVariable(name, null);
+        }
+        if (!string.IsNullOrWhiteSpace(_savedKeyStore.Provider) && _savedKeyStore.Key != null)
+        {
+            ApiKeyStore.Save(_savedKeyStore.Provider!, _savedKeyStore.Key);
         }
     }
 

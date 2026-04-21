@@ -988,6 +988,7 @@ internal static class HostState
             "deterministic_fallback" => "Built-in broker",
             "model_openai" => "OpenAI",
             "model_anthropic" => "Anthropic",
+            "model_openrouter" => "OpenRouter",
             "agent_loop" => "AI agent",
             "agent_fallback" => "AI agent (fallback)",
             _ => source
@@ -1122,6 +1123,9 @@ internal static class HostState
             ? "    Tokens: " + runUsage.TotalTokens + " (prompt=" + runUsage.PromptTokens + " completion=" + runUsage.CompletionTokens + ")"
             : string.Empty;
 
+        string synthesisReason = !string.IsNullOrWhiteSpace(synthesis.FailureReason)
+            ? " synthesis_reason=\"" + synthesis.FailureReason.Replace("\"", "'") + "\""
+            : string.Empty;
         FileLogger.Info(
             "Assistant run completed. trace=" +
             recorded.TraceEvent.TraceId +
@@ -1132,7 +1136,17 @@ internal static class HostState
             " tool_count=" +
             report.ToolResults.Count +
             " synthesis_fallback=" +
-            (!string.IsNullOrWhiteSpace(synthesis.FailureReason)).ToString());
+            (!string.IsNullOrWhiteSpace(synthesis.FailureReason)).ToString() +
+            synthesisReason);
+
+        // Stats event — richer completion summary mirroring the Task Pane Status section.
+        // Emits budget % (best effort) and pending-writes count alongside the base summary.
+        FileLogger.Info(
+            "Stats: run=" + _sessionRunCount +
+            " session_tokens=" + _sessionUsage.TotalTokens +
+            " (prompt=" + _sessionUsage.PromptTokens +
+            " completion=" + _sessionUsage.CompletionTokens + ")" +
+            " pending_writes=" + _pendingWrites.Count);
 
         return new AssistantRunSnapshot
         {
