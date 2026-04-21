@@ -110,8 +110,11 @@ public sealed class BrokerModelSettings
             activeApiKey = openRouterApiKey;
             activeModel = DefaultIfBlank(openRouterModel, "anthropic/claude-sonnet-4");
             activeEndpoint = EnsureChatCompletionsPath(DefaultIfBlank(openRouterEndpoint, "https://openrouter.ai/api/v1/chat/completions"));
-            defaultTimeoutMs = 20000;
-            defaultSynthesisTimeoutMs = 30000;
+            // OpenRouter is a routing proxy layer — cross-provider round-trip is
+            // slower than direct OpenAI/Anthropic. Bump defaults above the 20s/30s
+            // cloud baseline without going all the way to the local-provider 60s/90s.
+            defaultTimeoutMs = 45000;
+            defaultSynthesisTimeoutMs = 60000;
         }
         else
         {

@@ -181,17 +181,39 @@ internal static class GroundingExecutionService
                     : string.Empty;
                 FileLogger.Info(
                     "Tool " + recommendation.ToolName + " " + outcome +
-                    " duration_ms=" + watch.ElapsedMilliseconds +
+                    " duration=" + FormatDuration(watch.ElapsedTicks) +
+                    " result_keys=" + result.Data.Count +
                     warningText);
             }
             else
             {
                 FileLogger.Info(
                     "Tool " + recommendation.ToolName + " skipped (unknown tool name)" +
-                    " duration_ms=" + watch.ElapsedMilliseconds);
+                    " duration=" + FormatDuration(watch.ElapsedTicks));
             }
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Human-readable duration string at sensible precision:
+    /// µs for sub-millisecond (grounding tools on already-captured context),
+    /// ms for 1-999ms, s for long-running calls (retrieval, rebuild).
+    /// Avoids the "duration_ms=0" misread surfaced 2026-04-21 R5.7 testing.
+    /// </summary>
+    private static string FormatDuration(long ticks)
+    {
+        double microseconds = (double)ticks * 1_000_000.0 / Stopwatch.Frequency;
+        if (microseconds < 1000)
+        {
+            return ((int)microseconds).ToString() + "µs";
+        }
+        double ms = microseconds / 1000.0;
+        if (ms < 1000)
+        {
+            return ms.ToString("0.#") + "ms";
+        }
+        return (ms / 1000.0).ToString("0.##") + "s";
     }
 }

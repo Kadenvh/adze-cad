@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using Adze.Broker.Configuration;
+using Adze.Broker.Infrastructure;
 
 namespace Adze.Broker.Clients;
 
@@ -49,6 +50,10 @@ public static class ToolCallCapabilityProbe
         _cachedResult = result;
         _cachedProvider = settings.Provider;
         _cachedModel = settings.Model;
+        BrokerDiagnostics.Info(
+            "ToolProbe: provider=" + settings.Provider +
+            " model=" + settings.Model +
+            " capability=" + result.Capability);
         return result;
     }
 

@@ -120,6 +120,15 @@ internal static class HostState
     private static string? _probeFailureMessage;
     private static string? _probeFailedStep;
     private static string? _probeRevision;
+    // Phase tracker for cancellation diagnostics. Set by run paths as they
+    // progress through stages (planning, tools, synthesis, streaming). Read
+    // on cancel so host.log shows WHERE the user cancelled.
+    private static volatile string _currentRunPhase = "idle";
+
+    internal static void SetRunPhase(string phase)
+    {
+        _currentRunPhase = string.IsNullOrWhiteSpace(phase) ? "unknown" : phase;
+    }
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
 
@@ -158,11 +167,14 @@ internal static class HostState
 
     public static void CancelRun()
     {
+        string phase;
         lock (Sync)
         {
+            phase = _currentRunPhase;
             _currentRunCts?.Cancel();
             _telemetry.RecordCancellation("user");
         }
+        FileLogger.Info("Run cancelled by user at phase=" + phase);
     }
 
     public static void EndRun()
@@ -227,6 +239,7 @@ internal static class HostState
             invoker = _quickActionInvoker;
         }
 
+        FileLogger.Info("Entry: quick-action invoked key=" + (actionKey ?? "<null>"));
         invoker?.Invoke(actionKey ?? string.Empty);
     }
 
@@ -303,6 +316,9 @@ internal static class HostState
             snapshot = new List<PendingWriteAction>(_pendingWrites);
             _telemetry.RecordWritePlanBatchApplied();
         }
+        int pending = 0;
+        foreach (var pw in snapshot) if (!pw.Applied && !pw.Cancelled) pending++;
+        FileLogger.Info("Write batch: applying " + pending + " pending action(s)");
         for (int i = 0; i < snapshot.Count; i++)
         {
             if (snapshot[i].Applied || snapshot[i].Cancelled)
@@ -317,6 +333,7 @@ internal static class HostState
 
     public static void CancelAllPendingWrites()
     {
+        int cancelled = 0;
         lock (Sync)
         {
             foreach (var pw in _pendingWrites)
@@ -326,8 +343,13 @@ internal static class HostState
                     pw.Cancelled = true;
                     pw.ResultMessage = "Cancelled by user.";
                     _telemetry.RecordWriteCancelled();
+                    cancelled++;
                 }
             }
+        }
+        if (cancelled > 0)
+        {
+            FileLogger.Info("Write batch cancel: " + cancelled + " pending write(s) discarded by user");
         }
     }
 
@@ -370,6 +392,13 @@ internal static class HostState
                 });
                 _telemetry.RecordWriteApplied();
             }
+            // Write success log — closes the apply loop visible in host.log so operators
+            // can see exactly what was modified and the undo label to look for in SW.
+            FileLogger.Info(
+                "Write " + action.ToolName + " applied: " +
+                (action.Preview?.Summary ?? action.ToolName) +
+                " undo_label=\"" + (action.UndoLabel ?? "(none)") + "\"" +
+                " result=\"" + (result ?? string.Empty) + "\"");
             return result;
         }
         catch (Exception ex)
@@ -387,14 +416,20 @@ internal static class HostState
 
     public static void CancelPendingWrite(int index)
     {
+        string? toolName = null;
         lock (Sync)
         {
             if (index >= 0 && index < _pendingWrites.Count)
             {
+                toolName = _pendingWrites[index].ToolName;
                 _pendingWrites[index].Cancelled = true;
                 _pendingWrites[index].ResultMessage = "Cancelled by user.";
                 _telemetry.RecordWriteCancelled();
             }
+        }
+        if (toolName != null)
+        {
+            FileLogger.Info("Write " + toolName + " cancelled by user (index=" + index + ")");
         }
     }
 
@@ -885,6 +920,19 @@ internal static class HostState
             {
                 _telemetry.RecordToolCall(tool.ToolName, tool.IsError);
             }
+        }
+
+        // Tools Log event — parity with classic path. One INFO line per agent-executed
+        // tool so both code paths produce equivalent diagnostic detail in host.log.
+        foreach (var tool in result.ExecutedTools)
+        {
+            string outcome = tool.IsError ? "fail" : "ok";
+            FileLogger.Info(
+                "Tool " + tool.ToolName + " " + outcome + " (agent) ");
+        }
+
+        lock (Sync)
+        {
             if (writeTracker.CapturedWrites.Count > 0)
             {
                 for (int w = 0; w < writeTracker.CapturedWrites.Count; w++)

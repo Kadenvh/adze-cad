@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using Adze.Broker.Configuration;
+using Adze.Broker.Infrastructure;
 
 namespace Adze.Broker.Clients;
 
@@ -49,12 +50,21 @@ public static class LocalEndpointHealthCheck
             using var reader = new StreamReader(responseStream ?? Stream.Null, Encoding.UTF8);
             string responseText = reader.ReadToEnd();
 
-            return ParseModelsResponse(responseText, settings.Model, settings.Provider);
+            LocalHealthResult result = ParseModelsResponse(responseText, settings.Model, settings.Provider);
+            BrokerDiagnostics.Info(
+                "HealthCheck: " + settings.Provider + " status=" + result.Status +
+                " endpoint=" + modelsUrl +
+                " model=" + settings.Model);
+            return result;
         }
         catch (WebException ex) when (ex.Status == WebExceptionStatus.ConnectFailure ||
                                        ex.Status == WebExceptionStatus.Timeout ||
                                        ex.Status == WebExceptionStatus.NameResolutionFailure)
         {
+            BrokerDiagnostics.Info(
+                "HealthCheck: " + settings.Provider + " status=Unreachable" +
+                " endpoint=" + modelsUrl +
+                " reason=" + ex.Status);
             return new LocalHealthResult
             {
                 Status = LocalHealthStatus.Unreachable,

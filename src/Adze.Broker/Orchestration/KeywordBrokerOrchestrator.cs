@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Adze.Broker.Abstractions;
+using Adze.Broker.Infrastructure;
 using Adze.Broker.Models;
 using Adze.Contracts.Models;
 using Adze.Contracts.Tooling;
@@ -429,7 +430,12 @@ public sealed class KeywordBrokerOrchestrator : IBrokerOrchestrator
             string trimmed = pair.Trim();
             if (trimmed.StartsWith("intent=", StringComparison.OrdinalIgnoreCase))
             {
-                return trimmed.Substring("intent=".Length).Trim();
+                string intent = trimmed.Substring("intent=".Length).Trim();
+                if (!string.IsNullOrWhiteSpace(intent))
+                {
+                    BrokerDiagnostics.Info("Clarification: intent=" + intent + " detected from pre-prompt UI");
+                }
+                return intent;
             }
         }
 

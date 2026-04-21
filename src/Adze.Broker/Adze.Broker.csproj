@@ -80,6 +80,7 @@
     <Compile Include="Configuration\FeatureGateConfigService.cs" />
     <Compile Include="Configuration\FeatureGateRegistry.cs" />
     <Compile Include="Configuration\SwBuildStateService.cs" />
+    <Compile Include="Infrastructure\BrokerDiagnostics.cs" />
     <Compile Include="Formatting\ContextPromptComposer.cs" />
     <Compile Include="Formatting\GroundingAnswerBuilder.cs" />
     <Compile Include="Formatting\GroundingToolResultsBuilder.cs" />

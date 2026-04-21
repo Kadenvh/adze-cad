@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Adze.Broker.Infrastructure;
 using Adze.Contracts.Abstractions;
 using Adze.Contracts.Enums;
 using Adze.Contracts.Models;
@@ -48,7 +49,23 @@ public sealed class AgentPolicyEngine : IAgentPolicyEngine
     public PolicyEvaluation Evaluate(string toolName, SessionContext context, string userId)
     {
         ToolUnlockTier currentTier = _trustService.GetCurrentTier(userId);
+        PolicyEvaluation evaluation = EvaluateCore(toolName, context, currentTier);
 
+        // Log every Deny outcome so "why didn't my write go through" is diagnosable from host.log.
+        if (evaluation.Policy == ToolExecutionPolicy.Deny)
+        {
+            BrokerDiagnostics.Info(
+                "Policy: DENY tool=" + toolName +
+                " current_tier=" + currentTier +
+                " required_tier=" + evaluation.RequiredTier +
+                " reason=\"" + evaluation.Reason + "\"");
+        }
+
+        return evaluation;
+    }
+
+    private PolicyEvaluation EvaluateCore(string toolName, SessionContext context, ToolUnlockTier currentTier)
+    {
         // Read tools always allowed
         if (ReadTools.Contains(toolName))
         {

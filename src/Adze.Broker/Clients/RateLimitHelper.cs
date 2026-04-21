@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Threading;
+using Adze.Broker.Infrastructure;
 
 namespace Adze.Broker.Clients;
 
@@ -80,11 +81,21 @@ public static class RateLimitHelper
     /// </summary>
     public static void RecordRateLimitWindow(int durationMs)
     {
+        bool opened;
         lock (_lock)
         {
             var newExpiry = DateTimeOffset.UtcNow.AddMilliseconds(durationMs);
+            opened = _rateLimitExpiresUtc < DateTimeOffset.UtcNow;
             if (newExpiry > _rateLimitExpiresUtc)
                 _rateLimitExpiresUtc = newExpiry;
+        }
+        if (opened)
+        {
+            BrokerDiagnostics.Info("RateLimit: window opened duration_ms=" + durationMs);
+        }
+        else
+        {
+            BrokerDiagnostics.Info("RateLimit: window extended by " + durationMs + "ms");
         }
     }
 
@@ -142,9 +153,15 @@ public static class RateLimitHelper
     /// </summary>
     public static void ResetWindow()
     {
+        bool wasOpen;
         lock (_lock)
         {
+            wasOpen = DateTimeOffset.UtcNow < _rateLimitExpiresUtc;
             _rateLimitExpiresUtc = DateTimeOffset.MinValue;
+        }
+        if (wasOpen)
+        {
+            BrokerDiagnostics.Info("RateLimit: window closed (reset)");
         }
     }
 }

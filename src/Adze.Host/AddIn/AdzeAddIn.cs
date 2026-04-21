@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swpublished;
 using Adze.Broker.Configuration;
+using Adze.Broker.Infrastructure;
 using Adze.Host.Infrastructure;
 using Adze.Host.UI;
 
@@ -47,6 +48,15 @@ public sealed class AdzeAddIn : ISwAddin
             _cookie = cookie;
 
             FileLogger.Info("ConnectToSW starting.");
+
+            // Subscribe the broker-layer diagnostic channel to host.log so broker,
+            // tools, and index classes can emit diagnostics without referencing
+            // Adze.Host.Infrastructure.FileLogger. Idempotent subscribe — event
+            // add is safe even if Connect happens twice within one SW session
+            // (delegate equality dedups). Unsubscribe on Disconnect.
+            BrokerDiagnostics.OnInfo -= FileLogger.Info;
+            BrokerDiagnostics.OnInfo += FileLogger.Info;
+
             HostState.SetApplication(_application);
             _application.SetAddinCallbackInfo2(0, new DispatchWrapper(this), _cookie);
             AttachApplicationEvents();
@@ -81,6 +91,7 @@ public sealed class AdzeAddIn : ISwAddin
         try
         {
             FileLogger.Info("DisconnectFromSW starting.");
+            BrokerDiagnostics.OnInfo -= FileLogger.Info;
             HandlePreUpdateEjectIfNeeded();
             TryUnregisterContextMenu();
             TryUnregisterRibbon();

@@ -1778,6 +1778,11 @@ scrollToBottom();
                 Adze.Broker.Configuration.FeatureGateRegistry.EnableModel, true);
             Adze.Broker.Configuration.FeatureGateRegistry.InvalidateCache();
 
+            FileLogger.Info(
+                "Settings: provider=" + normalizedProvider +
+                " key_saved=true key_length=" + keyValue.Trim().Length +
+                " enable_model_gate=true");
+
             _runStateLabel.Text = "API key saved for " + normalizedProvider +
                 ". Restart SOLIDWORKS to activate.";
             RenderContent();
@@ -1797,6 +1802,7 @@ scrollToBottom();
         try
         {
             Adze.Broker.Configuration.ApiKeyStore.Clear();
+            FileLogger.Info("Settings: key cleared");
             _runStateLabel.Text = "Stored API key cleared.";
             RenderContent();
         }
@@ -1842,6 +1848,11 @@ scrollToBottom();
         if (index < 0 || index >= recipes.Count) return;
         var recipe = recipes[index];
 
+        FileLogger.Info(
+            "Recipe: invoked id=" + recipe.RecipeId +
+            " title=\"" + recipe.Title + "\"" +
+            " state=" + recipe.PromotionState);
+
         // Populate the request box with the recipe intent and auto-run
         _requestBox.Text = recipe.Intent;
         _requestPlaceholderActive = false;
@@ -1858,6 +1869,9 @@ scrollToBottom();
         if (string.Equals(recipe.PromotionState, "review_ready", StringComparison.OrdinalIgnoreCase))
         {
             Adze.Trace.Recipes.AgentRecipeCaptureService.Promote(recipe.RecipeId);
+            FileLogger.Info(
+                "Recipe: promoted id=" + recipe.RecipeId +
+                " title=\"" + recipe.Title + "\"");
             _runStateLabel.Text = "Recipe promoted: " + recipe.Title;
             RenderContent();
         }
