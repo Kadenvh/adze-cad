@@ -192,6 +192,15 @@ internal static class HostState
         {
             _application = application;
         }
+        // Reset per-SW-session chat file path so the next ConnectToSW starts
+        // a fresh session-<timestamp>.jsonl. Disconnect triggers this via null.
+        lock (_chatFileLock)
+        {
+            if (application == null)
+            {
+                _chatFilePath = null;
+            }
+        }
     }
 
     public static ISldWorks? GetApplication()
@@ -739,18 +748,30 @@ internal static class HostState
         return RunAssistantUnsafe(preparation.Context, preparation.Request, preparation.IsApplicationConnected, onStreamChunk, onProgress);
     }
 
+    // Debounce burst snapshots (selection thrashing fires NewSelection/ClearSelection
+    // dozens of times per second when user scrubs). Coalesce same-reason snapshots
+    // within a 300ms window — first one logs, subsequent ones are silently merged
+    // into the existing snapshot state without re-emitting log lines.
+    private static string? _lastSnapshotReason;
+    private static DateTimeOffset _lastSnapshotTime = DateTimeOffset.MinValue;
+    private static readonly TimeSpan _snapshotDebounceWindow = TimeSpan.FromMilliseconds(300);
+
     public static void LogSnapshot(string reason)
     {
         try
         {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            bool suppress;
+            lock (Sync)
+            {
+                suppress = string.Equals(_lastSnapshotReason, reason, StringComparison.Ordinal)
+                    && (now - _lastSnapshotTime) < _snapshotDebounceWindow;
+                _lastSnapshotReason = reason;
+                _lastSnapshotTime = now;
+            }
+
             ISldWorks? application = GetApplicationSnapshot();
             GroundingDashboardSnapshot snapshot = BuildSnapshotUnsafe(application);
-
-            FileLogger.Info(
-                "Snapshot captured. reason=" + reason +
-                " tool_count=" + snapshot.ToolResults.Count +
-                " achievements=" + snapshot.AchievementCount +
-                " review_ready_recipes=" + snapshot.ReviewReadyCandidateCount);
             GroundingSnapshotStore.WriteLatest(new GroundingSnapshotRecord
             {
                 Reason = reason,
@@ -763,13 +784,20 @@ internal static class HostState
             });
 
             RecordedSnapshot recorded = TraceRecorder.RecordGroundingSnapshot(reason, snapshot.ToolResults, UserId);
-            FileLogger.Info(
-                "Trace recorded: " +
-                recorded.TraceEvent.TraceId +
-                " tier=" +
-                recorded.ProgressionState.ToolUnlockTier +
-                " exploration=" +
-                recorded.ProgressionState.ExplorationPercent.ToString("0.0"));
+
+            // Fold Snapshot + Trace into one log line (was 2-line pair — redundant).
+            // Suppress when debouncing — trace still records to disk, just no log noise.
+            if (!suppress)
+            {
+                FileLogger.Info(
+                    "Snapshot: reason=" + reason +
+                    " tool_count=" + snapshot.ToolResults.Count +
+                    " achievements=" + snapshot.AchievementCount +
+                    " recipes_review_ready=" + snapshot.ReviewReadyCandidateCount +
+                    " trace=" + recorded.TraceEvent.TraceId +
+                    " tier=" + recorded.ProgressionState.ToolUnlockTier +
+                    " exploration=" + recorded.ProgressionState.ExplorationPercent.ToString("0.0"));
+            }
         }
         catch (Exception ex)
         {
@@ -795,6 +823,16 @@ internal static class HostState
 
     private static AssistantRunSnapshot RunAssistantUnsafe(SessionContext context, string request, bool isApplicationConnected, Action<string>? onStreamChunk, Action<AgentProgressUpdate>? onProgress)
     {
+        // User query prefix — log a preview before dispatching. Partner-facing diagnostic:
+        // reviewers reading host.log see what was asked without opening per-trace files.
+        // Truncated at 500 chars to avoid flooding; full prompt still lands in the
+        // trace file's intent field and in the chat-history JSONL on this turn.
+        string preview = request ?? string.Empty;
+        if (preview.Length > 500) preview = preview.Substring(0, 500) + "…";
+        // Collapse newlines for single-line log format
+        preview = preview.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        FileLogger.Info("UserQuery: \"" + preview + "\" (length=" + (request?.Length ?? 0) + ")");
+
         // Clear chat history if the active document changed
         string currentDocKey = context.Document?.Path ?? string.Empty;
         lock (Sync)
@@ -831,19 +869,74 @@ internal static class HostState
         }
 
         // Record in chat history
+        ChatEntry entry = new ChatEntry
+        {
+            UserMessage = request,
+            AssistantMessage = snapshot.AnswerText,
+            Source = snapshot.AnswerSource,
+            Footer = snapshot.AnswerFooterText,
+            TimestampUtc = DateTimeOffset.UtcNow
+        };
         lock (Sync)
         {
-            _chatHistory.Add(new ChatEntry
-            {
-                UserMessage = request,
-                AssistantMessage = snapshot.AnswerText,
-                Source = snapshot.AnswerSource,
-                Footer = snapshot.AnswerFooterText,
-                TimestampUtc = DateTimeOffset.UtcNow
-            });
+            _chatHistory.Add(entry);
+        }
+
+        // Answer preview — response text was previously in-memory only, dying with SW.
+        // Log first 500 chars + total length so host.log has a durable record and partner
+        // reviewers can verify what the AI actually said without opening SW.
+        string answerPreview = snapshot.AnswerText ?? string.Empty;
+        int answerLen = answerPreview.Length;
+        if (answerPreview.Length > 500) answerPreview = answerPreview.Substring(0, 500) + "…";
+        answerPreview = answerPreview.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        FileLogger.Info("Answer: \"" + answerPreview + "\" (length=" + answerLen + ")");
+
+        // Per-turn chat history persistence — writes each turn to a JSONL file so the
+        // full conversation (prompt + full response text) survives SW close and supports
+        // replay / post-session learning. File rotates daily; one file per SW session
+        // is possible via WriteChatTurn's session-scoped naming.
+        try
+        {
+            WriteChatTurn(entry, snapshot.TraceId);
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("Chat history persist failed (continuing).", ex);
         }
 
         return snapshot;
+    }
+
+    private static readonly object _chatFileLock = new();
+    private static string? _chatFilePath;
+
+    private static void WriteChatTurn(ChatEntry entry, string? traceId)
+    {
+        string dir = System.IO.Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData),
+            "Adze", "chat");
+        if (!System.IO.Directory.Exists(dir))
+            System.IO.Directory.CreateDirectory(dir);
+        lock (_chatFileLock)
+        {
+            if (_chatFilePath == null)
+            {
+                string stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                _chatFilePath = System.IO.Path.Combine(dir, "session-" + stamp + ".jsonl");
+            }
+        }
+        var serializer = new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+        var payload = new System.Collections.Generic.Dictionary<string, object?>
+        {
+            ["timestamp_utc"] = entry.TimestampUtc.UtcDateTime.ToString("o"),
+            ["trace_id"] = traceId ?? string.Empty,
+            ["user"] = entry.UserMessage ?? string.Empty,
+            ["assistant"] = entry.AssistantMessage ?? string.Empty,
+            ["source"] = entry.Source ?? string.Empty,
+            ["footer"] = entry.Footer ?? string.Empty
+        };
+        string line = serializer.Serialize(payload);
+        System.IO.File.AppendAllText(_chatFilePath!, line + "\n");
     }
 
     private static AssistantRunSnapshot RunAgenticAssistant(SessionContext context, string request, IAgentModelClient agentClient, Action<string>? onStreamChunk = null, Action<AgentProgressUpdate>? onProgress = null)

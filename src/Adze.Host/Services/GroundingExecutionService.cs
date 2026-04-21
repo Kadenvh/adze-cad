@@ -179,11 +179,18 @@ internal static class GroundingExecutionService
                 string warningText = result.Warnings.Count > 0
                     ? " warnings=" + result.Warnings.Count
                     : string.Empty;
+                string summaryPreview = result.Summary ?? string.Empty;
+                if (summaryPreview.Length > 120) summaryPreview = summaryPreview.Substring(0, 120) + "…";
+                summaryPreview = summaryPreview.Replace('\r', ' ').Replace('\n', ' ').Trim();
+                string summaryText = string.IsNullOrWhiteSpace(summaryPreview)
+                    ? string.Empty
+                    : " summary=\"" + summaryPreview + "\"";
                 FileLogger.Info(
                     "Tool " + recommendation.ToolName + " " + outcome +
                     " duration=" + FormatDuration(watch.ElapsedTicks) +
                     " result_keys=" + result.Data.Count +
-                    warningText);
+                    warningText +
+                    summaryText);
             }
             else
             {
