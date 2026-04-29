@@ -36,15 +36,63 @@ See [SETUP.md](SETUP.md) for detailed configuration and troubleshooting.
 
 | Directory | What goes here |
 |-----------|---------------|
-| `src/Adze.Host` | SOLIDWORKS add-in lifecycle, Task Pane UI, COM access |
-| `src/Adze.Broker` | AI orchestration, provider clients, prompt composition |
-| `src/Adze.Tools` | Tool implementations (read and write) |
-| `src/Adze.Trace` | Trace persistence, recipes, progression |
-| `src/Adze.Index` | Closed-file OLE indexer |
-| `src/Adze.Contracts` | Shared types, enums, contracts |
-| `tests/Adze.Tests` | NUnit 3 unit tests |
+| `src/Adze.Host` | SOLIDWORKS add-in lifecycle, Task Pane UI, COM access; hosts both legacy `TaskPaneControl` and the v1.1 `NativeTaskPaneControlShim` |
+| `src/Adze.Broker` | AI orchestration, provider clients, prompt composition, feature gates, UI preferences |
+| `src/Adze.Tools` | Tool implementations (10 read + 1 retrieval + 7 write) |
+| `src/Adze.Trace` | Trace persistence, snapshot serialization (`ModelJsonMapper`), recipes, progression |
+| `src/Adze.Index` | Closed-file OLE indexer (no COM dependency) |
+| `src/Adze.Contracts` | Shared types, enums, tool contracts, `ITaskPaneHost` interface |
+| `src/Adze.UI` | Native WinForms sidebar v2 — `NativeTaskPaneControl`, `ChatMessageView`, `WriteCardView`, `QuickActionsBar`, `MarkdownToRichText`. No SOLIDWORKS interop, runs anywhere WinForms runs |
+| `src/Adze.Manager` | Standalone WinForms control panel (`Adze.Manager.exe`) — install / uninstall / eject + 4 tabs (Logs / Settings / Agent Profile / Status) + Verify Setup button |
+| `src/Adze.UiHarness` | Out-of-SOLIDWORKS dev shell — mounts the new sidebar against a stub `ITaskPaneHost` for hot iteration without SW |
+| `tests/Adze.Tests` | NUnit 3 unit tests across all layers |
 | `schemas/` | JSON schemas for context, tools, and traces |
 | `scripts/setup/` | Build, test, validation, and registration scripts |
+| `docs/adr/` | Architecture Decision Records (public) |
+| `graphify-out/` | Knowledge graph — see "Code-orientation tools" below |
+
+## Code-orientation tools (for new contributors and AI agents)
+
+Adze ships two layers of code intelligence to help you find your way around:
+
+- **`graphify-out/graph.html`** — interactive knowledge graph with full-text search, community clustering, and god-node analysis. Open it in any browser, no server needed. Best entry point for "how does X relate to Y across the codebase."
+- **`graphify-out/GRAPH_REPORT.md`** — markdown report with the most-connected symbols (god nodes), surprising cross-community connections, and suggested orientation questions. Read this first if you're new.
+- **`graphify-out/graph.json`** — raw graph data (nodes + edges + communities). Use programmatically.
+
+The committed graph is a snapshot — it goes mildly stale between commits. To refresh against the current tree:
+
+```bash
+# Inside Claude Code (recommended): regenerates with full LLM extraction
+/graphify .
+
+# Or, via standalone CLI (no API cost, AST-only)
+npx graphify analyze
+```
+
+The intermediate cache (`graphify-out/cache/`, `.graphify_chunk_*.json`, `manifest.json`, `cost.json`) is gitignored — only the user-facing outputs are tracked.
+
+For symbol-level impact analysis (callers, blast radius, route maps), Adze is also indexed by **GitNexus**. Regenerate the index with `npx gitnexus analyze` — the `.gitnexus/` directory is gitignored because it's binary + machine-specific paths.
+
+## Hot UI iteration (without SOLIDWORKS)
+
+Adze's sidebar UI lives in `Adze.UI` and is mounted via the `ITaskPaneHost` interface — meaning you can iterate on UI changes without launching SOLIDWORKS at all. Use the dev harness:
+
+```powershell
+# Build the solution, then:
+src\Adze.UiHarness\bin\Debug\Adze.UiHarness.exe
+```
+
+The harness loads real `SessionContext` JSON snapshots from `%LOCALAPPDATA%\Adze\snapshots\` (Adze.Trace writes these during normal SW sessions) and mounts the new sidebar against a stub host. UI iteration round-trip drops from minutes (rebuild → uninstall → reinstall → relaunch SW) to seconds.
+
+When you're ready to test inside SOLIDWORKS, set the gate and reload:
+
+```powershell
+setx SOLIDWORKS_AI_NATIVE_SIDEBAR true
+# Fully close SLDWORKS.exe AND 3DEXPERIENCE Launcher (env vars don't propagate to running processes)
+# Then relaunch SW
+```
+
+The legacy `TaskPaneControl` (WebBrowser-based) stays registered as the default fallback. With the gate ON, `AdzeAddIn.CreateTaskPane()` mounts `NativeTaskPaneControlShim` → `NativeTaskPaneControl` instead.
 
 ## Conventions
 

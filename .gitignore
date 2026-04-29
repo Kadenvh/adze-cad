@@ -22,11 +22,30 @@ Thumbs.db
 desktop.ini
 
 # Runtime artifacts
-%TMPREG%
 *.tmp
 
 # Logs
 *.log
+
+# Root-level screenshots and dev artifacts (committed images go under docs/)
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/Screenshot*
+
+# Knowledge graph: track the OUTPUTS that help external contributors orient
+# (graph.html search UI, graph.json data, GRAPH_REPORT.md god-node summary)
+# but ignore intermediate cache + chunk artifacts that are large + regenerable.
+# Regenerate via: /graphify .  (Claude Code skill)
+graphify-out/cache/
+graphify-out/.graphify_*.json
+graphify-out/manifest.json
+graphify-out/cost.json
+
+# Ad-hoc test reports / debugging output at root (not standard project docs)
+/Eject*.md
+/Test-Report*.md
 
 # Diagnostic logs and downloads
 plans/diagnostics/logs/

@@ -4,9 +4,9 @@
 
 Adze is a free, in-process SOLIDWORKS add-in. It reads your active document through 18 typed tools, reasons over the results with an agentic AI loop, and delivers grounded answers in a conversational Task Pane. Write operations follow an 8-step safety lifecycle: plan, preview, approve, apply, verify, trace, undo-label, and history. Nothing leaves your machine unless you choose a cloud provider.
 
-> **Current status:** v0.1.1 shipped. **v1.0.0 in development, not yet released.** An update-lifecycle compatibility issue is being investigated — Adze must cooperate with SOLIDWORKS / 3DEXPERIENCE updates without causing crashes or blocking the updater. No new public release until that is resolved. The v0.1.1 public-beta release remains the last stable build.
+> **Current status:** v0.1.1 shipped. **v1.0.0 PAUSED. v1.1 UI rebuild = primary track.** The v1.0 release path was paused after R5.3/R5.4 unblocked — the team prioritised a native-WinForms sidebar rebuild over shipping the v1.0 polish to address a perception gap (the IE11 WebBrowser sidebar feels embedded rather than native to SOLIDWORKS). The v0.1.1 public-beta release remains the last stable build. The legacy WebBrowser sidebar is still the default; the new native sidebar lands behind a feature gate (`SOLIDWORKS_AI_NATIVE_SIDEBAR`, default OFF) until the new surface is verified live.
 >
-> 18 typed tools (10 read + 1 retrieval + 7 write), 684 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required.
+> 18 typed tools (10 read + 1 retrieval + 7 write), 767 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required.
 
 ---
 
@@ -140,6 +140,7 @@ See [SETUP.md](SETUP.md) for all provider options, feature gates, and environmen
 | `SOLIDWORKS_AI_FIRST_WAVE_WRITES` | `false` | Write tool definitions in agent loop |
 | `SOLIDWORKS_AI_RETRIEVAL` | `false` | Closed-file search tool |
 | `SOLIDWORKS_AI_STREAM_FINAL_TEXT` | `false` | SSE streaming for real-time answers |
+| `SOLIDWORKS_AI_NATIVE_SIDEBAR` | `false` | **v1.1 native WinForms sidebar** (replaces legacy WebBrowser sidebar). See [Switching to the v1.1 sidebar](SETUP.md#switching-to-the-v11-native-sidebar) in SETUP. |
 
 ---
 
@@ -147,28 +148,36 @@ See [SETUP.md](SETUP.md) for all provider options, feature gates, and environmen
 
 ```
 SOLIDWORKS (host process)
-  └── Adze.Host (COM add-in, Task Pane UI)
+  └── Adze.Host (COM add-in, Task Pane UI, native sidebar shim)
         ├── Adze.Broker (AI orchestration, provider routing, agentic loop)
         ├── Adze.Tools (18 typed tool implementations)
         ├── Adze.Trace (traces, recipes, progression, memory)
         ├── Adze.Index (closed-file OLE indexer, no COM dependency)
-        └── Adze.Contracts (shared types, schemas, tool contracts)
+        ├── Adze.Contracts (shared types, schemas, tool contracts, ITaskPaneHost)
+        └── Adze.UI (native WinForms sidebar v2 — gated behind SOLIDWORKS_AI_NATIVE_SIDEBAR)
+
+Standalone tooling:
+  Adze.Manager.exe (4-tab control panel: Logs / Settings / Agent Profile / Status)
+  Adze.UiHarness.exe (out-of-SOLIDWORKS dev shell for hot UI iteration)
 ```
 
 | Project | Role |
 |---------|------|
-| **Adze.Host** | SOLIDWORKS lifecycle, Task Pane, COM context capture, write UI |
+| **Adze.Host** | SOLIDWORKS lifecycle, Task Pane, COM context capture, write UI; hosts `NativeTaskPaneControlShim` for v1.1 sidebar |
 | **Adze.Broker** | Prompt composition, OpenAI/Anthropic/local clients, agentic loop runner |
 | **Adze.Tools** | Read and write tool implementations, dependency analyzer |
 | **Adze.Trace** | JSON persistence for traces, snapshots, recipes, achievements |
 | **Adze.Index** | OLE Structured Storage file indexer — reads SOLIDWORKS files without COM |
-| **Adze.Contracts** | Shared models, enums, tool names, write contracts |
+| **Adze.Contracts** | Shared models, enums, tool names, write contracts, `ITaskPaneHost` |
+| **Adze.Manager** | Standalone WinForms control panel (`Adze.Manager.exe`) — 4 tabs, install/uninstall/eject orchestration |
+| **Adze.UiHarness** | Out-of-SOLIDWORKS dev shell — mounts `NativeTaskPaneControl` against a stub host for hot iteration |
+| **Adze.UI** | Native WinForms sidebar v2 (`NativeTaskPaneControl` + `ChatMessageView` + `WriteCardView` + `QuickActionsBar` + `MarkdownToRichText`) — runtime UI library, no SOLIDWORKS interop |
 
 ---
 
 ## Test Coverage
 
-684 NUnit unit tests across all layers:
+767 NUnit unit tests across all layers:
 
 - Broker orchestration, model response parsing, prompt composition
 - All 11 read tools and all 7 write tools
@@ -200,6 +209,8 @@ MIT — see [LICENSE](LICENSE).
 
 **v0.1.1 (last shipped)** — Public beta. 18 typed tools, 670 unit tests, agentic loop, governed write lifecycle, SSE streaming, 5 AI providers, AgentPolicyEngine trust tiers, quick-action toolbar, live tool execution chips.
 
-**v1.0.0 (in development, not yet released)** — Adds in-app Settings panel, DPAPI-encrypted API key storage, zero-config defaults, double-click `.bat` installers, user-facing label polish. Release blocked on SOLIDWORKS / 3DEXPERIENCE update-lifecycle compatibility work.
+**v1.0.0 (PAUSED, not released)** — In-app Settings panel, DPAPI-encrypted API key storage, zero-config defaults, double-click `.bat` installers, user-facing label polish. Release path paused 2026-04-28 to prioritise the v1.1 UI rebuild (the IE11 WebBrowser sidebar undermines Adze's positioning as a native CAD tool).
+
+**v1.1 (in development)** — Native WinForms sidebar (`Adze.UI` library), 4-tab `Adze.Manager` control panel, indigo `#4F46E5` visual refresh, `QuickActionsBar` chips, hot-iteration dev harness (`Adze.UiHarness`), dark mode, feature-gated cutover behind `SOLIDWORKS_AI_NATIVE_SIDEBAR` (default OFF). Architectural rationale: [`docs/adr/001-native-winforms-ui-authority.md`](docs/adr/001-native-winforms-ui-authority.md).
 
 Built by [VH Tech](https://github.com/Kadenvh) as a free tool for the SOLIDWORKS engineering community.

@@ -6,7 +6,33 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Target: v1.0.0. **Not released** — release code is complete and R2026x crash is resolved; gated only on R5 live update-cycle validation (applying a real 3DX update against an installed Adze build, end to end) before tagging.
+Target: **v1.1.0** (primary track). **v1.0.0 is PAUSED** — release-gated work below remains code-complete in the tree, but the v1.0.0 tag was deferred 2026-04-28 to prioritise the v1.1 UI rebuild. The IE11 WebBrowser sidebar undermines Adze's positioning as a native CAD tool; shipping v1.0.0 with that surface would lock in months of remediation pressure. v1.1 lands first; v1.0.0 work folds in.
+
+### v1.1 UI rebuild (2026-04-28) — primary track
+
+- **`Adze.UI` runtime library** — new project hosting native WinForms sidebar v2: `NativeTaskPaneControl`, `ChatMessageView`, `WriteCardView`, `QuickActionsBar`, `MarkdownToRichText`. No SOLIDWORKS interop; reused by Manager + UiHarness alike.
+- **`ITaskPaneHost` contract** — `Adze.Contracts/Abstractions/ITaskPaneHost.cs` decouples the sidebar from `HostState`, enabling out-of-SOLIDWORKS hosting (the dev harness) and clean test mocks.
+- **`HostStateAdapter` + COM shim** — `Adze.Host/Infrastructure/HostStateAdapter.cs` bridges static `HostState` to `ITaskPaneHost`. `Adze.Host/UI/NativeTaskPaneControlShim.cs` (COM ProgID `Adze.Host.NativeTaskPaneControl`, GUID `{C8B41F45-D2A6-4B5E-9F7C-3E0A1D8B2F61}`) is the SW-registered shim that mounts the new sidebar.
+- **Feature gate `SOLIDWORKS_AI_NATIVE_SIDEBAR`** (default OFF) — flip via `setx SOLIDWORKS_AI_NATIVE_SIDEBAR true` to switch from the legacy WebBrowser sidebar to the new native one. Both are registered alongside each other; falling back is bit-for-bit identical to today's behavior.
+- **`Adze.Manager` 4-tab refactor** — single-form Manager replaced with TabControl: **Logs** (host.log live tail with FileSystemWatcher follow mode + prefix coloring + chat JSONL session browser + script log + Export), **Settings** (provider, masked API key, tuning sliders, feature gates, Light/Dark/System Appearance picker), **Agent Profile** (placeholder for v1.1+), **Status** (relocated install state, SW process, last-verified build, probe). New "Verify Setup" button runs an 8-point install/COM/env-var checklist and offers one-click sidebar gate enablement.
+- **Visual refresh** — indigo `#4F46E5` accent (replaces old SOLIDWORKS-blue navy palette), refreshed `UiPalette` tokens, owner-drawn tabs with accent indicator, Claude-style chat bubbles (rounded corners via `GraphicsPath`), refreshed write-card styling, `QuickActionsBar` chips below prompt input.
+- **Dark mode** — `UiPalette` dual-mode (`Light` + `Dark` static instances, runtime `SetMode()` with `ModeChanged` event), persisted in `%LOCALAPPDATA%\Adze\ui-prefs.json` via `UiPreferences`, toggleable in both sidebar Settings tab and Manager Settings tab.
+- **`Adze.UiHarness` dev shell** — out-of-SOLIDWORKS WinForms host that mounts `NativeTaskPaneControl` against a stub `ITaskPaneHost` and replays real `SessionContext` JSON snapshots from `%LOCALAPPDATA%\Adze\snapshots\`. Reduces UI iteration round-trip from minutes (rebuild → uninstall → reinstall → relaunch SW) to seconds.
+- **`ModelJsonMapper.ToSessionContext`** — symmetric inverse of the existing `ToJson` serializer in `Adze.Trace`. Enables snapshot replay in the harness and any future tool that reads persisted session state.
+- **`RefinementPanel`** — proper inline rebuild of the legacy "Show Options" clarification UI (which was WinForms-layered-over-WebBrowser). 2x2 grid: Intent / Scope / Output / Diagnostics. Persists user defaults; emits the same `[clarification] intent=...` prefix the existing broker already parses.
+- **WebView2 zombie cleanup in uninstall script** — `uninstall-adze.ps1` Step 1 now detects the SOLIDWORKS install dir from `HKLM\SOFTWARE\SolidWorks\Setup`, kills SW + launchers + CATSTART + `sldworks_fs.exe` + every `msedgewebview2.exe` instance whose path is under the SW install dir. Edge / Teams / Outlook / VS Code WebView2 instances are explicitly preserved. Resolves the "the 3DX updater refuses to launch because previous SOLIDWORKS child processes are holding file locks" failure mode.
+- **`Adze.UI.dll` + `OpenMcdf.dll` added to install script DLL list** — both were previously included in the release zip but missing from the install script's copy list, which would have caused runtime load failures.
+
+### Decisions
+- **#21** — Native WinForms as v1.1+ UI rendering authority (partial supersession of #12 — keeps multi-surface roadmap, replaces foundation).
+- **#22** — v1.0.0 release path PAUSED; v1.1 UI rebuild is the primary track.
+
+### Test count
+- **702 → 767 unit tests** (+65 across this rebuild). New coverage: `ModelJsonMapper` round-trip (14), `MarkdownToRichText` (10), `TaskPaneHost` contract (8), `HostStateAdapter` mapping (5), `QuickActionsBar` (9), `UiPalette` dual-mode (6), `UiPreferences` (5), `RefinementPanel` (5), `PreUpdateEjectService` (3 added), feature-gate registry (3 added).
+
+---
+
+### v1.0.0 release-gate work (PAUSED, code-complete in tree)
 
 Zero-config first-run work below is code-complete in the tree.
 

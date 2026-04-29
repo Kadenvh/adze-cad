@@ -152,8 +152,43 @@ All gates are environment variables. The value `true`, `1`, `yes`, or `on` enabl
 | `SOLIDWORKS_AI_CONTEXT_MENU` | Right-click context menu items on features, components, and empty canvas |
 | `SOLIDWORKS_AI_TOAST` | Tray balloon notifications on run completion (suppressed when SOLIDWORKS is foreground) |
 | `SOLIDWORKS_AI_PMP_WRITES` | PropertyManager Page confirmations for write operations (v0.1.2: `set_dimension_value` only) |
+| `SOLIDWORKS_AI_NATIVE_SIDEBAR` | v1.1 native WinForms sidebar in place of the legacy WebBrowser-based Task Pane (see below) |
 
 Gates fail safely: turning a gate on never breaks the add-in if the feature cannot initialize (the Task Pane stays fully functional either way).
+
+Resolution order for any gate: **environment variable** → **`config.json`** at `%LOCALAPPDATA%\Adze\config.json` → **baked-in default**. The Adze Manager Settings tab writes to `config.json` so you never need to edit it by hand.
+
+## Switching to the v1.1 native sidebar
+
+Adze v1.1 introduces a native WinForms sidebar that replaces the legacy IE11-based WebBrowser Task Pane. The new sidebar is OFF by default during the v1.1 rollout — both surfaces are registered alongside each other, and the legacy path is bit-for-bit unchanged when the gate is off.
+
+**Recommended path — via Adze Manager (no terminal):**
+
+1. Open `Adze.Manager.exe`
+2. Click **Verify Setup** — runs an 8-point install + COM + env-var checklist. If the gate is off, the dialog offers a one-click enable.
+3. Click **Yes** when prompted to enable the gate. Manager writes `SOLIDWORKS_AI_NATIVE_SIDEBAR=true` to your User-scope environment.
+4. **Fully close SOLIDWORKS** AND the **3DEXPERIENCE Launcher** in Task Manager. Environment variables do not propagate to already-running processes — the new gate value will only take effect when SW launches from a fresh process tree.
+5. Relaunch SOLIDWORKS from 3DX. The new sidebar appears in place of the legacy one.
+
+**Alternative — via PowerShell:**
+
+```powershell
+setx SOLIDWORKS_AI_NATIVE_SIDEBAR true
+# Fully close SLDWORKS.exe and the 3DEXPERIENCE Launcher in Task Manager.
+# Re-open SW from 3DX.
+```
+
+**Verifying which sidebar loaded:**
+
+Tail `%LOCALAPPDATA%\Adze\logs\host.log`. Look for the most recent entry of the form:
+
+```
+Task Pane mounting sidebar=v1.1-native ...
+```
+
+If you see `sidebar=legacy`, the gate is still effectively off — most commonly because SW or the 3DX Launcher were already running when you set the env var. Kill them entirely and relaunch.
+
+**Reverting:** unset the variable (`setx SOLIDWORKS_AI_NATIVE_SIDEBAR ""`) or click **Verify Setup** in Manager and decline the prompt next time. The legacy sidebar resumes on next SW launch with no other changes required.
 
 ## Data and Privacy
 
