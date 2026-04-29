@@ -141,12 +141,25 @@ public sealed class AdzeAddIn : ISwAddin
         {
             string iconPath = TaskPaneIcon.Ensure();
             _taskPaneView = _application.CreateTaskpaneView2(iconPath, Title);
-            object addControlResult = _taskPaneView.AddControl(TaskPaneControl.ProgIdValue, string.Empty);
+
+            // v1.1 native sidebar gate — registers Adze.UI.V2.NativeTaskPaneControl
+            // (via NativeTaskPaneControlShim) when ON. When OFF (default during
+            // cutover), the legacy WebBrowser-based TaskPaneControl remains the
+            // only registered surface, preserving bit-for-bit existing behavior.
+            bool useNativeSidebar = FeatureGateRegistry.IsEnabled(FeatureGateRegistry.NativeSidebar);
+            string progId = useNativeSidebar
+                ? NativeTaskPaneControlShim.ProgIdValue
+                : TaskPaneControl.ProgIdValue;
+
+            FileLogger.Info("Task Pane mounting sidebar=" + (useNativeSidebar ? "v1.1-native" : "legacy") +
+                " progId=" + progId);
+
+            object addControlResult = _taskPaneView.AddControl(progId, string.Empty);
             FileLogger.Info("Task Pane created. AddControl returned: " + (addControlResult ?? "<null>") + ".");
 
             if (IsAddControlFailure(addControlResult))
             {
-                throw new InvalidOperationException("SOLIDWORKS returned false from TaskpaneView.AddControl for " + TaskPaneControl.ProgIdValue + ".");
+                throw new InvalidOperationException("SOLIDWORKS returned false from TaskpaneView.AddControl for " + progId + ".");
             }
         }
         catch (Exception ex)

@@ -167,7 +167,7 @@ public class FeatureGateRegistryTests
     public void GetAllStates_ReturnsAllKnownGates()
     {
         Dictionary<string, bool> states = FeatureGateRegistry.GetAllStates();
-        Assert.AreEqual(10, states.Count);
+        Assert.AreEqual(11, states.Count);
     }
 
     [Test]
@@ -204,7 +204,27 @@ public class FeatureGateRegistryTests
     [Test]
     public void KnownGates_IncludesAllTenGates()
     {
-        Assert.AreEqual(10, FeatureGateRegistry.KnownGates.Count);
+        Assert.AreEqual(11, FeatureGateRegistry.KnownGates.Count);
+    }
+
+    [Test]
+    public void NativeSidebarGate_KnownConstantValue()
+    {
+        Assert.AreEqual("SOLIDWORKS_AI_NATIVE_SIDEBAR", FeatureGateRegistry.NativeSidebar);
+    }
+
+    [Test]
+    public void NativeSidebarGate_DefaultsToFalse_ForSafetyDuringCutover()
+    {
+        // v1.1 cutover safety: legacy TaskPaneControl stays default until the new
+        // sidebar is verified live in SOLIDWORKS. Flip on via Settings or env var.
+        Assert.IsFalse(FeatureGateRegistry.GetDefault(FeatureGateRegistry.NativeSidebar));
+    }
+
+    [Test]
+    public void NativeSidebarGate_RegisteredInKnownGates()
+    {
+        Assert.That(FeatureGateRegistry.KnownGates, Has.Member(FeatureGateRegistry.NativeSidebar));
     }
 
     [Test]

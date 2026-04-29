@@ -78,6 +78,10 @@
       <Project>{0D61A2A9-2C77-4B1D-8703-D6D59F89A89E}</Project>
       <Name>Adze.Broker</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Adze.UI\Adze.UI.csproj">
+      <Project>{D7E8F9A0-1234-5678-9ABC-DEF012345678}</Project>
+      <Name>Adze.UI</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -87,6 +91,7 @@
     <Compile Include="AddIn\CompatibilityProbe.cs" />
     <Compile Include="AddIn\PreUpdateEjectService.cs" />
     <Compile Include="Infrastructure\HostState.cs" />
+    <Compile Include="Infrastructure\HostStateAdapter.cs" />
     <Compile Include="Infrastructure\FileLogger.cs" />
     <Compile Include="Infrastructure\ToastNotifier.cs" />
     <Compile Include="Infrastructure\TaskPaneIcon.cs" />
@@ -97,6 +102,9 @@
     <Compile Include="Services\GroundingPlanBuilder.cs" />
     <Compile Include="Services\SessionContextBuilder.cs" />
     <Compile Include="UI\TaskPaneControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UI\NativeTaskPaneControlShim.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="UI\PropertyManagerPageBroker.cs" />

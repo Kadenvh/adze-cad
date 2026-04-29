@@ -125,9 +125,42 @@ internal static class HostState
     // on cancel so host.log shows WHERE the user cancelled.
     private static volatile string _currentRunPhase = "idle";
 
+    // v1.1 sidebar adapter — single instance per add-in session. Lazy-created
+    // on first access so the legacy WebBrowser path doesn't allocate it when
+    // the NativeSidebar gate is OFF.
+    private static HostStateAdapter? _taskPaneHost;
+
     internal static void SetRunPhase(string phase)
     {
         _currentRunPhase = string.IsNullOrWhiteSpace(phase) ? "unknown" : phase;
+    }
+
+    /// <summary>
+    /// Returns the singleton <see cref="HostStateAdapter"/> that exposes
+    /// HostState as an <see cref="Adze.Contracts.Abstractions.ITaskPaneHost"/>.
+    /// Used by the v1.1 native sidebar shim. Lazy — first call creates the
+    /// instance; subsequent calls return the same handle.
+    /// </summary>
+    public static HostStateAdapter GetTaskPaneHost()
+    {
+        lock (Sync)
+        {
+            return _taskPaneHost ??= new HostStateAdapter();
+        }
+    }
+
+    /// <summary>
+    /// Notifies the v1.1 sidebar (if active) that observable state changed.
+    /// No-op if the adapter has never been created.
+    /// </summary>
+    internal static void NotifySidebarStateChanged()
+    {
+        HostStateAdapter? adapter;
+        lock (Sync)
+        {
+            adapter = _taskPaneHost;
+        }
+        adapter?.RaiseStateChanged();
     }
 
     public static CancellationTokenSource? CurrentRunCancellation => _currentRunCts;
@@ -359,6 +392,7 @@ internal static class HostState
         if (cancelled > 0)
         {
             FileLogger.Info("Write batch cancel: " + cancelled + " pending write(s) discarded by user");
+            NotifySidebarStateChanged();
         }
     }
 
@@ -408,6 +442,7 @@ internal static class HostState
                 (action.Preview?.Summary ?? action.ToolName) +
                 " undo_label=\"" + (action.UndoLabel ?? "(none)") + "\"" +
                 " result=\"" + (result ?? string.Empty) + "\"");
+            NotifySidebarStateChanged();
             return result;
         }
         catch (Exception ex)
@@ -419,6 +454,7 @@ internal static class HostState
                 _telemetry.RecordWriteFailed();
             }
             FileLogger.Error("Pending write apply failed.", ex);
+            NotifySidebarStateChanged();
             return error;
         }
     }
@@ -439,6 +475,7 @@ internal static class HostState
         if (toolName != null)
         {
             FileLogger.Info("Write " + toolName + " cancelled by user (index=" + index + ")");
+            NotifySidebarStateChanged();
         }
     }
 
@@ -882,6 +919,11 @@ internal static class HostState
             _chatHistory.Add(entry);
         }
 
+        // v1.1 sidebar — notify after chat-history mutation so the new
+        // NativeTaskPaneControl re-renders the conversation thread. No-op
+        // when the legacy WebBrowser sidebar is the active surface.
+        NotifySidebarStateChanged();
+
         // Answer preview — response text was previously in-memory only, dying with SW.
         // Log first 500 chars + total length so host.log has a durable record and partner
         // reviewers can verify what the AI actually said without opening SW.
@@ -1070,6 +1112,10 @@ internal static class HostState
                 _pendingWrites.AddRange(writeTracker.CapturedWrites);
                 firstPendingIndex = _pendingWrites.Count > 0 ? 0 : -1;
             }
+
+            // v1.1 sidebar — notify after pending writes change so the new
+            // NativeTaskPaneControl renders confirmation cards immediately.
+            NotifySidebarStateChanged();
 
             FileLogger.Info("Captured " + writeTracker.CapturedWrites.Count + " pending write action(s) for confirmation.");
 

@@ -30,6 +30,16 @@ public static class FeatureGateRegistry
     public const string ToastNotifications = "SOLIDWORKS_AI_TOAST";
     public const string PropertyManagerPageWrites = "SOLIDWORKS_AI_PMP_WRITES";
 
+    /// <summary>
+    /// v1.1 native WinForms sidebar (<c>Adze.UI.V2.NativeTaskPaneControl</c>).
+    /// When ON, <c>AdzeAddIn.CreateTaskPane()</c> registers the new shim
+    /// (<c>Adze.Host.NativeTaskPaneControl</c>) instead of the legacy
+    /// WebBrowser-based <c>Adze.Host.TaskPaneControl</c>. Default: OFF — safety
+    /// rail during the v1.1 cutover. Flip to ON via Settings or
+    /// <c>setx SOLIDWORKS_AI_NATIVE_SIDEBAR true</c> once verified live.
+    /// </summary>
+    public const string NativeSidebar = "SOLIDWORKS_AI_NATIVE_SIDEBAR";
+
     private static readonly string[] AllGates =
     {
         EnableModel,
@@ -41,7 +51,8 @@ public static class FeatureGateRegistry
         RibbonTab,
         ContextMenu,
         ToastNotifications,
-        PropertyManagerPageWrites
+        PropertyManagerPageWrites,
+        NativeSidebar
     };
 
     /// <summary>Ordered list of every known gate name.</summary>
@@ -78,6 +89,10 @@ public static class FeatureGateRegistry
             ContextMenu => false, // TEMPORARY: R2026x interop crash — re-enable after R2
             ToastNotifications => false,
             PropertyManagerPageWrites => false,
+            // v1.1 native sidebar OFF by default — explicit opt-in during cutover so the
+            // legacy TaskPaneControl remains the default fallback path. Flip ON via
+            // Settings or env var once the new sidebar is verified live in SW.
+            NativeSidebar => false,
             _ => false
         };
     }
@@ -91,11 +106,32 @@ public static class FeatureGateRegistry
     {
         if (string.IsNullOrWhiteSpace(gateName)) return false;
 
-        // 1. Environment variable override
+        // 1. Environment variable override.
+        //
+        // Read process env FIRST (inherited at process spawn), then fall back
+        // to user-scope registry. Process env wins if set, but registry
+        // catches the case where a user ran `setx GATE true` AFTER SW (or its
+        // 3DEXPERIENCE Launcher parent) was already running — the process
+        // inherited the old env at launch time and won't see the new value
+        // until full process-tree restart. Registry lookup means setx +
+        // SW-only relaunch is enough; killing the launcher is no longer
+        // mandatory.
         string? envValue = Environment.GetEnvironmentVariable(gateName);
+        if (string.IsNullOrWhiteSpace(envValue))
+        {
+            try
+            {
+                envValue = Environment.GetEnvironmentVariable(gateName, EnvironmentVariableTarget.User);
+            }
+            catch
+            {
+                // SecurityException on locked-down systems: keep going. Config
+                // file or default will resolve below.
+            }
+        }
         if (!string.IsNullOrWhiteSpace(envValue))
         {
-            string normalized = envValue.Trim().ToLowerInvariant();
+            string normalized = envValue!.Trim().ToLowerInvariant();
             return normalized is "1" or "true" or "yes" or "on";
         }
 
