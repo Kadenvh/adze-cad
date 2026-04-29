@@ -5,19 +5,19 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Adze.Contracts</RootNamespace>
-    <AssemblyName>Adze.Contracts</AssemblyName>
+    <ProjectGuid>{C5D6E7F8-9012-3456-789A-BCDEF0123456}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Adze.UiHarness</RootNamespace>
+    <AssemblyName>Adze.UiHarness</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-    <InformationalVersion>1.0.0</InformationalVersion>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -38,32 +38,37 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Adze.Contracts\Adze.Contracts.csproj">
+      <Project>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</Project>
+      <Name>Adze.Contracts</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Adze.Trace\Adze.Trace.csproj">
+      <Project>{D12E7A9F-7EE6-45F3-9111-693E4949AA89}</Project>
+      <Name>Adze.Trace</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Adze.UI\Adze.UI.csproj">
+      <Project>{D7E8F9A0-1234-5678-9ABC-DEF012345678}</Project>
+      <Name>Adze.UI</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SnapshotLoader.cs" />
+    <Compile Include="StubHostState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Enums\ActionClass.cs" />
-    <Compile Include="Enums\ApprovalState.cs" />
-    <Compile Include="Enums\ToolUnlockTier.cs" />
-    <Compile Include="Models\BenchmarkDefinitions.cs" />
-    <Compile Include="Models\GroundingSnapshotRecord.cs" />
-    <Compile Include="Models\ProgressionState.cs" />
-    <Compile Include="Models\RecipeCandidate.cs" />
-    <Compile Include="Models\SessionContext.cs" />
-    <Compile Include="Models\ToolContracts.cs" />
-    <Compile Include="Models\TraceEvent.cs" />
-    <Compile Include="Abstractions\ITrustService.cs" />
-    <Compile Include="Abstractions\IUiThreadInvoker.cs" />
-    <Compile Include="Abstractions\IWriteServices.cs" />
-    <Compile Include="Models\WriteContracts.cs" />
-    <Compile Include="Models\IndexContracts.cs" />
-    <Compile Include="Models\ChatEntry.cs" />
-    <Compile Include="Models\PendingWriteAction.cs" />
-    <Compile Include="Abstractions\ITaskPaneHost.cs" />
-    <Compile Include="Tooling\ToolNames.cs" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

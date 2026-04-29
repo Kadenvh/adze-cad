@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{D7E8F9A0-1234-5678-9ABC-DEF012345678}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Adze.UI</RootNamespace>
+    <AssemblyName>Adze.UI</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <InformationalVersion>1.1.0</InformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adze.Contracts\Adze.Contracts.csproj">
+      <Project>{4C74C754-2E8D-4C32-A3A8-8A1E7A7C34D7}</Project>
+      <Name>Adze.Contracts</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Adze.Broker\Adze.Broker.csproj">
+      <Project>{0D61A2A9-2C77-4B1D-8703-D6D59F89A89E}</Project>
+      <Name>Adze.Broker</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Adze.Trace\Adze.Trace.csproj">
+      <Project>{D12E7A9F-7EE6-45F3-9111-693E4949AA89}</Project>
+      <Name>Adze.Trace</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Rendering\MarkdownToRichText.cs" />
+    <Compile Include="V2\NativeTaskPaneControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="V2\ChatMessageView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="V2\WriteCardView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="V2\QuickActionsBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="V2\RefinementPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="V2\UiPalette.cs" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

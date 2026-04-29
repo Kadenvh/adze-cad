@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Web.Script.Serialization;
 using Adze.Contracts.Enums;
 using Adze.Contracts.Models;
 
@@ -256,6 +257,225 @@ public static class ModelJsonMapper
         };
     }
 
+    public static SessionContext DeserializeSessionContextJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new SessionContext();
+        }
+
+        var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+        if (serializer.DeserializeObject(json) is Dictionary<string, object> payload)
+        {
+            return ToSessionContext(payload);
+        }
+
+        return new SessionContext();
+    }
+
+    public static SessionContext ToSessionContext(Dictionary<string, object> payload)
+    {
+        var context = new SessionContext();
+
+        Dictionary<string, object>? sessionPayload = GetObject(payload, "session");
+        if (sessionPayload != null)
+        {
+            context.Session = new SessionInfo
+            {
+                RequestId = GetString(sessionPayload, "request_id", string.Empty),
+                TimestampUtc = GetDateTimeOffset(sessionPayload, "timestamp_utc", DateTimeOffset.UtcNow),
+                ApprovalState = ParseApprovalState(GetString(sessionPayload, "approval_state", "draft")),
+                UserMode = GetString(sessionPayload, "user_mode", "interactive")
+            };
+        }
+
+        Dictionary<string, object>? environmentPayload = GetObject(payload, "environment");
+        if (environmentPayload != null)
+        {
+            context.Environment = new EnvironmentInfo
+            {
+                SolidWorksVersion = GetString(environmentPayload, "solidworks_version", string.Empty),
+                AddInVersion = GetString(environmentPayload, "addin_version", string.Empty),
+                MachineName = GetString(environmentPayload, "machine_name", string.Empty),
+                DocumentManagerAvailable = GetBool(environmentPayload, "document_manager_available", false),
+                DiagnosticsMode = GetBool(environmentPayload, "diagnostics_mode", false)
+            };
+        }
+
+        Dictionary<string, object>? documentPayload = GetObject(payload, "document");
+        if (documentPayload != null)
+        {
+            context.Document = new DocumentInfo
+            {
+                Type = GetString(documentPayload, "type", "none"),
+                Title = GetString(documentPayload, "title", string.Empty),
+                Path = GetString(documentPayload, "path", string.Empty),
+                ActiveConfiguration = GetString(documentPayload, "active_configuration", string.Empty),
+                Units = GetString(documentPayload, "units", string.Empty),
+                IsDirty = GetBool(documentPayload, "is_dirty", false),
+                IsReadOnly = GetBool(documentPayload, "is_read_only", false)
+            };
+        }
+
+        Dictionary<string, object>? selectionPayload = GetObject(payload, "selection");
+        if (selectionPayload != null)
+        {
+            context.Selection = new SelectionInfo
+            {
+                Count = GetInt(selectionPayload, "count", 0)
+            };
+            foreach (Dictionary<string, object> itemPayload in GetObjectList(selectionPayload, "items"))
+            {
+                context.Selection.Items.Add(new SelectionItem
+                {
+                    Kind = GetString(itemPayload, "kind", string.Empty),
+                    Name = GetString(itemPayload, "name", string.Empty),
+                    Owner = GetString(itemPayload, "owner", string.Empty)
+                });
+            }
+        }
+
+        Dictionary<string, object>? featureTreePayload = GetObject(payload, "feature_tree");
+        if (featureTreePayload != null)
+        {
+            context.FeatureTree = new FeatureTreeInfo
+            {
+                Anchor = GetNullableString(featureTreePayload, "anchor"),
+                Radius = GetInt(featureTreePayload, "radius", 0)
+            };
+            foreach (Dictionary<string, object> featurePayload in GetObjectList(featureTreePayload, "features"))
+            {
+                context.FeatureTree.Features.Add(new FeatureNode
+                {
+                    Name = GetString(featurePayload, "name", string.Empty),
+                    Kind = GetString(featurePayload, "kind", string.Empty),
+                    State = GetString(featurePayload, "state", string.Empty)
+                });
+            }
+        }
+
+        Dictionary<string, object>? configurationsPayload = GetObject(payload, "configurations");
+        if (configurationsPayload != null)
+        {
+            context.Configurations = new ConfigurationsInfo
+            {
+                ActiveName = GetString(configurationsPayload, "active_name", string.Empty),
+                Count = GetInt(configurationsPayload, "count", 0)
+            };
+            foreach (Dictionary<string, object> itemPayload in GetObjectList(configurationsPayload, "items"))
+            {
+                context.Configurations.Items.Add(new ConfigurationItem
+                {
+                    Name = GetString(itemPayload, "name", string.Empty),
+                    IsActive = GetBool(itemPayload, "is_active", false)
+                });
+            }
+        }
+
+        Dictionary<string, object>? dimensionsPayload = GetObject(payload, "dimensions");
+        if (dimensionsPayload != null)
+        {
+            context.Dimensions = new DimensionsInfo
+            {
+                Count = GetInt(dimensionsPayload, "count", 0)
+            };
+            foreach (Dictionary<string, object> itemPayload in GetObjectList(dimensionsPayload, "items"))
+            {
+                context.Dimensions.Items.Add(new DimensionNode
+                {
+                    Name = GetString(itemPayload, "name", string.Empty),
+                    FullName = GetString(itemPayload, "full_name", string.Empty),
+                    Value = GetDouble(itemPayload, "value", 0),
+                    UnitSource = GetString(itemPayload, "unit_source", "document")
+                });
+            }
+        }
+
+        Dictionary<string, object>? matesPayload = GetObject(payload, "mates");
+        if (matesPayload != null)
+        {
+            context.Mates = new MatesInfo
+            {
+                Count = GetInt(matesPayload, "count", 0)
+            };
+            foreach (Dictionary<string, object> itemPayload in GetObjectList(matesPayload, "items"))
+            {
+                context.Mates.Items.Add(new MateNode
+                {
+                    Name = GetString(itemPayload, "name", string.Empty),
+                    Kind = GetString(itemPayload, "kind", string.Empty),
+                    EntityCount = GetInt(itemPayload, "entity_count", 0),
+                    Components = GetStringList(itemPayload, "components")
+                });
+            }
+        }
+
+        Dictionary<string, object>? referenceGraphPayload = GetObject(payload, "reference_graph");
+        if (referenceGraphPayload != null)
+        {
+            context.ReferenceGraph = new ReferenceGraphInfo
+            {
+                DirectCount = GetInt(referenceGraphPayload, "direct_count", 0),
+                TransitiveCount = GetInt(referenceGraphPayload, "transitive_count", 0),
+                BrokenReferenceCount = GetInt(referenceGraphPayload, "broken_reference_count", 0),
+                DirectItems = ReadReferenceNodes(referenceGraphPayload, "direct_items"),
+                TransitiveItems = ReadReferenceNodes(referenceGraphPayload, "transitive_items")
+            };
+        }
+
+        Dictionary<string, object>? propertiesPayload = GetObject(payload, "properties");
+        if (propertiesPayload != null)
+        {
+            context.Properties = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (KeyValuePair<string, object> kvp in propertiesPayload)
+            {
+                context.Properties[kvp.Key] = kvp.Value;
+            }
+        }
+
+        Dictionary<string, object>? diagnosticsPayload = GetObject(payload, "diagnostics");
+        if (diagnosticsPayload != null)
+        {
+            context.Diagnostics = new DiagnosticsInfo
+            {
+                RebuildState = GetString(diagnosticsPayload, "rebuild_state", string.Empty),
+                Warnings = GetStringList(diagnosticsPayload, "warnings"),
+                MissingReferences = GetStringList(diagnosticsPayload, "missing_references")
+            };
+        }
+
+        Dictionary<string, object>? policyPayload = GetObject(payload, "policy");
+        if (policyPayload != null)
+        {
+            context.Policy = new PolicyInfo
+            {
+                EnabledTools = GetStringList(policyPayload, "enabled_tools"),
+                ToolUnlockTier = ParseToolUnlockTier(GetString(policyPayload, "tool_unlock_tier", "baseline")),
+                ExplorationPercent = GetDouble(policyPayload, "exploration_percent", 0)
+            };
+        }
+
+        return context;
+    }
+
+    private static List<ReferenceNode> ReadReferenceNodes(Dictionary<string, object> payload, string key)
+    {
+        var nodes = new List<ReferenceNode>();
+        foreach (Dictionary<string, object> itemPayload in GetObjectList(payload, key))
+        {
+            nodes.Add(new ReferenceNode
+            {
+                Name = GetString(itemPayload, "name", string.Empty),
+                Path = GetString(itemPayload, "path", string.Empty),
+                ImportedPath = GetNullableString(itemPayload, "imported_path"),
+                IsReadOnly = GetBool(itemPayload, "is_read_only", false),
+                ExistsOnDisk = GetBool(itemPayload, "exists_on_disk", false),
+                IsBroken = GetBool(itemPayload, "is_broken", false)
+            });
+        }
+        return nodes;
+    }
+
     public static RecipeCandidate ToRecipeCandidate(Dictionary<string, object> payload, string fallbackRecipeId)
     {
         return new RecipeCandidate
@@ -310,6 +530,52 @@ public static class ModelJsonMapper
                 ? parsed
                 : fallback
         };
+    }
+
+    private static int GetInt(Dictionary<string, object> payload, string key, int fallback)
+    {
+        if (!payload.TryGetValue(key, out object? value) || value == null)
+        {
+            return fallback;
+        }
+
+        return value switch
+        {
+            int intValue => intValue,
+            long longValue => (int)longValue,
+            double doubleValue => (int)doubleValue,
+            decimal decimalValue => (int)decimalValue,
+            float floatValue => (int)floatValue,
+            _ => int.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out int parsed)
+                ? parsed
+                : fallback
+        };
+    }
+
+    private static bool GetBool(Dictionary<string, object> payload, string key, bool fallback)
+    {
+        if (!payload.TryGetValue(key, out object? value) || value == null)
+        {
+            return fallback;
+        }
+
+        return value switch
+        {
+            bool boolValue => boolValue,
+            _ => bool.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), out bool parsed)
+                ? parsed
+                : fallback
+        };
+    }
+
+    private static Dictionary<string, object>? GetObject(Dictionary<string, object> payload, string key)
+    {
+        if (!payload.TryGetValue(key, out object? value) || value == null)
+        {
+            return null;
+        }
+
+        return value as Dictionary<string, object>;
     }
 
     private static DateTimeOffset GetDateTimeOffset(Dictionary<string, object> payload, string key, DateTimeOffset fallback)
@@ -370,6 +636,23 @@ public static class ModelJsonMapper
             ApprovalState.RolledBack => "rolled_back",
             ApprovalState.Failed => "failed",
             _ => "draft"
+        };
+    }
+
+    private static ApprovalState ParseApprovalState(string value)
+    {
+        return value switch
+        {
+            "draft" => ApprovalState.Draft,
+            "preview_ready" => ApprovalState.PreviewReady,
+            "awaiting_confirmation" => ApprovalState.AwaitingConfirmation,
+            "approved" => ApprovalState.Approved,
+            "executing" => ApprovalState.Executing,
+            "verifying" => ApprovalState.Verifying,
+            "completed" => ApprovalState.Completed,
+            "rolled_back" => ApprovalState.RolledBack,
+            "failed" => ApprovalState.Failed,
+            _ => ApprovalState.Draft
         };
     }
 

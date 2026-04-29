@@ -41,7 +41,9 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="nunit.framework">
       <HintPath>..\..\packages\NUnit.3.14.0\lib\net45\nunit.framework.dll</HintPath>
     </Reference>
@@ -67,6 +69,10 @@
     <ProjectReference Include="..\..\src\Adze.Index\Adze.Index.csproj">
       <Project>{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}</Project>
       <Name>Adze.Index</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Adze.UI\Adze.UI.csproj">
+      <Project>{D7E8F9A0-1234-5678-9ABC-DEF012345678}</Project>
+      <Name>Adze.UI</Name>
     </ProjectReference>
   </ItemGroup>
 
@@ -107,6 +113,7 @@
     <Compile Include="Trace\LearningSystemTests.cs" />
     <Compile Include="Trace\MemoryStoreTests.cs" />
     <Compile Include="Trace\ModelJsonMapperTests.cs" />
+    <Compile Include="Trace\ModelJsonMapperRoundTripTests.cs" />
     <Compile Include="Tools\GroundingToolTests.cs" />
     <Compile Include="Tools\WriteToolTests.cs" />
     <Compile Include="Broker\DiagnosticIntentTests.cs" />
@@ -125,10 +132,17 @@
     <Compile Include="Tools\DependencyAnalyzerTests.cs" />
     <Compile Include="Broker\AgentPolicyEngineTests.cs" />
     <Compile Include="Tools\LargeAssemblyTests.cs" />
+    <Compile Include="UI\MarkdownToRichTextTests.cs" />
+    <Compile Include="UI\TaskPaneHostContractTests.cs" />
+    <Compile Include="UI\QuickActionsBarTests.cs" />
+    <Compile Include="UI\UiPaletteTests.cs" />
+    <Compile Include="UI\RefinementPanelTests.cs" />
+    <Compile Include="Broker\UiPreferencesTests.cs" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(IncludeHostTests)' != 'false' ">
     <Compile Include="Host\HostProbeStateTests.cs" />
+    <Compile Include="Host\HostStateAdapterMappingTests.cs" />
     <Compile Include="Host\PreUpdateEjectServiceTests.cs" />
   </ItemGroup>
 
