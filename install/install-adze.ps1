@@ -31,6 +31,7 @@
 #>
 param(
     [switch]$Uninstall,
+    [switch]$RemoveUserData,
     [switch]$SkipBuild
 )
 
@@ -42,8 +43,13 @@ $ErrorActionPreference = "Stop"
 if ($Uninstall) {
     $uninstallScript = Join-Path $PSScriptRoot "uninstall-adze.ps1"
     if (Test-Path $uninstallScript) {
-        Write-Host "[Adze] Delegating to uninstall script..."
-        & $uninstallScript
+        if ($RemoveUserData) {
+            Write-Host "[Adze] Delegating to uninstall script (with -RemoveUserData -- clean slate)..."
+            & $uninstallScript -RemoveUserData
+        } else {
+            Write-Host "[Adze] Delegating to uninstall script..."
+            & $uninstallScript
+        }
         exit $LASTEXITCODE
     }
     else {
@@ -61,7 +67,9 @@ $requiredDlls = @(
     "Adze.Tools.dll",
     "Adze.Trace.dll",
     "Adze.Contracts.dll",
-    "Adze.Index.dll"
+    "Adze.Index.dll",
+    "Adze.UI.dll",
+    "OpenMcdf.dll"
 )
 
 $installDir          = Join-Path $env:LOCALAPPDATA "Adze\bin"
@@ -71,6 +79,9 @@ $implementedCategory = "{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}"
 $runtimeVersion      = "v4.0.30319"
 $addInGuid           = "{A2E09EE4-BB43-4A0C-945F-14711F792EFA}"
 $taskPaneGuid        = "{F4068202-600A-4D6F-973B-DA2048A949CF}"
+# v1.1 native sidebar shim — gated by SOLIDWORKS_AI_NATIVE_SIDEBAR. Registered
+# unconditionally so the gate can be flipped at runtime without re-running the installer.
+$nativeShimGuid      = "{C8B41F45-D2A6-4B5E-9F7C-3E0A1D8B2F61}"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -264,6 +275,11 @@ Write-Host "  Registering TaskPaneControl ($taskPaneGuid)..."
 Register-ComClass -ProgId "Adze.Host.TaskPaneControl" -Guid $taskPaneGuid `
     -ClassName "Adze.Host.UI.TaskPaneControl" -DefaultName "Adze.Host.UI.TaskPaneControl"
 Write-Host "    TaskPaneControl registered" -ForegroundColor Green
+
+Write-Host "  Registering NativeTaskPaneControl shim ($nativeShimGuid)..."
+Register-ComClass -ProgId "Adze.Host.NativeTaskPaneControl" -Guid $nativeShimGuid `
+    -ClassName "Adze.Host.UI.NativeTaskPaneControlShim" -DefaultName "Adze.Host.UI.NativeTaskPaneControlShim"
+Write-Host "    NativeTaskPaneControl shim registered (gated by SOLIDWORKS_AI_NATIVE_SIDEBAR)" -ForegroundColor Green
 
 Write-Host "[Adze] COM registration complete." -ForegroundColor Green
 Write-Host ""

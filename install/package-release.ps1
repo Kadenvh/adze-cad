@@ -44,6 +44,7 @@ $requiredDlls = @(
     'Adze.Trace.dll',
     'Adze.Contracts.dll',
     'Adze.Index.dll',
+    'Adze.UI.dll',
     'OpenMcdf.dll'
 )
 

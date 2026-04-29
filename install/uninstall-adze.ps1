@@ -30,25 +30,104 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ---------------------------------------------------------------------------
-# 1. Stop SOLIDWORKS processes
+# 1. Stop SOLIDWORKS processes (process cleanup checklist)
 # ---------------------------------------------------------------------------
+# When 3DX wants to apply a SOLIDWORKS update it refuses to launch if any
+# files in the install dir are locked. SLDWORKS.exe holds the obvious lock,
+# but child processes (sldworks_fs.exe and the SW-bundled msedgewebview2.exe
+# fleet for 3DX UI panels) frequently survive File -> Exit and continue
+# locking files. This step kills the full child tree so the 3DX updater
+# (DSYProcessMgt) can replace win_b64\SWXWebView2\msedgewebview2.exe and the
+# rest of the install tree without "Terminate these applications" errors.
 Write-Host ""
-Write-Host "=== Step 1: Stopping SOLIDWORKS processes ===" -ForegroundColor Cyan
+Write-Host "=== Step 1: Process cleanup ===" -ForegroundColor Cyan
 
-$processNames = @("sldworks", "SWXDesktopLauncher", "CATSTART")
-$anyFound = $false
+# Detect SW install dir so the WebView2 kill is scoped to SW-bundled
+# instances only -- Edge / Teams / Outlook / VS Code WebView2 must not be
+# touched. Without a detected dir we conservatively skip WebView2 cleanup.
+$swInstallDir = $null
+$swSetup = Get-ItemProperty 'HKLM:\SOFTWARE\SolidWorks\Setup' -Name 'SolidWorks Folder' -ErrorAction SilentlyContinue
+if ($swSetup -and $swSetup.'SolidWorks Folder') { $swInstallDir = $swSetup.'SolidWorks Folder' }
+if (-not $swInstallDir) {
+    foreach ($candidate in @(
+        "${env:ProgramFiles}\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x"
+        "${env:ProgramFiles}\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2025x"
+        "${env:ProgramFiles}\Dassault Systemes\SolidWorks Corp\SOLIDWORKS"
+    )) {
+        if (Test-Path $candidate) { $swInstallDir = $candidate; break }
+    }
+}
+if ($swInstallDir) {
+    Write-Host "  SW install dir: $swInstallDir"
+} else {
+    Write-Host "  SW install dir: (not detected -- WebView2 cleanup will skip)" -ForegroundColor Yellow
+}
 
-foreach ($name in $processNames) {
+# 1a. Main SW + launcher processes
+$mainProcs = @("SLDWORKS", "sldworks", "SWXDesktopLauncher", "CATSTART")
+$mainStopped = 0
+foreach ($name in $mainProcs) {
     $procs = Get-Process -Name $name -ErrorAction SilentlyContinue
-    if ($procs) {
-        $anyFound = $true
-        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
-        Write-Host "  Stopped: $name"
+    foreach ($p in $procs) {
+        try {
+            Stop-Process -InputObject $p -Force -ErrorAction Stop
+            Write-Host ("  Stopped: {0} (PID {1})" -f $p.Name, $p.Id)
+            $mainStopped++
+        } catch {
+            Write-Host ("  Could not stop {0} (PID {1}): {2}" -f $p.Name, $p.Id, $_.Exception.Message) -ForegroundColor Yellow
+        }
+    }
+}
+if ($mainStopped -eq 0) { Write-Host "  No main SW processes running" }
+
+# 1b. SLDWORKS file-server sub-process (lingers after main exit)
+$fsStopped = 0
+foreach ($p in (Get-Process -Name "sldworks_fs" -ErrorAction SilentlyContinue)) {
+    try {
+        Stop-Process -InputObject $p -Force -ErrorAction Stop
+        Write-Host ("  Stopped: sldworks_fs.exe (PID {0}) -- file-server sub-process" -f $p.Id)
+        $fsStopped++
+    } catch {
+        Write-Host ("  Could not stop sldworks_fs.exe (PID {0}): {1}" -f $p.Id, $_.Exception.Message) -ForegroundColor Yellow
+    }
+}
+if ($fsStopped -eq 0) { Write-Host "  No sldworks_fs.exe processes" }
+
+# 1c. SW-bundled WebView2 zombies -- the actual blocker for 3DX update.
+#     Scope strictly by .Path so user's Edge / Teams / Outlook / VS Code
+#     WebView2 stay untouched.
+if ($swInstallDir) {
+    $wv2Stopped = 0
+    foreach ($p in (Get-Process -Name "msedgewebview2" -ErrorAction SilentlyContinue)) {
+        $isSwBundled = $false
+        try {
+            if ($p.Path) {
+                $isSwBundled = $p.Path.StartsWith($swInstallDir, [System.StringComparison]::OrdinalIgnoreCase)
+            }
+        } catch {
+            # Access denied on Path is normal for processes from other users -- skip silently.
+        }
+        if ($isSwBundled) {
+            try {
+                Stop-Process -InputObject $p -Force -ErrorAction Stop
+                $wv2Stopped++
+            } catch {
+                Write-Host ("  Could not stop msedgewebview2.exe (PID {0}): {1}" -f $p.Id, $_.Exception.Message) -ForegroundColor Yellow
+            }
+        }
+    }
+    if ($wv2Stopped -gt 0) {
+        Write-Host ("  Stopped: {0}x msedgewebview2.exe under SW install dir (3DX update unblocker)" -f $wv2Stopped)
+    } else {
+        Write-Host "  No SW-bundled msedgewebview2.exe zombies"
     }
 }
 
-if (-not $anyFound) {
-    Write-Host "  No SOLIDWORKS processes were running."
+# 1d. Sanity: warn if 3DX updater is mid-flight -- ejecting now is benign for
+#     us but the user may have launched the wrong action.
+$updater = Get-Process -Name "swxdesktopupdate" -ErrorAction SilentlyContinue
+if ($updater) {
+    Write-Host ("  NOTE: swxdesktopupdate.exe running (PID {0}). If a 3DX update is in progress, let it finish before reinstalling Adze." -f $updater[0].Id) -ForegroundColor Yellow
 }
 
 # ---------------------------------------------------------------------------
@@ -61,8 +140,10 @@ $classesRoot = "HKCU:\Software\Classes"
 $comPaths = @(
     "$classesRoot\Adze.Host.AddIn",
     "$classesRoot\Adze.Host.TaskPaneControl",
+    "$classesRoot\Adze.Host.NativeTaskPaneControl",
     "$classesRoot\CLSID\{A2E09EE4-BB43-4A0C-945F-14711F792EFA}",
-    "$classesRoot\CLSID\{F4068202-600A-4D6F-973B-DA2048A949CF}"
+    "$classesRoot\CLSID\{F4068202-600A-4D6F-973B-DA2048A949CF}",
+    "$classesRoot\CLSID\{C8B41F45-D2A6-4B5E-9F7C-3E0A1D8B2F61}"
 )
 
 foreach ($path in $comPaths) {
