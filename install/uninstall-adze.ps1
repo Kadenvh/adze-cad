@@ -200,8 +200,25 @@ Write-Host "=== Step 5: User data ===" -ForegroundColor Cyan
 
 if ($RemoveUserData) {
     if (Test-Path $adzeLocalRoot) {
-        Remove-Item $adzeLocalRoot -Recurse -Force
-        Write-Host "  Removed: $adzeLocalRoot (all user data deleted)"
+        # Defensive cleanup. A single Remove-Item -Recurse can leave empty
+        # subdirs behind if a child file is momentarily locked when the
+        # walker visits it (state\sw-build.txt held by SwBuildStateService
+        # is a known offender even after Step 1 kills SOLIDWORKS -- Windows
+        # release-handle is async). First pass; then sweep any leftover
+        # children deepest-first; then remove the root.
+        Remove-Item $adzeLocalRoot -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path $adzeLocalRoot) {
+            Start-Sleep -Milliseconds 200
+            Get-ChildItem $adzeLocalRoot -Recurse -Force -ErrorAction SilentlyContinue |
+                Sort-Object FullName -Descending |
+                Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+            Remove-Item $adzeLocalRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path $adzeLocalRoot) {
+            Write-Host "  Partial: $adzeLocalRoot still has leftover content (likely a file lock). Close SOLIDWORKS and retry." -ForegroundColor Yellow
+        } else {
+            Write-Host "  Removed: $adzeLocalRoot (all user data deleted)"
+        }
     } else {
         Write-Host "  Already absent: $adzeLocalRoot"
     }

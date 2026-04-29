@@ -92,7 +92,15 @@ public sealed class MainForm : Form
         _btnVerify    = MakeButton("Verify Setup", Color.FromArgb(79, 70, 229), Color.White);
         _btnRefresh   = MakeButton("Refresh", Color.FromArgb(240, 240, 240), Color.FromArgb(30, 30, 30));
 
-        _btnInstall.Click   += (s, e) => RunScriptWithUi("install-adze.ps1", args: string.Empty, label: "Installing Adze...");
+        _btnInstall.Click   += (s, e) => RunScriptWithUi(
+            "install-adze.ps1", args: string.Empty, label: "Installing Adze...",
+            onComplete: exitCode =>
+            {
+                if (exitCode != 0) return;
+                Log("");
+                Log("=== Install complete — auto-verifying setup ===");
+                RunVerifyChecksOnly();
+            });
         _btnUninstall.Click += OnUninstallClick;
         _btnEject.Click     += OnEjectClick;
         _btnVerify.Click    += OnVerifySetupClick;
@@ -249,7 +257,14 @@ public sealed class MainForm : Form
             ? "Uninstalling Adze (clean slate — removing user data)..."
             : "Uninstalling Adze (preserving user data)...";
 
-        RunScriptWithUi("install-adze.ps1", args: scriptArgs, label: label);
+        RunScriptWithUi("install-adze.ps1", args: scriptArgs, label: label,
+            onComplete: exitCode =>
+            {
+                if (exitCode != 0) return;
+                Log("");
+                Log("=== Uninstall complete — auto-verifying cleanup ===");
+                RunVerifyChecksOnly();
+            });
     }
 
     private void OnEjectClick(object? sender, EventArgs e)
@@ -301,7 +316,21 @@ public sealed class MainForm : Form
     {
         Log("");
         Log("=== Verify Setup ===");
+        RunVerifyChecks(showPromptIfGateOff: true);
+    }
 
+    /// <summary>
+    /// Runs the verification checklist without the interactive "enable gate?"
+    /// prompt — used after Install / Uninstall to give the user immediate
+    /// proof the script actually changed the right registry/filesystem state.
+    /// </summary>
+    private void RunVerifyChecksOnly()
+    {
+        RunVerifyChecks(showPromptIfGateOff: false);
+    }
+
+    private void RunVerifyChecks(bool showPromptIfGateOff)
+    {
         var checks = new System.Collections.Generic.List<(string Label, bool Ok, string Detail)>();
 
         // 1. Adze install dir + DLLs present
@@ -365,8 +394,11 @@ public sealed class MainForm : Form
         Log("");
         Log("Verify summary: " + passed + "/" + checks.Count + " checks passed.");
 
-        // Offer to flip the native sidebar gate if it's off
-        if (!nativeGateOn)
+        // Interactive prompt for the gate flip — only when the user
+        // explicitly clicked Verify Setup. Skipped after Install/Uninstall
+        // so the auto-verify pass is silent on success and informational on
+        // mismatch.
+        if (showPromptIfGateOff && !nativeGateOn)
         {
             var prompt = MessageBox.Show(this,
                 "The new v1.1 native sidebar is currently disabled (SOLIDWORKS_AI_NATIVE_SIDEBAR is " + nativeGateValue + ").\n\n" +
@@ -387,11 +419,11 @@ public sealed class MainForm : Form
                     MessageBoxIcon.Information);
             }
         }
-        else
+        else if (showPromptIfGateOff)
         {
             string summary = passed == checks.Count
                 ? "All checks passed. Relaunch SOLIDWORKS if you just changed something."
-                : (checks.Count - passed) + " issue(s) found — see the Logs tab for the checklist.";
+                : (checks.Count - passed) + " issue(s) found - see the Logs tab for the checklist.";
             MessageBox.Show(this, summary, "Verify Setup",
                 MessageBoxButtons.OK,
                 passed == checks.Count ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
