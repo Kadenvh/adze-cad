@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/rename_object.request.schema.json",
+  "title": "rename_object request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "rename_object" },
+    "action_class": { "const": "yellow" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current_name", "new_name"],
+      "properties": {
+        "object_type": {
+          "type": "string",
+          "enum": ["feature"],
+          "default": "feature"
+        },
+        "current_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "new_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

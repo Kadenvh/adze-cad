@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/search_project_files.request.schema.json",
+  "title": "search_project_files request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "search_project_files" },
+    "action_class": { "const": "green" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root_folder_path"],
+      "properties": {
+        "root_folder_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file_type": {
+          "type": ["string", "null"],
+          "enum": ["sldprt", "sldasm", "slddrw", null],
+          "default": null
+        },
+        "path_pattern": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "property_name": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "property_value": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "keyword": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 20
+        }
+      }
+    }
+  }
+}

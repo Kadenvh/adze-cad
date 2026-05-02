@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/set_custom_property.request.schema.json",
+  "title": "set_custom_property request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "set_custom_property" },
+    "action_class": { "const": "yellow" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property_name", "property_value"],
+      "properties": {
+        "property_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "property_value": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["document", "configuration"],
+          "default": "document"
+        },
+        "configuration_name": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      }
+    }
+  }
+}

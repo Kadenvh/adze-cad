@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_drawing_view.request.schema.json",
+  "title": "create_drawing_view request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_drawing_view" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "view_type": {
+          "type": "string",
+          "enum": [
+            "front",
+            "back",
+            "top",
+            "bottom",
+            "left",
+            "right",
+            "isometric",
+            "trimetric",
+            "dimetric"
+          ],
+          "default": "front"
+        },
+        "model_path": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Absolute path to source model. When null, uses the active drawing's referenced model."
+        },
+        "x": {
+          "type": "number",
+          "default": 0.15,
+          "description": "View placement X on the sheet in meters"
+        },
+        "y": {
+          "type": "number",
+          "default": 0.15
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.0
+        }
+      }
+    }
+  }
+}

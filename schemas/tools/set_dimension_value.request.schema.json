@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/set_dimension_value.request.schema.json",
+  "title": "set_dimension_value request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "set_dimension_value" },
+    "action_class": { "const": "yellow" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension_full_name", "new_value"],
+      "properties": {
+        "dimension_full_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Fully qualified dimension name, e.g. 'D1@Sketch1@Part1.SLDPRT'"
+        },
+        "new_value": {
+          "type": "number",
+          "description": "New value in document units (typically meters for length)"
+        },
+        "configuration_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "When set, change applies only to the named configuration; when null, applies to all configurations"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/insert_component.request.schema.json",
+  "title": "insert_component request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "insert_component" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_path"],
+      "properties": {
+        "component_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path to a .sldprt or .sldasm file"
+        },
+        "configuration_name": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "x": {
+          "type": "number",
+          "default": 0,
+          "description": "Insertion X coordinate in document units (meters)"
+        },
+        "y": {
+          "type": "number",
+          "default": 0
+        },
+        "z": {
+          "type": "number",
+          "default": 0
+        }
+      }
+    }
+  }
+}

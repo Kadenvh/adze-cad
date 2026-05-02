@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/unsuppress_feature.request.schema.json",
+  "title": "unsuppress_feature request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "unsuppress_feature" },
+    "action_class": { "const": "yellow" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_name"],
+      "properties": {
+        "feature_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "configuration_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "When set, applies to the named configuration only; when null, applies to all configurations"
+        }
+      }
+    }
+  }
+}
