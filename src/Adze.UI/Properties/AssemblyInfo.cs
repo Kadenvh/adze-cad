@@ -8,3 +8,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCopyright("Copyright © VH Tech LLC")]
 [assembly: ComVisible(false)]
 [assembly: Guid("D7E8F9A0-1234-5678-9ABC-DEF012345678")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyInformationalVersion("1.1.0")]

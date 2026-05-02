@@ -6,15 +6,21 @@
     Stops SOLIDWORKS processes, removes COM and add-in registry entries under
     HKCU, and deletes installed binaries from %LOCALAPPDATA%\Adze\bin.
 
-    By default user data (logs, traces, state, recipes) is preserved.
-    Pass -RemoveUserData to delete the entire %LOCALAPPDATA%\Adze directory.
+    By default user data (logs, traces, state, recipes) and SOLIDWORKS_AI_*
+    environment variables are preserved. Pass -RemoveUserData to wipe the
+    entire %LOCALAPPDATA%\Adze directory AND clear all SOLIDWORKS_AI_* env
+    vars from HKCU\Environment -- the "pristine fresh-install" path used
+    for clean-room testing.
 
     The script is idempotent: running it when Adze is already uninstalled
     produces no errors.
 
 .PARAMETER RemoveUserData
-    When set, removes the entire %LOCALAPPDATA%\Adze directory including
-    logs, traces, state, recipes, and support bundles.
+    When set, removes the entire %LOCALAPPDATA%\Adze directory (logs,
+    traces, state, recipes, support bundles) AND clears every SOLIDWORKS_AI_*
+    environment variable from HKCU\Environment so the next install starts
+    from a true zero-state. API keys, provider overrides, and feature gate
+    overrides are all wiped.
 
 .EXAMPLE
     pwsh -NoProfile -File install\uninstall-adze.ps1
@@ -228,6 +234,45 @@ if ($RemoveUserData) {
     } else {
         Write-Host "  No user data directory found."
     }
+}
+
+# ---------------------------------------------------------------------------
+# 6. Optionally clear SOLIDWORKS_AI_* environment variables
+# ---------------------------------------------------------------------------
+# Only runs under -RemoveUserData. Env vars set via `setx` (or via the
+# Manager Settings tab) persist in HKCU\Environment across uninstalls and
+# can silently affect a "fresh install" test -- e.g. a leftover
+# SOLIDWORKS_AI_NATIVE_SIDEBAR=true makes the new sidebar appear by
+# default, masking what a real first-time user would see. We sweep the
+# entire SOLIDWORKS_AI_* family so testers can't be fooled by stale state.
+Write-Host ""
+Write-Host "=== Step 6: Environment variables ===" -ForegroundColor Cyan
+
+if ($RemoveUserData) {
+    $envKey = 'HKCU:\Environment'
+    $adzeVars = @()
+    if (Test-Path $envKey) {
+        $adzeVars = (Get-Item $envKey).Property | Where-Object { $_ -like 'SOLIDWORKS_AI_*' }
+    }
+
+    if ($adzeVars.Count -eq 0) {
+        Write-Host "  No SOLIDWORKS_AI_* variables found in HKCU\Environment"
+    } else {
+        Write-Host ("  Removing {0} SOLIDWORKS_AI_* variable(s) from HKCU\Environment:" -f $adzeVars.Count)
+        foreach ($name in $adzeVars) {
+            try {
+                # Use [Environment]::SetEnvironmentVariable with $null so the
+                # WM_SETTINGCHANGE broadcast fires; otherwise newly-launched
+                # apps still see the cached value until next logon.
+                [Environment]::SetEnvironmentVariable($name, $null, [EnvironmentVariableTarget]::User)
+                Write-Host ("    Removed: {0}" -f $name)
+            } catch {
+                Write-Host ("    Could not remove {0}: {1}" -f $name, $_.Exception.Message) -ForegroundColor Yellow
+            }
+        }
+    }
+} else {
+    Write-Host "  Preserved: HKCU\Environment SOLIDWORKS_AI_* vars (pass -RemoveUserData to wipe)"
 }
 
 # ---------------------------------------------------------------------------

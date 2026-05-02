@@ -289,12 +289,45 @@ Write-Host ""
 # ---------------------------------------------------------------------------
 Write-Host "[Adze] Registering SOLIDWORKS add-in..." -ForegroundColor Yellow
 
+# (Default) REG_DWORD = 1 controls the "Start Up" column in Tools > Add-Ins
+# — when 1, SW loads the add-in on every launch. The Title/Description show
+# in the dialog. Title and Description must match what AdzeAddIn declares
+# in code (AdzeAddIn.Title / AdzeAddIn.Description), or SW shows stale text.
 Set-RegistryValue -Key "$solidWorksRoot\AddIns\$addInGuid"          -Type REG_DWORD -Value "1"
 Set-RegistryValue -Key "$solidWorksRoot\AddIns\$addInGuid" -Name "Title"       -Type REG_SZ    -Value "Adze for SOLIDWORKS"
 Set-RegistryValue -Key "$solidWorksRoot\AddIns\$addInGuid" -Name "Description" -Type REG_SZ    -Value "Native AI assistant add-in for SOLIDWORKS."
-Set-RegistryValue -Key "$solidWorksRoot\AddInsStartup\$addInGuid"   -Type REG_DWORD -Value "1"
 
-Write-Host "    Add-in registered with auto-start enabled" -ForegroundColor Green
+# (Default) REG_DWORD = 1 on AddInsStartup\{GUID} controls the "Active
+# Add-Ins" column — whether the add-in is loaded in the current session.
+# We write metadata here too so the dialog has a consistent view if SW
+# ever reads from the startup key (3DEXPERIENCE behavior is undocumented).
+Set-RegistryValue -Key "$solidWorksRoot\AddInsStartup\$addInGuid"   -Type REG_DWORD -Value "1"
+Set-RegistryValue -Key "$solidWorksRoot\AddInsStartup\$addInGuid" -Name "Title"       -Type REG_SZ -Value "Adze for SOLIDWORKS"
+Set-RegistryValue -Key "$solidWorksRoot\AddInsStartup\$addInGuid" -Name "Description" -Type REG_SZ -Value "Native AI assistant add-in for SOLIDWORKS."
+
+# Verify-after-write — read back the (Default) DWORDs and fail loudly if
+# they aren't 1. Catches silent reg.exe failures and bad permissions.
+$verifyAddInsKey  = "HKCU:\Software\SolidWorks\AddIns\$addInGuid"
+$verifyStartupKey = "HKCU:\Software\SolidWorks\AddInsStartup\$addInGuid"
+$valAddIns  = $null
+$valStartup = $null
+try {
+    $valAddIns  = (Get-ItemProperty -Path $verifyAddInsKey  -Name "(default)" -ErrorAction SilentlyContinue)."(default)"
+    $valStartup = (Get-ItemProperty -Path $verifyStartupKey -Name "(default)" -ErrorAction SilentlyContinue)."(default)"
+} catch {
+    # Fall through to the warning below
+}
+if ($valAddIns -eq 1 -and $valStartup -eq 1) {
+    Write-Host "    Registry verify OK (AddIns=1, AddInsStartup=1)" -ForegroundColor Green
+    Write-Host "    Add-in registered with Start Up + Active states ENABLED" -ForegroundColor Green
+} else {
+    Write-Host "    WARNING: registry verify failed" -ForegroundColor Yellow
+    Write-Host "      AddIns\(Default)        = $valAddIns (expected 1)"  -ForegroundColor Yellow
+    Write-Host "      AddInsStartup\(Default) = $valStartup (expected 1)" -ForegroundColor Yellow
+    Write-Host "      The add-in may load disabled. If 'Tools > Add-Ins' shows it"     -ForegroundColor Yellow
+    Write-Host "      unchecked after launching SW, the add-in failed to ConnectToSW." -ForegroundColor Yellow
+    Write-Host "      Diagnostic log: %LOCALAPPDATA%\Adze\logs\host.log"               -ForegroundColor Yellow
+}
 Write-Host "[Adze] SOLIDWORKS registration complete." -ForegroundColor Green
 Write-Host ""
 
