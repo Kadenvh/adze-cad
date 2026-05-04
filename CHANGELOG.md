@@ -30,6 +30,22 @@ Target: **v1.1.0** (primary track). **v1.0.0 is PAUSED** — release-gated work 
 ### Test count
 - **702 → 767 unit tests** (+65 across this rebuild). New coverage: `ModelJsonMapper` round-trip (14), `MarkdownToRichText` (10), `TaskPaneHost` contract (8), `HostStateAdapter` mapping (5), `QuickActionsBar` (9), `UiPalette` dual-mode (6), `UiPreferences` (5), `RefinementPanel` (5), `PreUpdateEjectService` (3 added), feature-gate registry (3 added).
 
+### Session 6 (2026-05-04) — deployment hardening + Manager polish
+
+- **Unified `install-adze.bat` / `uninstall-adze.bat` semantics.** The BAT no longer launches `Adze.Manager.exe` when bundled in the release zip — it always runs the PowerShell installer. The old dual-purpose behavior (BAT launches Manager when bundled, falls through to PS1 from repo) was the root cause of "the extracted zip behaves differently from the repo install" — the same filename produced two completely different code paths depending on whether `Adze.Manager.exe` happened to sit next to the BAT. The Manager is now an explicitly-launched post-install tool.
+- **`AddInsStartup\{GUID}` shape invariant fixed.** `install-adze.ps1` no longer writes `Title` and `Description` REG_SZ values under `HKCU\Software\SolidWorks\AddInsStartup\{GUID}`. Every native SOLIDWORKS R2026x add-in uses ONLY the `(Default)` REG_DWORD on this key; the extra REG_SZ entries caused SOLIDWORKS to treat the entry as malformed and normalize `(Default)` back to 0 on shutdown, breaking Active-state persistence across launches. Codified as Decision #23 so the regression cannot be re-introduced.
+- **`package-release.ps1` hardened.** Six numbered steps: working-tree warning, build, fail-fast artifact validation (was `Write-Warning` + continue — now hard-fails on missing DLLs / Manager.exe / scripts), `MANIFEST.txt` with SHA256 + git SHA per file, post-package extract-and-byte-compare smoke test (deletes the bad zip on hash mismatch). Source-vs-zip `install-adze.ps1` parity is asserted at packaging time.
+- **`Adze.Manager` Launch SOLIDWORKS button.** New green button in the Manager action row. Smart state: "Focus SOLIDWORKS" (steel blue + `SetForegroundWindow`) when SW is already running; "SW (updater running)" (red, disabled) when the 3DX updater is in flight; "Launch SOLIDWORKS" (green) when neither. Resolves launch target via `C:\Users\Public\Desktop\SOLIDWORKS Design.lnk` with fallbacks to `Program Files\Dassault Systemes\...\sldworks.exe`. After launch, an in-process Timer-based watcher (1.5s tick, 60s wall) polls for `sldworks.exe` appearance and scans `SWXDesktopLauncher`/`CATSTART` window titles for known blockers (3DEXPERIENCE Login / Update / Platform — patterns mirror `scripts/setup/launch-and-check-host.ps1`). Recovery guidance written to the Logs tab; Status auto-refreshes when the launch settles.
+- **`StatusTab` surfaces compatibility probe outcome.** Replaces the static "see host.log" placeholder with the most recent `CompatibilityProbe:` line tail-scanned from `host.log`, color-coded by outcome (green = OK, red = failure, muted = non-fatal cleanup). Inline in the Status tab next to install state, SW process, last-verified build.
+- **Manager assembly version banner.** Replaced literal `"Adze Manager v1.0.0 started."` log line with reflection-driven assembly-version read.
+- **Forensic script-resolution logging.** When the Manager runs `install-adze.ps1`, the Logs tab now records SHA256 + last-write-time + size of the resolved script path. Future stale-script reports are diagnosable from the Manager log alone.
+
+### Decisions (Session 6)
+- **#23** — `AddInsStartup\{GUID}` shape invariant: the key contains ONLY the `(Default)` REG_DWORD; `Title`/`Description` belong only under `AddIns\{GUID}`. Any installer change that adds named values under `AddInsStartup` is a regression.
+
+### Test count after Session 6
+- **767 tests** (761 passed + 6 inconclusive smoke). All Manager edits + install-script changes verified at the unit-test layer; package smoke test verifies install-script source-vs-zip parity at packaging time.
+
 ---
 
 ### v1.0.0 release-gate work (PAUSED, code-complete in tree)

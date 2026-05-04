@@ -133,8 +133,85 @@ public sealed class StatusTab : UserControl
         // Config path
         _lblConfigPath.Text = "Config: " + FeatureGateConfigService.GetConfigPath();
 
-        // Compatibility probe — owned by Adze.Host, not surfaced over IPC yet.
-        _lblProbe.Text = "Last compatibility probe: (run by Adze.Host on SOLIDWORKS launch — see host.log)";
+        // Compatibility probe — parse the most recent CompatibilityProbe line
+        // from host.log. The probe runs once per ConnectToSW with one of three
+        // outcomes that we surface here:
+        //   * "CompatibilityProbe: OK. SW revision=..." → green
+        //   * "CompatibilityProbe: ... threw" / "CompatibilityProbe: failed..." → red
+        //   * "CompatibilityProbe: ... non-fatal..." → muted (cleanup info, not failure)
+        var probe = TryReadLastProbeLine();
+        if (probe == null)
+        {
+            _lblProbe.Text = "Last compatibility probe: (no probe line in host.log yet)";
+            _lblProbe.ForeColor = Color.FromArgb(110, 120, 140);
+        }
+        else
+        {
+            string ts = probe.Value.Timestamp ?? "(unknown time)";
+            string msg = probe.Value.Message;
+            _lblProbe.Text = "Last compatibility probe: " + msg + "  [" + ts + "]";
+            if (msg.IndexOf("OK", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                _lblProbe.ForeColor = Color.FromArgb(10, 110, 60); // green
+            }
+            else if (msg.IndexOf("non-fatal", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                _lblProbe.ForeColor = Color.FromArgb(110, 120, 140); // muted
+            }
+            else
+            {
+                _lblProbe.ForeColor = Color.FromArgb(180, 30, 30); // red
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tail-scans %LOCALAPPDATA%\Adze\logs\host.log for the most recent line
+    /// containing "CompatibilityProbe: " and returns its timestamp prefix +
+    /// the probe portion of the message. Cheap (last 200 lines max). Returns
+    /// null if host.log is missing or no probe line is present.
+    /// </summary>
+    private static (string? Timestamp, string Message)? TryReadLastProbeLine()
+    {
+        string path = Path.Combine(GetLocalAppDataRoot(), "Adze", "logs", "host.log");
+        if (!File.Exists(path)) return null;
+
+        try
+        {
+            // Read all lines but keep only the tail in memory. host.log is
+            // generally well under 20 MB; the simple full-read is fine.
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fs, System.Text.Encoding.UTF8);
+            string? line;
+            string? lastProbe = null;
+            while ((line = reader.ReadLine()) != null)
+            {
+                if (line.IndexOf("CompatibilityProbe: ", StringComparison.Ordinal) >= 0)
+                {
+                    lastProbe = line;
+                }
+            }
+            if (lastProbe == null) return null;
+
+            // host.log lines look like: "2026-05-04 10:24:13.123 INFO CompatibilityProbe: OK. SW revision=..."
+            // Split off a leading ISO-ish timestamp + level token if present.
+            int probeIdx = lastProbe.IndexOf("CompatibilityProbe: ", StringComparison.Ordinal);
+            string probeMsg = lastProbe.Substring(probeIdx + "CompatibilityProbe: ".Length).TrimEnd();
+            string? ts = null;
+            if (probeIdx > 0)
+            {
+                // Trim trailing space + level token before the probe phrase.
+                string head = lastProbe.Substring(0, probeIdx).TrimEnd();
+                int lastSpace = head.LastIndexOf(' ');
+                if (lastSpace > 0) head = head.Substring(0, lastSpace).TrimEnd();
+                if (head.Length >= 10) ts = head;
+            }
+            return (ts, probeMsg);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static Label MakeStatusLabel(Control parent, int y, string initial)

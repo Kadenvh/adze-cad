@@ -299,11 +299,13 @@ Set-RegistryValue -Key "$solidWorksRoot\AddIns\$addInGuid" -Name "Description" -
 
 # (Default) REG_DWORD = 1 on AddInsStartup\{GUID} controls the "Active
 # Add-Ins" column — whether the add-in is loaded in the current session.
-# We write metadata here too so the dialog has a consistent view if SW
-# ever reads from the startup key (3DEXPERIENCE behavior is undocumented).
+# IMPORTANT: this key must contain ONLY the (Default) REG_DWORD. Every
+# native SOLIDWORKS add-in on R2026x follows that shape; writing extra
+# REG_SZ values (Title/Description) here causes SW to treat the entry
+# as malformed and normalize (Default) back to 0 on shutdown, so the
+# Active checkbox does not persist across launches. Title/Description
+# belong only under AddIns\{GUID} (set above). See Session 6 debug.
 Set-RegistryValue -Key "$solidWorksRoot\AddInsStartup\$addInGuid"   -Type REG_DWORD -Value "1"
-Set-RegistryValue -Key "$solidWorksRoot\AddInsStartup\$addInGuid" -Name "Title"       -Type REG_SZ -Value "Adze for SOLIDWORKS"
-Set-RegistryValue -Key "$solidWorksRoot\AddInsStartup\$addInGuid" -Name "Description" -Type REG_SZ -Value "Native AI assistant add-in for SOLIDWORKS."
 
 # Verify-after-write — read back the (Default) DWORDs and fail loudly if
 # they aren't 1. Catches silent reg.exe failures and bad permissions.

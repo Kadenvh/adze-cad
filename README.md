@@ -61,12 +61,13 @@ All write tools: preview → user approves → apply → verify → trace → un
 If you just want to see what Adze does on your SOLIDWORKS install:
 
 1. Download the latest release zip from [Releases](https://github.com/Kadenvh/adze-cad/releases)
-2. Extract it, then **double-click `install-adze.bat`**. The **Adze Manager** window opens — click **Install / Reinstall**.
-3. Launch SOLIDWORKS — the **Adze** panel appears in the right sidebar. Type a question about the active document, click **Run assistant**.
+2. Extract it, then **double-click `install-adze.bat`** — the PowerShell installer runs in a console window, registers the add-in per-user, and reports a verify-after-write check.
+3. (Optional) Double-click `Adze.Manager.exe` to open the Adze Manager — a small WinForms control panel for ongoing management (logs, settings, install state, **Launch SOLIDWORKS** button, Verify Setup, Eject for Update).
+4. Launch SOLIDWORKS — the **Adze** panel appears in the right sidebar. Type a question about the active document, click **Run assistant**.
 
-No API key needed. Adze runs a built-in deterministic broker that reads your document and returns grounded answers using the 11 read tools. To enable AI-powered answers (OpenAI, Anthropic, OpenRouter, Ollama, LM Studio), use the in-app Settings panel or see [AI Configuration](#ai-configuration) below.
+No API key needed. Adze runs a built-in deterministic broker that reads your document and returns grounded answers using the 11 read tools. To enable AI-powered answers (OpenAI, Anthropic, OpenRouter, Ollama, LM Studio), use the Manager's Settings tab or see [AI Configuration](#ai-configuration) below.
 
-The Adze Manager is a small Windows Forms utility bundled with the release zip. It shows install state, whether SOLIDWORKS or the 3DEXPERIENCE updater are running, the last-verified SW build, and your config path. Use it to install, uninstall, or **Eject for Update** (safely detaches Adze before you apply a 3DX update, so the updater can run cleanly).
+The Adze Manager is a separate post-install tool. It shows install state, whether SOLIDWORKS or the 3DEXPERIENCE updater are running, the last-verified SW build, the most recent compatibility-probe result, and your config path. Use it to launch SOLIDWORKS, uninstall, or **Eject for Update** (safely detaches Adze before you apply a 3DX update, so the updater can run cleanly).
 
 Installed per-user at `%LOCALAPPDATA%\Adze\bin` — no admin privileges required. To uninstall, double-click `uninstall-adze.bat` or click **Uninstall** in the Manager.
 
@@ -74,15 +75,13 @@ Installed per-user at `%LOCALAPPDATA%\Adze\bin` — no admin privileges required
 
 ### Install from a release zip
 
-The GUI path is `install-adze.bat` → opens the Adze Manager → click **Install / Reinstall**.
-
-For a headless install (CI, scripting, no GUI):
+`install-adze.bat` is the one-click installer. It runs the PowerShell installer with the same flags as the headless path:
 
 ```powershell
 powershell.exe -NoProfile -File install-adze.ps1
 ```
 
-Both paths perform the same HKCU COM registration and DLL copy to `%LOCALAPPDATA%\Adze\bin`.
+Both perform the same HKCU COM registration and DLL copy to `%LOCALAPPDATA%\Adze\bin`. Launch `Adze.Manager.exe` separately for the GUI control panel.
 
 ### Build from Source
 

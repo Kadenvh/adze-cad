@@ -1,13 +1,19 @@
 @echo off
-REM Adze for SOLIDWORKS — double-click uninstaller entry point.
-REM Launches Adze.Manager.exe when bundled (preferred — UI uninstall flow).
-REM Falls back to the PowerShell -Uninstall path for source checkouts.
+REM Adze for SOLIDWORKS — uninstaller entry point.
+REM Always runs install-adze.ps1 -Uninstall. Use Adze.Manager.exe directly
+REM if you want the GUI uninstall flow (with the user-data prompt).
+REM
+REM Behavior is identical whether run from a source checkout or from
+REM an extracted release zip.
 
 setlocal
 
-if exist "%~dp0Adze.Manager.exe" (
-    start "" "%~dp0Adze.Manager.exe"
-    exit /b 0
+if not exist "%~dp0install-adze.ps1" (
+    echo ERROR: install-adze.ps1 not found next to this script.
+    echo Expected: %~dp0install-adze.ps1
+    echo.
+    pause
+    exit /b 1
 )
 
 echo Uninstalling Adze for SOLIDWORKS...

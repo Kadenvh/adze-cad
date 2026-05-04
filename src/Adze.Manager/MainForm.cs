@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -28,14 +29,30 @@ public sealed class MainForm : Form
     private static readonly Color InstallColorDisabled = Color.FromArgb(200, 205, 215);
     private static readonly Color EjectColorNormal = Color.FromArgb(255, 193, 7);
     private static readonly Color EjectColorPromoted = Color.FromArgb(220, 53, 69);
+    private static readonly Color LaunchColorNormal = Color.FromArgb(34, 139, 90);   // green
+    private static readonly Color LaunchColorFocus  = Color.FromArgb(70, 130, 180);  // steel blue (already running)
+    private static readonly Color LaunchColorBlocked = Color.FromArgb(180, 30, 30);  // red (updater running)
     private const string EjectLabelNormal = "Eject for Update";
     private const string EjectLabelPromoted = "\u26A0  Eject for Update";
+    private const string LaunchLabelLaunch = "Launch SOLIDWORKS";
+    private const string LaunchLabelFocus  = "Focus SOLIDWORKS";
+    private const string LaunchLabelBlocked = "SW (updater running)";
+
+    // Known launcher blocker patterns \u2014 mirrors scripts/setup/launch-and-check-host.ps1
+    private static readonly (string Pattern, string Reason, string Recovery)[] LauncherBlockerPatterns = new[]
+    {
+        ("Login | 3DEXPERIENCE ID",       "3DEXPERIENCE desktop login required before SOLIDWORKS can start.", "Dismiss the 3DEXPERIENCE login window, then click Launch again."),
+        ("3DEXPERIENCE Update",            "3DEXPERIENCE update window is blocking SOLIDWORKS from starting.",  "Complete or dismiss the 3DEXPERIENCE update, then click Launch again."),
+        ("3DEXPERIENCE Platform",          "3DEXPERIENCE platform window is blocking SOLIDWORKS from starting.","Close the 3DEXPERIENCE Platform window, then click Launch again.")
+    };
 
     private readonly Button _btnInstall;
     private readonly Button _btnUninstall;
     private readonly Button _btnEject;
+    private readonly Button _btnLaunchSw;
     private readonly Button _btnVerify;
     private readonly Button _btnRefresh;
+    private System.Windows.Forms.Timer? _launchWatcher;
 
     private readonly TabControl _tabs;
     private readonly LogsTab _logsTab;
@@ -89,6 +106,7 @@ public sealed class MainForm : Form
         _btnInstall   = MakeButton("Install / Reinstall", Color.FromArgb(0, 114, 198), Color.White);
         _btnUninstall = MakeButton("Uninstall", Color.FromArgb(240, 240, 240), Color.FromArgb(30, 30, 30));
         _btnEject     = MakeButton("Eject for Update", Color.FromArgb(255, 193, 7), Color.FromArgb(30, 30, 30));
+        _btnLaunchSw  = MakeButton(LaunchLabelLaunch, LaunchColorNormal, Color.White);
         _btnVerify    = MakeButton("Verify Setup", Color.FromArgb(79, 70, 229), Color.White);
         _btnRefresh   = MakeButton("Refresh", Color.FromArgb(240, 240, 240), Color.FromArgb(30, 30, 30));
 
@@ -103,12 +121,14 @@ public sealed class MainForm : Form
             });
         _btnUninstall.Click += OnUninstallClick;
         _btnEject.Click     += OnEjectClick;
+        _btnLaunchSw.Click  += OnLaunchSwClick;
         _btnVerify.Click    += OnVerifySetupClick;
         _btnRefresh.Click   += (s, e) => RefreshAll();
 
         buttonPanel.Controls.Add(_btnInstall);
         buttonPanel.Controls.Add(_btnUninstall);
         buttonPanel.Controls.Add(_btnEject);
+        buttonPanel.Controls.Add(_btnLaunchSw);
         buttonPanel.Controls.Add(_btnVerify);
         buttonPanel.Controls.Add(_btnRefresh);
         Controls.Add(buttonPanel);
@@ -164,7 +184,8 @@ public sealed class MainForm : Form
 
         Load += (s, e) =>
         {
-            Log("Adze Manager v1.0.0 started.");
+            string mgrVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "(unknown)";
+            Log("Adze Manager v" + mgrVersion + " started.");
             Log("State directory: " + GetLocalAppDataRoot());
             RefreshAll();
         };
@@ -186,6 +207,7 @@ public sealed class MainForm : Form
     {
         _statusTab.Refresh();
         _settingsTab.Reload();
+        ApplyLaunchButtonState();
     }
 
     // -----------------------------------------------------------------------
@@ -207,6 +229,25 @@ public sealed class MainForm : Form
         SetButtonsEnabled(false);
         Log(string.Empty);
         Log(label + " (" + scriptPath + (string.IsNullOrWhiteSpace(args) ? "" : " " + args) + ")");
+
+        // Forensic trail: log the resolved script's hash + last-write-time so a
+        // user reporting "install behaved differently than expected" can post
+        // these from the Logs tab and we can immediately tell whether they ran
+        // a stale zip vs the live repo script (the Session 6 stale-zip class
+        // of regression).
+        try
+        {
+            var fi = new FileInfo(scriptPath);
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            using var fs = fi.OpenRead();
+            string hashHex = BitConverter.ToString(sha.ComputeHash(fs)).Replace("-", string.Empty);
+            Log(string.Format("    Script hash (SHA256): {0}", hashHex));
+            Log(string.Format("    Script last-write   : {0:o} ({1:N0} bytes)", fi.LastWriteTimeUtc, fi.Length));
+        }
+        catch (Exception hashEx)
+        {
+            Log("    (could not hash script: " + hashEx.Message + ")");
+        }
 
         Task.Run(() =>
         {
@@ -301,8 +342,228 @@ public sealed class MainForm : Form
         _btnInstall.Enabled = enabled;
         _btnUninstall.Enabled = enabled;
         _btnEject.Enabled = enabled;
+        _btnLaunchSw.Enabled = enabled;
         _btnVerify.Enabled = enabled;
         _btnRefresh.Enabled = enabled;
+    }
+
+    // -----------------------------------------------------------------------
+    // Launch SOLIDWORKS — smart state: focus running window, block during 3DX
+    // updater, otherwise spawn the public-desktop shortcut and watch launcher
+    // window titles for known blockers (mirrors launch-and-check-host.ps1).
+    // -----------------------------------------------------------------------
+
+    private void OnLaunchSwClick(object? sender, EventArgs e)
+    {
+        // 3DX updater running? Hard block — installing/launching during update is a footgun.
+        var updater = Process.GetProcessesByName("swxdesktopupdate");
+        if (updater.Length > 0)
+        {
+            MessageBox.Show(this,
+                "3DEXPERIENCE updater is running (PID " + updater[0].Id + ").\n\n" +
+                "Launching SOLIDWORKS now will collide with the in-progress update. " +
+                "Wait for the updater to finish, then try again.",
+                "Updater in progress",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
+        // Already running? Bring main window forward instead of starting another instance.
+        var swProcs = Process.GetProcessesByName("sldworks")
+            .Concat(Process.GetProcessesByName("SLDWORKS"))
+            .ToArray();
+        if (swProcs.Length > 0)
+        {
+            var withWindow = swProcs.FirstOrDefault(p => p.MainWindowHandle != IntPtr.Zero);
+            if (withWindow != null)
+            {
+                Log("");
+                Log("SOLIDWORKS already running (PID " + withWindow.Id + ") — focusing existing window.");
+                NativeFocus.SetForegroundWindow(withWindow.MainWindowHandle);
+            }
+            else
+            {
+                Log("");
+                Log("SOLIDWORKS process detected (PID " + swProcs[0].Id + ") but main window not yet ready — wait a moment and try again.");
+            }
+            return;
+        }
+
+        // Locate the launcher target. Prefer the public-desktop shortcut (matches
+        // launch-and-check-host.ps1); fall back to direct sldworks.exe.
+        string target = ResolveSolidWorksLaunchTarget();
+        if (string.IsNullOrEmpty(target))
+        {
+            MessageBox.Show(this,
+                "Could not find a SOLIDWORKS launch target.\n\n" +
+                "Tried:\n" +
+                "  - C:\\Users\\Public\\Desktop\\SOLIDWORKS Design.lnk\n" +
+                "  - %ProgramFiles%\\Dassault Systemes\\SOLIDWORKS 3DEXPERIENCE R2026x\\SOLIDWORKS\\sldworks.exe\n\n" +
+                "Confirm SOLIDWORKS is installed, then launch it from the Windows Start menu.",
+                "SOLIDWORKS not found",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
+        }
+
+        // Auto-show Logs tab so the user sees the launch trail.
+        _tabs.SelectedTab = _tabs.TabPages[0];
+        Log("");
+        Log("Launching SOLIDWORKS via: " + target);
+
+        try
+        {
+            var psi = new ProcessStartInfo(target) { UseShellExecute = true };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            Log("    Launch failed: " + ex.Message);
+            MessageBox.Show(this, "Launch failed: " + ex.Message,
+                "Adze Manager", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        // Disable button while we watch — prevents double-launch.
+        _btnLaunchSw.Enabled = false;
+        _btnLaunchSw.Text = "Launching...";
+
+        StartLaunchWatcher(DateTime.UtcNow);
+    }
+
+    private static string ResolveSolidWorksLaunchTarget()
+    {
+        string shortcut = @"C:\Users\Public\Desktop\SOLIDWORKS Design.lnk";
+        if (File.Exists(shortcut)) return shortcut;
+
+        foreach (string candidate in new[]
+        {
+            @"C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x\SOLIDWORKS\sldworks.exe",
+            @"C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2025x\SOLIDWORKS\sldworks.exe",
+            @"C:\Program Files\Dassault Systemes\SolidWorks Corp\SOLIDWORKS\sldworks.exe"
+        })
+        {
+            if (File.Exists(candidate)) return candidate;
+        }
+        return string.Empty;
+    }
+
+    private void StartLaunchWatcher(DateTime startedUtc)
+    {
+        _launchWatcher?.Stop();
+        _launchWatcher?.Dispose();
+
+        _launchWatcher = new System.Windows.Forms.Timer { Interval = 1500 };
+        bool blockerLogged = false;
+        _launchWatcher.Tick += (s, _) =>
+        {
+            try
+            {
+                // Success: sldworks.exe is up.
+                if (Process.GetProcessesByName("sldworks").Length > 0
+                    || Process.GetProcessesByName("SLDWORKS").Length > 0)
+                {
+                    StopLaunchWatcher();
+                    Log("    SOLIDWORKS process detected — launch successful.");
+                    RefreshAll();
+                    return;
+                }
+
+                // Blocker scan: launcher window titles for known patterns.
+                if (!blockerLogged)
+                {
+                    foreach (string procName in new[] { "SWXDesktopLauncher", "CATSTART" })
+                    {
+                        foreach (var p in Process.GetProcessesByName(procName))
+                        {
+                            string title = p.MainWindowTitle ?? string.Empty;
+                            if (string.IsNullOrWhiteSpace(title)) continue;
+                            foreach (var bp in LauncherBlockerPatterns)
+                            {
+                                if (title.IndexOf(bp.Pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    Log("    BLOCKER: " + bp.Reason);
+                                    Log("    Recovery: " + bp.Recovery);
+                                    Log("    Window title: " + title);
+                                    blockerLogged = true;
+                                    break;
+                                }
+                            }
+                            if (blockerLogged) break;
+                        }
+                        if (blockerLogged) break;
+                    }
+                }
+
+                // 60-second wall: if neither success nor blocker, give up watching.
+                if ((DateTime.UtcNow - startedUtc).TotalSeconds > 60)
+                {
+                    StopLaunchWatcher();
+                    Log("    Watcher timed out at 60s. SOLIDWORKS may still be initialising.");
+                    Log("    Check %LOCALAPPDATA%\\Adze\\logs\\host.log once SW finishes loading.");
+                    RefreshAll();
+                }
+            }
+            catch (Exception ex)
+            {
+                StopLaunchWatcher();
+                Log("    Watcher error: " + ex.Message);
+            }
+        };
+        _launchWatcher.Start();
+    }
+
+    private void StopLaunchWatcher()
+    {
+        if (_launchWatcher != null)
+        {
+            _launchWatcher.Stop();
+            _launchWatcher.Dispose();
+            _launchWatcher = null;
+        }
+        _btnLaunchSw.Enabled = true;
+        ApplyLaunchButtonState();
+    }
+
+    /// <summary>
+    /// Refresh the Launch button label/color based on observed state. Called
+    /// from RefreshAll, OnFormActivated, and after the launch watcher finishes.
+    /// </summary>
+    private void ApplyLaunchButtonState()
+    {
+        bool updaterRunning = Process.GetProcessesByName("swxdesktopupdate").Length > 0;
+        bool swRunning = Process.GetProcessesByName("sldworks").Length > 0
+                         || Process.GetProcessesByName("SLDWORKS").Length > 0;
+
+        if (updaterRunning)
+        {
+            _btnLaunchSw.Text = LaunchLabelBlocked;
+            _btnLaunchSw.BackColor = LaunchColorBlocked;
+            _btnLaunchSw.ForeColor = Color.White;
+            _btnLaunchSw.FlatAppearance.BorderColor = LaunchColorBlocked;
+        }
+        else if (swRunning)
+        {
+            _btnLaunchSw.Text = LaunchLabelFocus;
+            _btnLaunchSw.BackColor = LaunchColorFocus;
+            _btnLaunchSw.ForeColor = Color.White;
+            _btnLaunchSw.FlatAppearance.BorderColor = LaunchColorFocus;
+        }
+        else
+        {
+            _btnLaunchSw.Text = LaunchLabelLaunch;
+            _btnLaunchSw.BackColor = LaunchColorNormal;
+            _btnLaunchSw.ForeColor = Color.White;
+            _btnLaunchSw.FlatAppearance.BorderColor = LaunchColorNormal;
+        }
+    }
+
+    private static class NativeFocus
+    {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
     }
 
     /// <summary>
