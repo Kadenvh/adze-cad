@@ -1,12 +1,12 @@
 # Adze
 
-**Native AI assistant for SOLIDWORKS** — grounded in your live CAD session, not generic chat.
+**Native AI tool embedded in SOLIDWORKS** — AI that does CAD work, not a chat panel that talks about it.
 
-Adze is a free, in-process SOLIDWORKS add-in. It reads your active document through 18 typed tools, reasons over the results with an agentic AI loop, and delivers grounded answers in a conversational Task Pane. Write operations follow an 8-step safety lifecycle: plan, preview, approve, apply, verify, trace, undo-label, and history. Nothing leaves your machine unless you choose a cloud provider.
+Adze is a free, in-process SOLIDWORKS add-in. It reads your active document through 12 grounding/compute tools, reasons over the results with an agentic AI loop, and executes real geometry work through 13 write tools (sketches, dimensions, components, mesh import, drawing creation). Write operations follow an 8-step safety lifecycle: plan, preview, approve, apply, verify, trace, undo-label, and history. Nothing leaves your machine unless you choose a cloud provider.
 
-> **Current status:** v0.1.1 shipped. **v1.0.0 PAUSED. v1.1 UI rebuild = primary track.** The v1.0 release path was paused after R5.3/R5.4 unblocked — the team prioritised a native-WinForms sidebar rebuild over shipping the v1.0 polish to address a perception gap (the IE11 WebBrowser sidebar feels embedded rather than native to SOLIDWORKS). The v0.1.1 public-beta release remains the last stable build. The legacy WebBrowser sidebar is still the default; the new native sidebar lands behind a feature gate (`SOLIDWORKS_AI_NATIVE_SIDEBAR`, default OFF) until the new surface is verified live.
+> **Current status:** v0.1.1 shipped. **v1.0.0 PAUSED. v1.1 UI rebuild + Phase 11 embedded surfaces = primary track.** The v1.0 release path was paused after R5.3/R5.4 unblocked — the team prioritised a native-WinForms sidebar rebuild and a deeper tool surface over shipping the v1.0 polish. Sessions 7+8 (2026-05-10) expanded the tool surface from 18 → 27 typed tools and added two ribbon buttons that execute directly without the chat panel.
 >
-> 18 typed tools (10 read + 1 retrieval + 7 write), 767 tests, agentic loop, governed writes, streaming, multi-provider AI. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required.
+> **27 typed tools** — 12 read (10 grounding + 2 compute) + 1 retrieval + 2 mesh + 12 write. **823 tests.** Agentic loop, governed writes, streaming, multi-provider AI, mesh I/O + analysis, sketch authoring, drawing automation. **Confirmed working on SOLIDWORKS for Makers** (the $48/yr consumer tier) — no commercial license required.
 
 ---
 
@@ -24,7 +24,7 @@ Adze is a free, in-process SOLIDWORKS add-in. It reads your active document thro
 
 ---
 
-## Read Tools (11)
+## Read Tools — Grounding (10)
 
 | Tool | What it reads |
 |------|--------------|
@@ -38,9 +38,28 @@ Adze is a free, in-process SOLIDWORKS add-in. It reads your active document thro
 | `get_mates` | Assembly mates with types, status, references (paginated) |
 | `get_rebuild_diagnostics` | Rebuild errors and warnings with affected features |
 | `get_reference_graph` | Component references and dependency relationships |
-| `search_project_files` | Search closed SOLIDWORKS files by keyword or property |
 
-## Write Tools (7)
+## Read Tools — Compute (2, Phase 11) — SOLIDWORKS Evaluate-tab parity
+
+| Tool | What it computes |
+|------|------------------|
+| `get_mass_properties` | Volume, surface area, mass, center of mass, principal axes / moments of inertia (per-config) |
+| `measure_distance` | Distance, projections, angle, area between two selected entities |
+
+## Retrieval (1)
+
+| Tool | What it does |
+|------|--------------|
+| `search_project_files` | Search closed SOLIDWORKS files by keyword or custom property (no SW open required) |
+
+## Mesh Tools (2, Phase 11)
+
+| Tool | What it does | Class |
+|------|--------------|-------|
+| `analyze_mesh_file` | STL stats, manifold/closure, convertibility verdict, advisories. No SW required. | Read |
+| `import_mesh` | Open an STL as a SOLIDWORKS part document (graphics body via 3D Interconnect) | Elevated |
+
+## Write Tools (12)
 
 | Tool | What it does | Class |
 |------|-------------|-------|
@@ -51,8 +70,22 @@ Adze is a free, in-process SOLIDWORKS add-in. It reads your active document thro
 | `rename_object` | Rename features with collision and reference checks | Standard |
 | `insert_component` | Insert components into assemblies | Elevated |
 | `create_drawing_view` | Create standard drawing views (9 view types) | Elevated |
+| `create_sketch` | Create a sketch on a reference plane or planar face (Phase 11) | Elevated |
+| `add_sketch_line` | Add a 2D line to a sketch (Phase 11) | Standard |
+| `add_sketch_circle` | Add a 2D circle to a sketch (Phase 11) | Standard |
+| `add_sketch_dimension` | Drive a sketch entity to a target length / radius / diameter / angle (Phase 11) | Standard |
+| `create_drawing_document` | New drawing doc with optional standard 3rd-angle views (Phase 11) | Elevated |
 
 All write tools: preview → user approves → apply → verify → trace → undo label. Elevated tools show orange-bordered confirmation cards with explicit warnings.
+
+## Embedded Ribbon Surfaces (Phase 11)
+
+The Adze ribbon tab includes direct-action buttons that execute their flows without opening the chat panel:
+
+- **Import Mesh** — file picker → analyze STL → confirmation dialog with stats + advisories → SW opens it as a part
+- **Auto-Drawing** — confirms → creates a drawing of the active part with standard front/top/right/iso views
+
+These are the canonical examples of the embedded-AI pattern — AI-assisted CAD work invoked from the ribbon, not the chat sidebar.
 
 ---
 

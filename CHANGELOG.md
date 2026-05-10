@@ -8,6 +8,54 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Target: **v1.1.0** (primary track). **v1.0.0 is PAUSED** — release-gated work below remains code-complete in the tree, but the v1.0.0 tag was deferred 2026-04-28 to prioritise the v1.1 UI rebuild. The IE11 WebBrowser sidebar undermines Adze's positioning as a native CAD tool; shipping v1.0.0 with that surface would lock in months of remediation pressure. v1.1 lands first; v1.0.0 work folds in.
 
+### Phase 11 — Embedded AI surfaces (2026-05-10, Sessions 7+8)
+
+**Mission re-anchor.** Founder framing 2026-05-10: Adze is "a fully embedded AI tool integrated into SOLIDWORKS, not a chatbot." The chat sidebar is implementation scaffolding; the product is AI doing CAD work via direct surfaces. This release expands the tool surface from 18 → 27 typed tools and lands the first ribbon buttons that execute work directly without the chat panel.
+
+**New project — `Adze.Mesh`.** Pure-managed (no SOLIDWORKS interop) library for mesh I/O and analysis. Designed so the same code paths run in unit tests and inside the SW host without conditional compilation.
+
+- `Models/` — `Vector3d`, `Triangle`, `Mesh` (triangle soup), `AxisAlignedBoundingBox`, `MeshStatistics`, `MeshAnalysis`, `PlaneFit`, `PrimitiveFitResults`.
+- `Io/StlReader` — binary + ASCII STL with format auto-detect that handles the "binary STL whose 80-byte header starts with the word `solid`" trap (compares declared count × 50 + 84 against file size; only treats as ASCII if the size doesn't match).
+- `Analysis/MeshStatsCalculator` — bounding box, surface area, signed enclosed volume (divergence theorem), open-edge / non-manifold-edge / degenerate-triangle counts, consistency-of-orientation check via directed-edge dictionary.
+- `Analysis/MeshAnalyzer` — convertibility verdict (`Direct` / `NeedsRepair` / `NeedsReverseEngineering` / `NotConvertible`) and recommended import strategy (`GraphicsBodyOnly` / `GraphicsThenConvert` / `ScanTo3DAutoSurface` / `AdzeReverseEngineer`) with human-readable advisories.
+- `Analysis/PrimitiveFitter` — deterministic normal-clustering plane detection. Greedy: pick the largest unassigned triangle by area, claim all triangles whose unit normal is within 8° AND whose centroid is within 0.5% of the bbox diagonal, refit via area-weighted least-squares, repeat. Detects all 6 faces of a unit cube with 100% area coverage.
+
+**New tool category — `IComputeTool<T>`.** Read-only tools that need live SOLIDWORKS COM access (mass properties, measurement) — sit between snapshot-only grounding tools and write tools. `ToolExecutionContext.Application` carries the live `ISldWorks` reference from `HostState` through the dispatcher. Snapshot-only grounding tools ignore it.
+
+**18 → 27 typed tools.**
+
+| Tool | Category | Purpose |
+|---|---|---|
+| `analyze_mesh_file` | Read (mesh) | STL stats, manifold/closure, convertibility verdict, advisories. Read-only, no SW required. |
+| `import_mesh` | Write (Class 3 elevated) | Open STL as SW part document via 3D Interconnect. Preview includes full mesh analysis. |
+| `get_mass_properties` | Read (compute) | Volume, surface area, mass, COM, principal axes — Evaluate-tab parity. |
+| `measure_distance` | Read (compute) | Distance / projections / angle / area between selected entities — Evaluate-tab parity. |
+| `create_sketch` | Write (Class 3 elevated) | Create a sketch on a reference plane or planar face. |
+| `add_sketch_line` | Write | Add a 2D line to a sketch (sketch-plane local mm). |
+| `add_sketch_circle` | Write | Add a 2D circle to a sketch. |
+| `add_sketch_dimension` | Write | Drive a sketch entity to a target value (length / radius / diameter / angle / distance). |
+| `create_drawing_document` | Write (Class 3 elevated) | New drawing doc with optional standard 3rd-angle views (front/top/right/iso). |
+
+**New embedded ribbon surfaces.** `Import Mesh` and `Auto-Drawing` ribbon buttons run their tool flows directly — file picker → analysis → confirm → apply, no chat panel involvement. `HostState.InvokeMeshImport` and `HostState.InvokeAutoDrawing` are reusable entry points other surfaces can hook (PMP, context menu) without re-implementing the dispatch.
+
+**Plumbing.**
+- `WriteContracts.WriteTargetKind` extended with `MeshImport`, `SketchCreation`, `SketchEntity`, `SketchDimension`, `DrawingDocument`.
+- `FeatureGateRegistry.MeshImport` (`SOLIDWORKS_AI_MESH_IMPORT`, default ON) — 12 gates total now.
+- `WriteTrackingToolExecutor` knows the new write tools; 5 of them are Class 3 elevated (orange-bordered confirmation card).
+- `BuildAllToolDefinitions(includeRetrieval, includeMesh)` — mesh + retrieval are opt-in to keep the default agent-loop tool list compact.
+- `ApplyWriteToolDirect` short-circuits document-creation tools (`import_mesh`, `create_drawing_document`) before the active-doc null check so they can run when SW has no document open.
+
+**Schemas.** 9 new JSON request schemas added. All 27 tool schemas validate clean.
+
+**Tests.** 767 → 823 (+56). New coverage: `StlReader` (9), `MeshStatsCalculator` (6), `MeshAnalyzer` (4), `PrimitiveFitter` (5), `AnalyzeMeshFileTool` (6), `ImportMeshTool` (6), `SketchToolTests` (12), `CreateDrawingDocumentToolTests` (5), `GetMassPropertiesToolTests` (3), `MeasureDistanceToolTests` (3). The five new write tools' Apply paths require live SW to verify and are exercised by host validation, not unit tests — the same pattern as the existing 7 first-wave write tools.
+
+**Memory.** Saved founder framing as `feedback_mission_embedded_not_chat.md` so future sessions don't re-invent the chat-as-product framing.
+
+**What's deliberately deferred.**
+- Cylinder / sphere / torus fitting in `PrimitiveFitter` — only planes implemented; the result type is shaped to grow without breaking callers.
+- Mesh BREP strategy in `import_mesh` — recognized strategy enum value, but falls back to `graphics_body` with an explicit warning until live SW is available to verify the COM path.
+- Live host validation of the 5 new write tools and 2 compute tools — all follow the existing dynamic-COM patterns but the founder-loop step is required.
+
 ### v1.1 UI rebuild (2026-04-28) — primary track
 
 - **`Adze.UI` runtime library** — new project hosting native WinForms sidebar v2: `NativeTaskPaneControl`, `ChatMessageView`, `WriteCardView`, `QuickActionsBar`, `MarkdownToRichText`. No SOLIDWORKS interop; reused by Manager + UiHarness alike.

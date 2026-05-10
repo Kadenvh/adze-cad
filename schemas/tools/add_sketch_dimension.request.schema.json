@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/add_sketch_dimension.request.schema.json",
+  "title": "add_sketch_dimension request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "add_sketch_dimension" },
+    "action_class": { "const": "yellow" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_name", "dimension_type", "target_value"],
+      "properties": {
+        "entity_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dimension_type": {
+          "type": "string",
+          "enum": ["length", "radius", "diameter", "angle", "distance"]
+        },
+        "target_value": { "type": "number" },
+        "sketch_name": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      }
+    }
+  }
+}

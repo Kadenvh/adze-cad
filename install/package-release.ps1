@@ -101,6 +101,7 @@ $requiredDlls = @(
     'Adze.Contracts.dll',
     'Adze.Index.dll',
     'Adze.UI.dll',
+    'Adze.Mesh.dll',
     'OpenMcdf.dll'
 )
 $requiredScripts = @('install-adze.ps1', 'uninstall-adze.ps1', 'install-adze.bat', 'uninstall-adze.bat')

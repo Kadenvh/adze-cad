@@ -31,12 +31,14 @@ internal sealed class RibbonTab
     // the public method names declared on AdzeAddIn.
     private static readonly (int Id, string Label, string Tooltip, string CallbackName)[] Buttons =
     {
-        (0, "Ask",        "Open the Adze Task Pane and focus the prompt box.", nameof(AdzeAddIn.RibbonAsk)),
-        (1, "Diagnose",   "Find rebuild errors, over-constraints, and broken references in the active document.", nameof(AdzeAddIn.RibbonDiagnose)),
-        (2, "Mates",      "List all mates in the active assembly with status and components.", nameof(AdzeAddIn.RibbonMates)),
-        (3, "Dimensions", "Show the key dimensions, current values, and which features they control.", nameof(AdzeAddIn.RibbonDimensions)),
-        (4, "Properties", "Show all custom properties on the active document.", nameof(AdzeAddIn.RibbonProperties)),
-        (5, "Explain",    "Explain the currently selected feature or entity in detail.", nameof(AdzeAddIn.RibbonExplain))
+        (0, "Ask",         "Open the Adze Task Pane and focus the prompt box.", nameof(AdzeAddIn.RibbonAsk)),
+        (1, "Diagnose",    "Find rebuild errors, over-constraints, and broken references in the active document.", nameof(AdzeAddIn.RibbonDiagnose)),
+        (2, "Mates",       "List all mates in the active assembly with status and components.", nameof(AdzeAddIn.RibbonMates)),
+        (3, "Dimensions",  "Show the key dimensions, current values, and which features they control.", nameof(AdzeAddIn.RibbonDimensions)),
+        (4, "Properties",  "Show all custom properties on the active document.", nameof(AdzeAddIn.RibbonProperties)),
+        (5, "Explain",      "Explain the currently selected feature or entity in detail.", nameof(AdzeAddIn.RibbonExplain)),
+        (6, "Import Mesh",  "Import an STL mesh as a SOLIDWORKS part document. Direct action — analyzes the mesh and confirms before opening.", nameof(AdzeAddIn.RibbonImportMesh)),
+        (7, "Auto-Drawing", "Create a drawing document with standard views (front, top, right, isometric) from the active part or assembly.", nameof(AdzeAddIn.RibbonAutoDrawing))
     };
 
     private ICommandManager? _commandManager;

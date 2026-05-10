@@ -1,6 +1,6 @@
 # Tool Schemas
 
-This directory contains the request contracts for the 18 production tools (10 read + 1 retrieval + 7 write) plus the shared result envelope.
+This directory contains the request contracts for the 27 production tools (10 grounding + 2 compute + 1 retrieval + 2 mesh + 12 write) plus the shared result envelope.
 
 ## Contents
 

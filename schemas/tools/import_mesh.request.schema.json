@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/import_mesh.request.schema.json",
+  "title": "import_mesh request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "import_mesh" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_path"],
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path to a .stl mesh file."
+        },
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "graphics_body",
+            "graphics_then_convert",
+            "scan_to_3d",
+            "reverse_engineer"
+          ],
+          "default": "graphics_body",
+          "description": "Import strategy. graphics_body is the only fully implemented path in this version; others fall back to graphics_body and surface a warning in the preview."
+        },
+        "source_units": {
+          "type": ["string", "null"],
+          "enum": ["mm", "cm", "m", "in", null],
+          "default": null,
+          "description": "Source units for the mesh. STL itself is unitless; SW interprets the values as document units."
+        }
+      }
+    }
+  }
+}

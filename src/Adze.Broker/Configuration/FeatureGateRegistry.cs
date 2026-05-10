@@ -40,6 +40,16 @@ public static class FeatureGateRegistry
     /// </summary>
     public const string NativeSidebar = "SOLIDWORKS_AI_NATIVE_SIDEBAR";
 
+    /// <summary>
+    /// Phase 11 mesh import + analysis tools (<c>analyze_mesh_file</c>,
+    /// <c>import_mesh</c>) and the "Import Mesh" ribbon button. When ON, the
+    /// agent loop sees the new tool definitions and the ribbon registers an
+    /// extra direct-action button. Default: ON — these are read-only +
+    /// elevated-confirmation paths, not autonomous writes, so the gate is for
+    /// segmenting Phase 11 capability rather than safety.
+    /// </summary>
+    public const string MeshImport = "SOLIDWORKS_AI_MESH_IMPORT";
+
     private static readonly string[] AllGates =
     {
         EnableModel,
@@ -52,7 +62,8 @@ public static class FeatureGateRegistry
         ContextMenu,
         ToastNotifications,
         PropertyManagerPageWrites,
-        NativeSidebar
+        NativeSidebar,
+        MeshImport
     };
 
     /// <summary>Ordered list of every known gate name.</summary>
@@ -93,6 +104,11 @@ public static class FeatureGateRegistry
             // legacy TaskPaneControl remains the default fallback path. Flip ON via
             // Settings or env var once the new sidebar is verified live in SW.
             NativeSidebar => false,
+            // Phase 11 mesh import surface — ON by default. Read tool is fully
+            // safe; write tool requires elevated confirmation through the
+            // existing write lifecycle. Disable the gate to hide the surface
+            // entirely (e.g. for builds where SW interop on STL is suspect).
+            MeshImport => true,
             _ => false
         };
     }

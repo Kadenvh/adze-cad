@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/get_mass_properties.request.schema.json",
+  "title": "get_mass_properties request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "get_mass_properties" },
+    "action_class": { "const": "green" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "configuration_name": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "include_principal_axes": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

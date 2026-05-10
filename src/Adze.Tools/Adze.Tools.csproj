@@ -52,11 +52,16 @@
       <Project>{A1B2C3D4-E5F6-7890-ABCD-123456789ABC}</Project>
       <Name>Adze.Index</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Adze.Mesh\Adze.Mesh.csproj">
+      <Project>{E9F0A1B2-3456-7890-ABCD-EF1234567890}</Project>
+      <Name>Adze.Mesh</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Abstractions\IReadOnlyTool.cs" />
+    <Compile Include="Abstractions\IComputeTool.cs" />
     <Compile Include="Abstractions\ToolCapabilityContracts.cs" />
     <Compile Include="Grounding\GetActiveDocumentTool.cs" />
     <Compile Include="Grounding\GetDocumentSummaryTool.cs" />
@@ -77,6 +82,16 @@
     <Compile Include="Write\RenameObjectTool.cs" />
     <Compile Include="Write\InsertComponentTool.cs" />
     <Compile Include="Write\CreateDrawingViewTool.cs" />
+    <Compile Include="Write\ImportMeshTool.cs" />
+    <Compile Include="Write\SketchToolHelpers.cs" />
+    <Compile Include="Write\CreateSketchTool.cs" />
+    <Compile Include="Write\AddSketchLineTool.cs" />
+    <Compile Include="Write\AddSketchCircleTool.cs" />
+    <Compile Include="Write\AddSketchDimensionTool.cs" />
+    <Compile Include="Write\CreateDrawingDocumentTool.cs" />
+    <Compile Include="Mesh\AnalyzeMeshFileTool.cs" />
+    <Compile Include="Compute\GetMassPropertiesTool.cs" />
+    <Compile Include="Compute\MeasureDistanceTool.cs" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

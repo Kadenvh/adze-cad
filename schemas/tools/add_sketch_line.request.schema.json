@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/add_sketch_line.request.schema.json",
+  "title": "add_sketch_line request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "add_sketch_line" },
+    "action_class": { "const": "yellow" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_x_mm", "start_y_mm", "end_x_mm", "end_y_mm"],
+      "properties": {
+        "start_x_mm": { "type": "number" },
+        "start_y_mm": { "type": "number" },
+        "end_x_mm": { "type": "number" },
+        "end_y_mm": { "type": "number" },
+        "sketch_name": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      }
+    }
+  }
+}

@@ -167,7 +167,7 @@ public class FeatureGateRegistryTests
     public void GetAllStates_ReturnsAllKnownGates()
     {
         Dictionary<string, bool> states = FeatureGateRegistry.GetAllStates();
-        Assert.AreEqual(11, states.Count);
+        Assert.AreEqual(12, states.Count);
     }
 
     [Test]
@@ -202,9 +202,30 @@ public class FeatureGateRegistryTests
     }
 
     [Test]
-    public void KnownGates_IncludesAllTenGates()
+    public void KnownGates_IncludesAllKnownGates()
     {
-        Assert.AreEqual(11, FeatureGateRegistry.KnownGates.Count);
+        // 12 gates: model, agent_loop, first_wave_writes, retrieval, local_models,
+        // stream_final_text, ribbon, context_menu, toast, pmp_writes,
+        // native_sidebar, mesh_import.
+        Assert.AreEqual(12, FeatureGateRegistry.KnownGates.Count);
+    }
+
+    [Test]
+    public void MeshImportGate_KnownConstantValue()
+    {
+        Assert.AreEqual("SOLIDWORKS_AI_MESH_IMPORT", FeatureGateRegistry.MeshImport);
+    }
+
+    [Test]
+    public void MeshImportGate_RegisteredInKnownGates()
+    {
+        Assert.That(FeatureGateRegistry.KnownGates, Has.Member(FeatureGateRegistry.MeshImport));
+    }
+
+    [Test]
+    public void MeshImportGate_DefaultsOn()
+    {
+        Assert.IsTrue(FeatureGateRegistry.GetDefault(FeatureGateRegistry.MeshImport));
     }
 
     [Test]

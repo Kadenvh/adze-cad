@@ -458,11 +458,22 @@ public sealed class AdzeAddIn : ISwAddin
             return;
         }
 
-        if (_lastProbeResult != null && !_lastProbeResult.IsCompatible)
+        // Probe outcomes — ShouldAttemptRegistration covers Compatible AND
+        // GracefulRefusal. Only HardIncompatible (probe threw an exception)
+        // hard-skips. RibbonTab.Register has its own try/catch + null check
+        // around CreateCommandGroup2, so a re-refusal at registration time
+        // logs gracefully and returns false without crashing the add-in.
+        if (_lastProbeResult != null && !_lastProbeResult.ShouldAttemptRegistration)
         {
-            FileLogger.Info("Ribbon skipped: compatibility probe previously failed at step '" +
+            FileLogger.Info("Ribbon skipped: compatibility probe hit a hard incompatibility at step '" +
                 _lastProbeResult.FailedStep + "'. " + _lastProbeResult.Message);
             return;
+        }
+
+        if (_lastProbeResult != null && _lastProbeResult.Outcome == CompatibilityProbeOutcome.GracefulRefusal)
+        {
+            FileLogger.Info("Ribbon: probe returned GracefulRefusal at step '" +
+                _lastProbeResult.FailedStep + "' — attempting real registration anyway.");
         }
 
         _ribbonTab = new RibbonTab();
@@ -493,12 +504,16 @@ public sealed class AdzeAddIn : ISwAddin
 
     // Public callback methods invoked by the SOLIDWORKS CommandManager dispatcher.
     // Names must match the CallbackFunction strings in RibbonTab.Buttons exactly.
-    public void RibbonAsk()       => HostState.InvokeTaskPaneFocus();
-    public void RibbonDiagnose()  => HostState.InvokeQuickAction("diagnose");
-    public void RibbonMates()     => HostState.InvokeQuickAction("mates");
-    public void RibbonDimensions()=> HostState.InvokeQuickAction("dims");
-    public void RibbonProperties()=> HostState.InvokeQuickAction("props");
-    public void RibbonExplain()   => HostState.InvokeQuickAction("explain");
+    public void RibbonAsk()         => HostState.InvokeTaskPaneFocus();
+    public void RibbonDiagnose()    => HostState.InvokeQuickAction("diagnose");
+    public void RibbonMates()       => HostState.InvokeQuickAction("mates");
+    public void RibbonDimensions()  => HostState.InvokeQuickAction("dims");
+    public void RibbonProperties()  => HostState.InvokeQuickAction("props");
+    public void RibbonExplain()     => HostState.InvokeQuickAction("explain");
+    // Embedded direct-action surfaces — bypass the chat sidebar entirely.
+    // Phase 11 "AI does CAD work, no chat needed" pattern.
+    public void RibbonImportMesh()  => HostState.InvokeMeshImport();
+    public void RibbonAutoDrawing() => HostState.InvokeAutoDrawing();
 
     // -----------------------------------------------------------------------
     // Context menu registration (feature-gated)
@@ -554,11 +569,17 @@ public sealed class AdzeAddIn : ISwAddin
 
         if (_application == null) return;
 
-        if (_lastProbeResult != null && !_lastProbeResult.IsCompatible)
+        if (_lastProbeResult != null && !_lastProbeResult.ShouldAttemptRegistration)
         {
-            FileLogger.Info("Context-menu skipped: compatibility probe previously failed at step '" +
+            FileLogger.Info("Context-menu skipped: compatibility probe hit a hard incompatibility at step '" +
                 _lastProbeResult.FailedStep + "'. " + _lastProbeResult.Message);
             return;
+        }
+
+        if (_lastProbeResult != null && _lastProbeResult.Outcome == CompatibilityProbeOutcome.GracefulRefusal)
+        {
+            FileLogger.Info("Context-menu: probe returned GracefulRefusal at step '" +
+                _lastProbeResult.FailedStep + "' — attempting real registration anyway.");
         }
 
         _contextMenu = new ContextMenu();

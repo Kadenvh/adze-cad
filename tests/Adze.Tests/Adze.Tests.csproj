@@ -74,6 +74,10 @@
       <Project>{D7E8F9A0-1234-5678-9ABC-DEF012345678}</Project>
       <Name>Adze.UI</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Adze.Mesh\Adze.Mesh.csproj">
+      <Project>{E9F0A1B2-3456-7890-ABCD-EF1234567890}</Project>
+      <Name>Adze.Mesh</Name>
+    </ProjectReference>
   </ItemGroup>
 
   <!--
@@ -138,6 +142,17 @@
     <Compile Include="UI\UiPaletteTests.cs" />
     <Compile Include="UI\RefinementPanelTests.cs" />
     <Compile Include="Broker\UiPreferencesTests.cs" />
+    <Compile Include="Mesh\MeshTestFixtures.cs" />
+    <Compile Include="Mesh\StlReaderTests.cs" />
+    <Compile Include="Mesh\MeshStatsCalculatorTests.cs" />
+    <Compile Include="Mesh\MeshAnalyzerTests.cs" />
+    <Compile Include="Tools\AnalyzeMeshFileToolTests.cs" />
+    <Compile Include="Tools\ImportMeshToolTests.cs" />
+    <Compile Include="Mesh\PrimitiveFitterTests.cs" />
+    <Compile Include="Tools\SketchToolTests.cs" />
+    <Compile Include="Tools\CreateDrawingDocumentToolTests.cs" />
+    <Compile Include="Tools\GetMassPropertiesToolTests.cs" />
+    <Compile Include="Tools\MeasureDistanceToolTests.cs" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(IncludeHostTests)' != 'false' ">

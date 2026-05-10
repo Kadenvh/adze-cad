@@ -45,7 +45,7 @@ public sealed class AgentToolDispatcher : IToolExecutor
 
         try
         {
-            ToolResult toolResult = DispatchTool(toolName, arguments ?? new Dictionary<string, object?>(), session);
+            ToolResult toolResult = DispatchTool(toolName, arguments ?? new Dictionary<string, object?>(), session, context?.Application);
             string outputJson = _serializer.Serialize(new Dictionary<string, object?>
             {
                 ["tool_name"] = toolResult.ToolName,
@@ -71,7 +71,8 @@ public sealed class AgentToolDispatcher : IToolExecutor
     private ToolResult DispatchTool(
         string toolName,
         Dictionary<string, object?> arguments,
-        SessionContext session)
+        SessionContext session,
+        object? application)
     {
         switch (toolName)
         {
@@ -129,6 +130,33 @@ public sealed class AgentToolDispatcher : IToolExecutor
 
             case ToolNames.SearchProjectFiles:
                 return _catalog.SearchProjectFiles.Execute(session, DeserializeSearchProjectFilesParams(arguments));
+
+            case ToolNames.AnalyzeMeshFile:
+                return _catalog.AnalyzeMeshFile.Execute(session, DeserializeAnalyzeMeshFileParams(arguments));
+
+            case ToolNames.ImportMesh:
+                return DispatchWritePreview(new ImportMeshTool(), DeserializeImportMeshParams(arguments), session);
+
+            case ToolNames.GetMassProperties:
+                return _catalog.MassProperties.Execute(session, application, DeserializeMassPropertiesParams(arguments));
+
+            case ToolNames.MeasureDistance:
+                return _catalog.MeasureDistance.Execute(session, application, DeserializeMeasureDistanceParams(arguments));
+
+            case ToolNames.CreateSketch:
+                return DispatchWritePreview(new CreateSketchTool(), DeserializeCreateSketchParams(arguments), session);
+
+            case ToolNames.AddSketchLine:
+                return DispatchWritePreview(new AddSketchLineTool(), DeserializeAddSketchLineParams(arguments), session);
+
+            case ToolNames.AddSketchCircle:
+                return DispatchWritePreview(new AddSketchCircleTool(), DeserializeAddSketchCircleParams(arguments), session);
+
+            case ToolNames.AddSketchDimension:
+                return DispatchWritePreview(new AddSketchDimensionTool(), DeserializeAddSketchDimensionParams(arguments), session);
+
+            case ToolNames.CreateDrawingDocument:
+                return DispatchWritePreview(new CreateDrawingDocumentTool(), DeserializeCreateDrawingDocumentParams(arguments), session);
 
             default:
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
@@ -365,6 +393,113 @@ public sealed class AgentToolDispatcher : IToolExecutor
             parameters.Keyword = keyword;
         if (TryGetInt(args, "max_results", out int maxResults))
             parameters.MaxResults = maxResults;
+        return parameters;
+    }
+
+    private static AnalyzeMeshFileParameters DeserializeAnalyzeMeshFileParams(Dictionary<string, object?> args)
+    {
+        var parameters = new AnalyzeMeshFileParameters();
+        if (TryGetString(args, "file_path", out string? path))
+            parameters.FilePath = path!;
+        if (TryGetInt(args, "max_advisories", out int max))
+            parameters.MaxAdvisories = max;
+        return parameters;
+    }
+
+    private static ImportMeshParameters DeserializeImportMeshParams(Dictionary<string, object?> args)
+    {
+        var parameters = new ImportMeshParameters();
+        if (TryGetString(args, "file_path", out string? path))
+            parameters.FilePath = path!;
+        if (TryGetString(args, "strategy", out string? strategy))
+            parameters.Strategy = strategy!;
+        if (TryGetString(args, "source_units", out string? units))
+            parameters.SourceUnits = units;
+        if (TryGetBool(args, "include_primitive_analysis", out bool includePrimitives))
+            parameters.IncludePrimitiveAnalysis = includePrimitives;
+        return parameters;
+    }
+
+    private static GetMassPropertiesParameters DeserializeMassPropertiesParams(Dictionary<string, object?> args)
+    {
+        var parameters = new GetMassPropertiesParameters();
+        if (TryGetString(args, "configuration_name", out string? configName))
+            parameters.ConfigurationName = configName;
+        if (TryGetBool(args, "include_principal_axes", out bool includeAxes))
+            parameters.IncludePrincipalAxes = includeAxes;
+        return parameters;
+    }
+
+    private static MeasureDistanceParameters DeserializeMeasureDistanceParams(Dictionary<string, object?> args)
+    {
+        var parameters = new MeasureDistanceParameters();
+        if (TryGetString(args, "entity_a", out string? a))
+            parameters.EntityA = a;
+        if (TryGetString(args, "entity_a_type", out string? aType))
+            parameters.EntityATypeHint = aType;
+        if (TryGetString(args, "entity_b", out string? b))
+            parameters.EntityB = b;
+        if (TryGetString(args, "entity_b_type", out string? bType))
+            parameters.EntityBTypeHint = bType;
+        return parameters;
+    }
+
+    private static CreateSketchParameters DeserializeCreateSketchParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateSketchParameters();
+        if (TryGetString(args, "reference_name", out string? refName))
+            parameters.ReferenceName = refName!;
+        if (TryGetString(args, "sketch_name", out string? sketchName))
+            parameters.SketchName = sketchName;
+        return parameters;
+    }
+
+    private static AddSketchLineParameters DeserializeAddSketchLineParams(Dictionary<string, object?> args)
+    {
+        var parameters = new AddSketchLineParameters();
+        if (TryGetString(args, "sketch_name", out string? sketchName))
+            parameters.SketchName = sketchName;
+        if (TryGetDouble(args, "start_x_mm", out double sx)) parameters.StartXMm = sx;
+        if (TryGetDouble(args, "start_y_mm", out double sy)) parameters.StartYMm = sy;
+        if (TryGetDouble(args, "end_x_mm", out double ex)) parameters.EndXMm = ex;
+        if (TryGetDouble(args, "end_y_mm", out double ey)) parameters.EndYMm = ey;
+        return parameters;
+    }
+
+    private static AddSketchCircleParameters DeserializeAddSketchCircleParams(Dictionary<string, object?> args)
+    {
+        var parameters = new AddSketchCircleParameters();
+        if (TryGetString(args, "sketch_name", out string? sketchName))
+            parameters.SketchName = sketchName;
+        if (TryGetDouble(args, "center_x_mm", out double cx)) parameters.CenterXMm = cx;
+        if (TryGetDouble(args, "center_y_mm", out double cy)) parameters.CenterYMm = cy;
+        if (TryGetDouble(args, "radius_mm", out double r)) parameters.RadiusMm = r;
+        return parameters;
+    }
+
+    private static AddSketchDimensionParameters DeserializeAddSketchDimensionParams(Dictionary<string, object?> args)
+    {
+        var parameters = new AddSketchDimensionParameters();
+        if (TryGetString(args, "sketch_name", out string? sketchName))
+            parameters.SketchName = sketchName;
+        if (TryGetString(args, "entity_name", out string? entityName))
+            parameters.EntityName = entityName!;
+        if (TryGetString(args, "dimension_type", out string? dimType))
+            parameters.DimensionType = dimType!;
+        if (TryGetDouble(args, "target_value", out double v))
+            parameters.TargetValue = v;
+        return parameters;
+    }
+
+    private static CreateDrawingDocumentParameters DeserializeCreateDrawingDocumentParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateDrawingDocumentParameters();
+        if (TryGetString(args, "model_path", out string? modelPath))
+            parameters.ModelPath = modelPath;
+        if (TryGetString(args, "template_path", out string? templatePath))
+            parameters.TemplatePath = templatePath;
+        if (TryGetBool(args, "include_standard_views", out bool includeViews))
+            parameters.IncludeStandardViews = includeViews;
         return parameters;
     }
 

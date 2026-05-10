@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/measure_distance.request.schema.json",
+  "title": "measure_distance request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "measure_distance" },
+    "action_class": { "const": "green" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entity_a": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "SelectByID2-compatible name of the first entity, or null to use the current selection."
+        },
+        "entity_a_type": {
+          "type": ["string", "null"],
+          "enum": ["face", "edge", "vertex", "sketchsegment", "plane", "feature", null],
+          "default": null
+        },
+        "entity_b": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "entity_b_type": {
+          "type": ["string", "null"],
+          "enum": ["face", "edge", "vertex", "sketchsegment", "plane", "feature", null],
+          "default": null
+        }
+      }
+    }
+  }
+}

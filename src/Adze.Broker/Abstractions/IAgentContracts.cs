@@ -67,4 +67,13 @@ public sealed class ToolExecutionContext
     public CancellationToken CancellationToken { get; set; }
 
     public SessionContext? SessionContext { get; set; }
+
+    /// <summary>
+    /// Optional live <c>ISldWorks</c> reference for tools that need to query
+    /// SOLIDWORKS COM beyond what <see cref="SessionContext"/> captures —
+    /// mass properties, measurement, etc. Read tools that don't need COM
+    /// should ignore this and rely solely on <see cref="SessionContext"/>.
+    /// Set to <c>null</c> when SW is not connected (e.g. unit tests).
+    /// </summary>
+    public object? Application { get; set; }
 }

@@ -1,6 +1,8 @@
 using Adze.Contracts.Models;
 using Adze.Tools.Abstractions;
+using Adze.Tools.Compute;
 using Adze.Tools.Grounding;
+using Adze.Tools.Mesh;
 
 namespace Adze.Tools;
 
@@ -19,6 +21,9 @@ public sealed class GroundingToolCatalog
         RebuildDiagnostics = new GetRebuildDiagnosticsTool();
         ReferenceGraph = new GetReferenceGraphTool();
         SearchProjectFiles = new SearchProjectFilesTool();
+        AnalyzeMeshFile = new AnalyzeMeshFileTool();
+        MassProperties = new GetMassPropertiesTool();
+        MeasureDistance = new MeasureDistanceTool();
     }
 
     public IReadOnlyTool<EmptyParameters> ActiveDocument { get; }
@@ -42,6 +47,12 @@ public sealed class GroundingToolCatalog
     public IReadOnlyTool<GetReferenceGraphParameters> ReferenceGraph { get; }
 
     public IReadOnlyTool<SearchProjectFilesParameters> SearchProjectFiles { get; }
+
+    public IReadOnlyTool<AnalyzeMeshFileParameters> AnalyzeMeshFile { get; }
+
+    public IComputeTool<GetMassPropertiesParameters> MassProperties { get; }
+
+    public IComputeTool<MeasureDistanceParameters> MeasureDistance { get; }
 }
 
 public static class ToolCatalog

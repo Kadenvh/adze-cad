@@ -68,7 +68,21 @@ public static class ToolDefinitionBuilder
                 "Returns the reference graph showing file dependencies.",
                 ObjectSchema(
                     Optional("depth", "integer", "Reference traversal depth."),
-                    Optional("include_external_references", "boolean", "Include external file references.")))
+                    Optional("include_external_references", "boolean", "Include external file references."))),
+
+            Build(ToolNames.GetMassProperties,
+                "Computes volume, surface area, mass, center of mass, and (optionally) principal axes / moments of inertia for the active part or assembly. Equivalent to the SOLIDWORKS Evaluate tab's Mass Properties command.",
+                ObjectSchema(
+                    Optional("configuration_name", "string", "Configuration to compute properties for. Defaults to the active configuration."),
+                    Optional("include_principal_axes", "boolean", "Include principal axes and moments of inertia. Default true."))),
+
+            Build(ToolNames.MeasureDistance,
+                "Measures distance, projection components, angle, and area between two selected entities (faces, edges, vertices). Equivalent to the SOLIDWORKS Evaluate tab's Measure command. If entity_a and entity_b are empty, uses the current selection in SOLIDWORKS.",
+                ObjectSchema(
+                    Optional("entity_a", "string", "Name of the first entity (e.g. 'Face1@Boss-Extrude1'). Empty = use current selection."),
+                    Optional("entity_a_type", "string", "Type hint: face, edge, vertex, sketchsegment, plane."),
+                    Optional("entity_b", "string", "Name of the second entity."),
+                    Optional("entity_b_type", "string", "Type hint for entity_b.")))
         };
     }
 
@@ -126,7 +140,45 @@ public static class ToolDefinitionBuilder
                     Optional("model_path", "string", "Path to the model file. If empty, uses the first referenced model."),
                     Optional("x", "number", "X position on the sheet in meters (default 0.15)."),
                     Optional("y", "number", "Y position on the sheet in meters (default 0.15)."),
-                    Optional("scale", "number", "View scale ratio (default 1.0).")))
+                    Optional("scale", "number", "View scale ratio (default 1.0)."))),
+
+            Build(ToolNames.CreateSketch,
+                "Creates a new sketch on a reference plane (e.g. 'Front Plane') or planar face. Foundation for parametric geometry authoring — required before add_sketch_line / add_sketch_circle. Elevated operation.",
+                ObjectSchema(
+                    Required("reference_name", "string", "Reference plane or face to anchor the sketch. Examples: 'Front Plane', 'Top Plane', 'Face1@Boss-Extrude1'."),
+                    Optional("sketch_name", "string", "Optional name for the new sketch. SW assigns a default like 'Sketch1' otherwise."))),
+
+            Build(ToolNames.AddSketchLine,
+                "Adds a 2D line segment to a sketch (the active sketch by default). Coordinates are sketch-plane local in mm.",
+                ObjectSchema(
+                    Required("start_x_mm", "number", "Start X in mm."),
+                    Required("start_y_mm", "number", "Start Y in mm."),
+                    Required("end_x_mm", "number", "End X in mm."),
+                    Required("end_y_mm", "number", "End Y in mm."),
+                    Optional("sketch_name", "string", "Name of the sketch to add to. Empty = active sketch."))),
+
+            Build(ToolNames.AddSketchCircle,
+                "Adds a 2D circle to a sketch. Coordinates and radius are in mm.",
+                ObjectSchema(
+                    Required("center_x_mm", "number", "Center X in mm."),
+                    Required("center_y_mm", "number", "Center Y in mm."),
+                    Required("radius_mm", "number", "Radius in mm (must be > 0)."),
+                    Optional("sketch_name", "string", "Name of the sketch to add to. Empty = active sketch."))),
+
+            Build(ToolNames.AddSketchDimension,
+                "Adds a parametric dimension to a sketch entity and drives it to a target value. Use this to lock geometry to design intent. Length values in mm; angle values in degrees.",
+                ObjectSchema(
+                    Required("entity_name", "string", "Sketch entity to dimension (e.g. 'Line1', 'Arc1', 'Circle1')."),
+                    Required("dimension_type", "string", "Dimension type: 'length', 'radius', 'diameter', 'angle', 'distance'."),
+                    Required("target_value", "number", "Target value in mm (or degrees for angle)."),
+                    Optional("sketch_name", "string", "Name of the sketch containing the entity. Empty = active sketch."))),
+
+            Build(ToolNames.CreateDrawingDocument,
+                "Creates a new SOLIDWORKS drawing document referencing a part or assembly, optionally populated with standard 3rd-angle views (front + top + right + isometric). Elevated operation requiring confirmation.",
+                ObjectSchema(
+                    Optional("model_path", "string", "Path to the .sldprt or .sldasm to draw. Empty = active document."),
+                    Optional("template_path", "string", "Override drawing template path. Empty = SW default template."),
+                    Optional("include_standard_views", "boolean", "Auto-add front/top/right/iso views. Default true.")))
         };
     }
 
@@ -147,13 +199,34 @@ public static class ToolDefinitionBuilder
         };
     }
 
-    public static List<AgentToolDefinition> BuildAllToolDefinitions(bool includeRetrieval = false)
+    public static List<AgentToolDefinition> BuildMeshToolDefinitions()
+    {
+        return new List<AgentToolDefinition>
+        {
+            Build(ToolNames.AnalyzeMeshFile,
+                "Reads a mesh file (currently .stl, binary or ASCII) and returns triangle count, bounding box, surface area, enclosed volume, manifold and closure signals, plus advisories and a recommended import strategy. Read-only.",
+                ObjectSchema(
+                    Required("file_path", "string", "Absolute path to a .stl mesh file."),
+                    Optional("max_advisories", "integer", "Cap on advisory list length (default 20)."))),
+
+            Build(ToolNames.ImportMesh,
+                "Imports a .stl mesh file into SOLIDWORKS as a part document. Elevated operation requiring user confirmation. The graphics_body strategy is the only fully implemented path; other strategies fall back to graphics_body and surface a warning. The Preview includes the mesh analysis so the agent and user can reason about feasibility before approving.",
+                ObjectSchema(
+                    Required("file_path", "string", "Absolute path to a .stl mesh file."),
+                    Optional("strategy", "string", "Import strategy: 'graphics_body' (default), 'graphics_then_convert', 'scan_to_3d', or 'reverse_engineer'."),
+                    Optional("source_units", "string", "Source units for the mesh: 'mm', 'cm', 'm', or 'in'.")))
+        };
+    }
+
+    public static List<AgentToolDefinition> BuildAllToolDefinitions(bool includeRetrieval = false, bool includeMesh = false)
     {
         var all = new List<AgentToolDefinition>();
         all.AddRange(BuildReadToolDefinitions());
         all.AddRange(BuildWriteToolDefinitions());
         if (includeRetrieval)
             all.AddRange(BuildRetrievalToolDefinitions());
+        if (includeMesh)
+            all.AddRange(BuildMeshToolDefinitions());
         return all;
     }
 

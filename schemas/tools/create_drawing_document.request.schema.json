@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_drawing_document.request.schema.json",
+  "title": "create_drawing_document request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_drawing_document" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model_path": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Path to the .sldprt or .sldasm to draw. Empty = active document."
+        },
+        "template_path": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "include_standard_views": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

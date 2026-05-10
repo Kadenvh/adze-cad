@@ -308,6 +308,293 @@ internal static class HostState
         invoker?.Invoke();
     }
 
+    /// <summary>
+    /// Direct-action ribbon entry point for STL → SOLIDWORKS part import.
+    /// Bypasses the chat sidebar entirely: opens a file picker, runs the
+    /// in-process mesh analyzer, surfaces a native confirmation dialog with
+    /// the analysis summary + advisories, and on approval calls
+    /// <see cref="ImportMeshTool.Apply"/> on the SW UI thread. This is the
+    /// canonical example of a Phase 11 "embedded AI" surface — AI-assisted
+    /// CAD work invoked directly from the ribbon, no chat panel required.
+    ///
+    /// Must be called on the SW UI thread (ribbon callbacks already are).
+    /// Gated by <see cref="FeatureGateRegistry.MeshImport"/>; if disabled, a
+    /// short message points the user at Settings → Feature Gates.
+    /// </summary>
+    public static void InvokeMeshImport()
+    {
+        try
+        {
+            FileLogger.Info("Entry: mesh import ribbon action invoked.");
+
+            if (!FeatureGateRegistry.IsEnabled(FeatureGateRegistry.MeshImport))
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "Mesh import is currently disabled. Enable it via Settings → Feature Gates → Mesh Import (or set SOLIDWORKS_AI_MESH_IMPORT=true).",
+                    "Adze: Import Mesh",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+                return;
+            }
+
+            ISldWorks? application = GetApplicationSnapshot();
+            if (application == null)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "SOLIDWORKS is not connected.",
+                    "Adze: Import Mesh",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return;
+            }
+
+            string? selectedPath;
+            using (var dialog = new System.Windows.Forms.OpenFileDialog
+            {
+                Title = "Adze: select an STL file to import",
+                Filter = "STL mesh files (*.stl)|*.stl|All files (*.*)|*.*",
+                CheckFileExists = true,
+                Multiselect = false
+            })
+            {
+                if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+                {
+                    FileLogger.Info("Mesh import: user cancelled file picker.");
+                    return;
+                }
+                selectedPath = dialog.FileName;
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
+                return;
+            }
+
+            // Run the read-only analyzer first so the user sees what they'll
+            // get before approving the import.
+            var analyzeTool = new Adze.Tools.Mesh.AnalyzeMeshFileTool();
+            SessionContext context = BuildContextUnsafe(application);
+            ToolResult analysisResult = analyzeTool.Execute(
+                context,
+                new AnalyzeMeshFileParameters { FilePath = selectedPath });
+
+            string confirmMessage = BuildMeshImportConfirmMessage(selectedPath, analysisResult);
+            System.Windows.Forms.DialogResult confirmation = System.Windows.Forms.MessageBox.Show(
+                confirmMessage,
+                "Adze: Import Mesh — confirm",
+                System.Windows.Forms.MessageBoxButtons.OKCancel,
+                analysisResult.Success
+                    ? System.Windows.Forms.MessageBoxIcon.Question
+                    : System.Windows.Forms.MessageBoxIcon.Warning);
+
+            if (confirmation != System.Windows.Forms.DialogResult.OK)
+            {
+                FileLogger.Info("Mesh import: user cancelled at confirmation dialog.");
+                return;
+            }
+
+            // Apply via the ImportMeshTool. We're on the SW UI thread already
+            // (ribbon callbacks dispatch on UI), so direct call is safe.
+            var importTool = new Adze.Tools.Write.ImportMeshTool();
+            WriteApplyResult result = importTool.Apply(
+                application,
+                new ImportMeshParameters { FilePath = selectedPath });
+
+            if (result.Success)
+            {
+                FileLogger.Info("Mesh import succeeded: " + selectedPath + " (undo=" + result.UndoLabel + ")");
+                System.Windows.Forms.MessageBox.Show(
+                    "Mesh imported as a graphics body.\n\nUndo label: " + result.UndoLabel
+                        + "\n\nNote: this is a non-editable graphics body. Use SOLIDWORKS' built-in 'Convert to Solid Body' or ScanTo3D for further editing.",
+                    "Adze: Import Mesh — done",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+            }
+            else
+            {
+                FileLogger.Error("Mesh import failed: " + result.ErrorMessage, null);
+                System.Windows.Forms.MessageBox.Show(
+                    "Mesh import failed.\n\n" + (result.ErrorMessage ?? "(no error message)"),
+                    "Adze: Import Mesh — failed",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("InvokeMeshImport threw an unhandled exception.", ex);
+            try
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "Mesh import encountered an error: " + ex.Message,
+                    "Adze: Import Mesh — error",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+            }
+            catch
+            {
+                // Last-ditch: don't let a UI thread failure tear down the host.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Direct-action ribbon entry point for "create a drawing of the active
+    /// part / assembly". Phase 11 embedded surface — runs <c>create_drawing_document</c>
+    /// directly with the active doc as the model, no chat panel involvement.
+    /// </summary>
+    public static void InvokeAutoDrawing()
+    {
+        try
+        {
+            FileLogger.Info("Entry: auto-drawing ribbon action invoked.");
+
+            ISldWorks? application = GetApplicationSnapshot();
+            if (application == null)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "SOLIDWORKS is not connected.",
+                    "Adze: Auto-Drawing",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return;
+            }
+
+            dynamic? activeDoc = application.ActiveDoc;
+            if (activeDoc == null)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "No active document. Open a part or assembly first.",
+                    "Adze: Auto-Drawing",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+                return;
+            }
+
+            string modelPath;
+            try { modelPath = (string)activeDoc.GetPathName(); }
+            catch { modelPath = string.Empty; }
+
+            if (string.IsNullOrWhiteSpace(modelPath))
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "The active document has not been saved. Save the part / assembly before creating a drawing.",
+                    "Adze: Auto-Drawing",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+                return;
+            }
+
+            string confirmText = "Create a drawing of '" + System.IO.Path.GetFileName(modelPath)
+                + "' with standard views (Front, Top, Right, Isometric)?";
+            System.Windows.Forms.DialogResult confirmation = System.Windows.Forms.MessageBox.Show(
+                confirmText,
+                "Adze: Auto-Drawing — confirm",
+                System.Windows.Forms.MessageBoxButtons.OKCancel,
+                System.Windows.Forms.MessageBoxIcon.Question);
+
+            if (confirmation != System.Windows.Forms.DialogResult.OK)
+            {
+                FileLogger.Info("Auto-Drawing: user cancelled at confirmation dialog.");
+                return;
+            }
+
+            var tool = new Adze.Tools.Write.CreateDrawingDocumentTool();
+            WriteApplyResult result = tool.Apply(application, new CreateDrawingDocumentParameters
+            {
+                ModelPath = modelPath,
+                IncludeStandardViews = true
+            });
+
+            if (result.Success)
+            {
+                FileLogger.Info("Auto-Drawing succeeded for " + modelPath + " (undo=" + result.UndoLabel + ").");
+                result.AppliedValues.TryGetValue("drawing_title", out string? title);
+                result.AppliedValues.TryGetValue("views_added", out string? viewsAdded);
+                System.Windows.Forms.MessageBox.Show(
+                    "Drawing '" + (title ?? "(unsaved)") + "' created"
+                        + (string.IsNullOrEmpty(viewsAdded) ? "." : " with " + viewsAdded + " standard view(s).")
+                        + "\n\nUndo label: " + result.UndoLabel,
+                    "Adze: Auto-Drawing — done",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+            }
+            else
+            {
+                FileLogger.Error("Auto-Drawing failed: " + result.ErrorMessage, null);
+                System.Windows.Forms.MessageBox.Show(
+                    "Drawing creation failed.\n\n" + (result.ErrorMessage ?? "(no error message)"),
+                    "Adze: Auto-Drawing — failed",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Error("InvokeAutoDrawing threw an unhandled exception.", ex);
+            try
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "Auto-Drawing encountered an error: " + ex.Message,
+                    "Adze: Auto-Drawing — error",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static string BuildMeshImportConfirmMessage(string path, ToolResult analysisResult)
+    {
+        var lines = new List<string>
+        {
+            "File: " + path,
+            string.Empty
+        };
+
+        if (!analysisResult.Success)
+        {
+            lines.Add("Analysis failed: " + analysisResult.Summary);
+            lines.Add(string.Empty);
+            lines.Add("You can still attempt the import (graphics_body strategy), but proceed with caution.");
+            return string.Join(System.Environment.NewLine, lines);
+        }
+
+        lines.Add(analysisResult.Summary);
+
+        if (analysisResult.Data.TryGetValue("triangle_count", out object? tc))
+            lines.Add("Triangles: " + tc);
+        if (analysisResult.Data.TryGetValue("is_closed", out object? closed))
+            lines.Add("Closed: " + closed);
+        if (analysisResult.Data.TryGetValue("convertibility", out object? conv))
+            lines.Add("Convertibility: " + conv);
+        if (analysisResult.Data.TryGetValue("recommended_strategy", out object? strat))
+            lines.Add("Recommended: " + strat);
+
+        if (analysisResult.Data.TryGetValue("advisories", out object? advObj)
+            && advObj is System.Collections.IEnumerable advisories)
+        {
+            int shown = 0;
+            foreach (object? adv in advisories)
+            {
+                if (adv == null) continue;
+                if (shown == 0) lines.Add(string.Empty + "Advisories:");
+                lines.Add("  • " + adv);
+                if (++shown >= 6)
+                {
+                    lines.Add("  • …");
+                    break;
+                }
+            }
+        }
+
+        lines.Add(string.Empty);
+        lines.Add("Import as a SOLIDWORKS part document (graphics body)?");
+        return string.Join(System.Environment.NewLine, lines);
+    }
+
     public static string GetTelemetrySummary()
     {
         lock (Sync)
@@ -547,6 +834,19 @@ internal static class HostState
         if (application == null)
             return "SOLIDWORKS is not connected.";
 
+        // ImportMesh and CreateDrawingDocument open NEW documents and don't
+        // require an existing active doc. Handle them before the active-doc
+        // check so they can proceed when SW has no document open.
+        if (string.Equals(action.ToolName, Contracts.Tooling.ToolNames.ImportMesh, StringComparison.OrdinalIgnoreCase))
+        {
+            return ApplyImportMeshDirect(application, action);
+        }
+
+        if (string.Equals(action.ToolName, Contracts.Tooling.ToolNames.CreateDrawingDocument, StringComparison.OrdinalIgnoreCase))
+        {
+            return ApplyCreateDrawingDocumentDirect(application, action);
+        }
+
         dynamic? modelDoc = application.ActiveDoc;
         if (modelDoc == null)
             return "No active document.";
@@ -701,9 +1001,138 @@ internal static class HostState
                 return "Feature '" + currentName + "' renamed to '" + newName + "'.";
             }
 
+            case Contracts.Tooling.ToolNames.CreateSketch:
+                return ApplyCreateSketchDirect(application, action);
+
+            case Contracts.Tooling.ToolNames.AddSketchLine:
+                return ApplyAddSketchLineDirect(application, action);
+
+            case Contracts.Tooling.ToolNames.AddSketchCircle:
+                return ApplyAddSketchCircleDirect(application, action);
+
+            case Contracts.Tooling.ToolNames.AddSketchDimension:
+                return ApplyAddSketchDimensionDirect(application, action);
+
             default:
                 return "Unknown write tool: " + action.ToolName;
         }
+    }
+
+    private static string ApplyImportMeshDirect(ISldWorks application, PendingWriteAction action)
+    {
+        string filePath = action.Arguments.TryGetValue("file_path", out var fp) ? fp?.ToString() ?? "" : "";
+        string strategy = action.Arguments.TryGetValue("strategy", out var st) ? st?.ToString() ?? "graphics_body" : "graphics_body";
+        string? sourceUnits = action.Arguments.TryGetValue("source_units", out var su) ? su?.ToString() : null;
+
+        var tool = new Adze.Tools.Write.ImportMeshTool();
+        var parameters = new ImportMeshParameters
+        {
+            FilePath = filePath,
+            Strategy = strategy,
+            SourceUnits = sourceUnits
+        };
+
+        WriteApplyResult applyResult = tool.Apply(application, parameters);
+        if (!applyResult.Success)
+        {
+            return applyResult.ErrorMessage ?? "Mesh import failed.";
+        }
+
+        applyResult.AppliedValues.TryGetValue("new_document_title", out string? title);
+        return "Mesh imported as '" + (title ?? System.IO.Path.GetFileNameWithoutExtension(filePath)) + "'.";
+    }
+
+    private static string ApplyCreateDrawingDocumentDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreateDrawingDocumentParameters
+        {
+            ModelPath = action.Arguments.TryGetValue("model_path", out var mp) ? mp?.ToString() : null,
+            TemplatePath = action.Arguments.TryGetValue("template_path", out var tp) ? tp?.ToString() : null,
+            IncludeStandardViews = !action.Arguments.TryGetValue("include_standard_views", out var iv)
+                || iv == null
+                || (bool.TryParse(iv.ToString(), out bool include) && include)
+        };
+
+        var tool = new Adze.Tools.Write.CreateDrawingDocumentTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success)
+        {
+            return result.ErrorMessage ?? "Create drawing failed.";
+        }
+        result.AppliedValues.TryGetValue("drawing_title", out string? title);
+        result.AppliedValues.TryGetValue("views_added", out string? viewCount);
+        return "Drawing '" + (title ?? "(unsaved)") + "' created"
+            + (string.IsNullOrEmpty(viewCount) ? "." : " with " + viewCount + " standard view(s).");
+    }
+
+    private static string ApplyCreateSketchDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreateSketchParameters
+        {
+            ReferenceName = action.Arguments.TryGetValue("reference_name", out var rn) ? rn?.ToString() ?? "Front Plane" : "Front Plane",
+            SketchName = action.Arguments.TryGetValue("sketch_name", out var sn) ? sn?.ToString() : null
+        };
+
+        var tool = new Adze.Tools.Write.CreateSketchTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success) return result.ErrorMessage ?? "Create sketch failed.";
+        result.AppliedValues.TryGetValue("sketch_name", out string? name);
+        return "Sketch '" + (name ?? "(new)") + "' created on '" + parameters.ReferenceName + "'.";
+    }
+
+    private static string ApplyAddSketchLineDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var p = new AddSketchLineParameters
+        {
+            SketchName = action.Arguments.TryGetValue("sketch_name", out var sn) ? sn?.ToString() : null,
+            StartXMm = ReadDoubleArg(action, "start_x_mm"),
+            StartYMm = ReadDoubleArg(action, "start_y_mm"),
+            EndXMm = ReadDoubleArg(action, "end_x_mm"),
+            EndYMm = ReadDoubleArg(action, "end_y_mm")
+        };
+
+        var tool = new Adze.Tools.Write.AddSketchLineTool();
+        WriteApplyResult result = tool.Apply(application, p);
+        if (!result.Success) return result.ErrorMessage ?? "Add sketch line failed.";
+        return "Line added to " + (p.SketchName ?? "active sketch") + ".";
+    }
+
+    private static string ApplyAddSketchCircleDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var p = new AddSketchCircleParameters
+        {
+            SketchName = action.Arguments.TryGetValue("sketch_name", out var sn) ? sn?.ToString() : null,
+            CenterXMm = ReadDoubleArg(action, "center_x_mm"),
+            CenterYMm = ReadDoubleArg(action, "center_y_mm"),
+            RadiusMm = ReadDoubleArg(action, "radius_mm")
+        };
+
+        var tool = new Adze.Tools.Write.AddSketchCircleTool();
+        WriteApplyResult result = tool.Apply(application, p);
+        if (!result.Success) return result.ErrorMessage ?? "Add sketch circle failed.";
+        return "Circle (r=" + p.RadiusMm + " mm) added to " + (p.SketchName ?? "active sketch") + ".";
+    }
+
+    private static string ApplyAddSketchDimensionDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var p = new AddSketchDimensionParameters
+        {
+            SketchName = action.Arguments.TryGetValue("sketch_name", out var sn) ? sn?.ToString() : null,
+            EntityName = action.Arguments.TryGetValue("entity_name", out var en) ? en?.ToString() ?? "" : "",
+            DimensionType = action.Arguments.TryGetValue("dimension_type", out var dt) ? dt?.ToString() ?? "length" : "length",
+            TargetValue = ReadDoubleArg(action, "target_value")
+        };
+
+        var tool = new Adze.Tools.Write.AddSketchDimensionTool();
+        WriteApplyResult result = tool.Apply(application, p);
+        if (!result.Success) return result.ErrorMessage ?? "Add sketch dimension failed.";
+        return "Dimension applied to '" + p.EntityName + "' = " + p.TargetValue + ".";
+    }
+
+    private static double ReadDoubleArg(PendingWriteAction action, string key)
+    {
+        if (!action.Arguments.TryGetValue(key, out var raw) || raw == null) return 0.0;
+        return double.TryParse(raw.ToString(), out double value) ? value : 0.0;
     }
 
     public static (int RunCount, ModelUsage Usage) GetSessionUsage()
@@ -985,11 +1414,14 @@ internal static class HostState
     {
         AgentModelSettings agentSettings = AgentModelSettings.LoadFromEnvironment();
         bool includeRetrieval = FeatureGateRegistry.IsEnabled(FeatureGateRegistry.Retrieval);
+        bool includeMesh = FeatureGateRegistry.IsEnabled(FeatureGateRegistry.MeshImport);
         List<AgentToolDefinition> toolDefinitions = AgentModelClientFactory.IsFirstWaveWritesEnabled()
-            ? ToolDefinitionBuilder.BuildAllToolDefinitions(includeRetrieval)
+            ? ToolDefinitionBuilder.BuildAllToolDefinitions(includeRetrieval, includeMesh)
             : ToolDefinitionBuilder.BuildReadToolDefinitions();
         if (includeRetrieval && !AgentModelClientFactory.IsFirstWaveWritesEnabled())
             toolDefinitions.AddRange(ToolDefinitionBuilder.BuildRetrievalToolDefinitions());
+        if (includeMesh && !AgentModelClientFactory.IsFirstWaveWritesEnabled())
+            toolDefinitions.AddRange(ToolDefinitionBuilder.BuildMeshToolDefinitions());
         var toolDispatcher = new AgentToolDispatcher();
         var loopRunner = new AgentLoopRunner();
 
@@ -997,7 +1429,8 @@ internal static class HostState
         {
             SessionId = context.Session.RequestId,
             DocumentKey = context.Document?.Path ?? string.Empty,
-            SessionContext = context
+            SessionContext = context,
+            Application = GetApplicationSnapshot()
         };
 
         CancellationToken ct;
@@ -1443,14 +1876,23 @@ internal static class HostState
             Contracts.Tooling.ToolNames.UnsuppressFeature,
             Contracts.Tooling.ToolNames.RenameObject,
             Contracts.Tooling.ToolNames.InsertComponent,
-            Contracts.Tooling.ToolNames.CreateDrawingView
+            Contracts.Tooling.ToolNames.CreateDrawingView,
+            Contracts.Tooling.ToolNames.ImportMesh,
+            Contracts.Tooling.ToolNames.CreateSketch,
+            Contracts.Tooling.ToolNames.AddSketchLine,
+            Contracts.Tooling.ToolNames.AddSketchCircle,
+            Contracts.Tooling.ToolNames.AddSketchDimension,
+            Contracts.Tooling.ToolNames.CreateDrawingDocument
         };
 
         // Class 3 (HardWriteAdvanced) tools require elevated confirmation
         private static readonly HashSet<string> ElevatedToolNames = new(StringComparer.OrdinalIgnoreCase)
         {
             Contracts.Tooling.ToolNames.InsertComponent,
-            Contracts.Tooling.ToolNames.CreateDrawingView
+            Contracts.Tooling.ToolNames.CreateDrawingView,
+            Contracts.Tooling.ToolNames.ImportMesh,
+            Contracts.Tooling.ToolNames.CreateSketch,
+            Contracts.Tooling.ToolNames.CreateDrawingDocument
         };
 
         private readonly IToolExecutor _inner;

@@ -24,4 +24,21 @@ public static class ToolNames
 
     // Index/retrieval tools (Phase 6)
     public const string SearchProjectFiles = "search_project_files";
+
+    // Mesh tools (Phase 11 — embedded AI, mesh-to-solid track)
+    public const string AnalyzeMeshFile = "analyze_mesh_file";
+    public const string ImportMesh = "import_mesh";
+
+    // Evaluate-tab parity read tools (Phase 11)
+    public const string GetMassProperties = "get_mass_properties";
+    public const string MeasureDistance = "measure_distance";
+
+    // Sketch authoring write tools (Phase 11 — AI generates geometry)
+    public const string CreateSketch = "create_sketch";
+    public const string AddSketchLine = "add_sketch_line";
+    public const string AddSketchCircle = "add_sketch_circle";
+    public const string AddSketchDimension = "add_sketch_dimension";
+
+    // Drawing creation (Phase 11 — STL → drawing flow + general drawing automation)
+    public const string CreateDrawingDocument = "create_drawing_document";
 }

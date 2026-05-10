@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_sketch.request.schema.json",
+  "title": "create_sketch request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_sketch" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_name"],
+      "properties": {
+        "reference_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reference plane (e.g. 'Front Plane') or planar face (e.g. 'Face1@Boss-Extrude1')."
+        },
+        "sketch_name": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      }
+    }
+  }
+}

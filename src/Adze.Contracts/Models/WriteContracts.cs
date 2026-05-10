@@ -12,7 +12,12 @@ public enum WriteTargetKind
     FeatureSuppression,
     ObjectRename,
     ComponentInsertion,
-    DrawingView
+    DrawingView,
+    MeshImport,
+    SketchCreation,
+    SketchEntity,
+    SketchDimension,
+    DrawingDocument
 }
 
 public sealed class WriteTargetDescriptor
