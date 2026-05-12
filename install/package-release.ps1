@@ -42,9 +42,30 @@ $releaseDir    = Join-Path $repoRoot 'src\Adze.Host\bin\Release'
 $managerDir    = Join-Path $repoRoot 'src\Adze.Manager\bin\Release'
 $distDir       = Join-Path $repoRoot 'install\dist'
 
-# --- Step 0: Working-tree sanity check ---------------------------------------
+# --- Step 0: Validate install/package contract -------------------------------
+# Hermetic check that every src/Adze.*/*.csproj that produces a runtime DLL
+# is listed in BOTH $requiredDlls arrays. Catches the "new project shipped
+# but installer never copies its DLL" class of bug at packaging time rather
+# than at customer install time (see install/uninstall/install/Adze.Mesh.dll
+# regression in commit d475be4 for the exact scenario this gate exists to
+# prevent). Runs in seconds, no SOLIDWORKS or build output required.
 
-Write-Host "=== Step 0: Working-tree check ===" -ForegroundColor Cyan
+Write-Host "=== Step 0: Validate install/package contract ===" -ForegroundColor Cyan
+$validator = Join-Path $repoRoot 'scripts\setup\validate-package.ps1'
+if (Test-Path $validator) {
+    & pwsh -NoProfile -File $validator -Quiet
+    if ($LASTEXITCODE -ne 0) {
+        throw "Pre-package validation failed. Run 'pwsh scripts\setup\validate-package.ps1' for details, or pass -Fix to auto-correct missing DLL entries."
+    }
+    Write-Host "  Contract validation passed." -ForegroundColor Green
+} else {
+    Write-Host "  validate-package.ps1 not found — skipping contract validation. This is a regression; investigate." -ForegroundColor Yellow
+}
+
+# --- Step 0.5: Working-tree sanity check -------------------------------------
+
+Write-Host ""
+Write-Host "=== Step 0.5: Working-tree check ===" -ForegroundColor Cyan
 $gitDirty = & git -C $repoRoot status --porcelain -- install/ 2>$null
 if ($LASTEXITCODE -eq 0 -and $gitDirty) {
     Write-Host "  Uncommitted changes in install/:" -ForegroundColor Yellow
