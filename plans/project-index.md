@@ -160,20 +160,18 @@ pwsh -NoProfile -File scripts\setup\validate-json-schemas.ps1
 | `research-openclaw-feasibility.md` | Mesh library feasibility (decision made — see Adze.Mesh) |
 | `research-solidworks-ai-ecosystem.md` | Competitive landscape |
 
-### Historical (candidates for `plans/archive/`)
-- `phase10-ui-expansion.md` — superseded by phase11
-- `polish-and-v1-path.md` — v1.0.0 paused per Decision #22
-- `crash-investigation-20260419.md` — incident closed
-- `discovery-clarification-ui.md` — codified
-- `documentation-structure.md` — superseded by this doc
-- `github-labels.md` — applied
-- `TESTING-MANUAL-USER.md` / `TESTING-PROCEDURE-AUTOMATED.md` — superseded by automated suite
-- `release-process.md` — superseded by `install/CLAUDE.md`
-- `plans/README.md` — outdated; should redirect to this doc
+### Historical (ARCHIVED session 10)
+
+All 9 historical plans listed in the previous version of this index have been moved to `plans/archive/2026-05-15-session-10-curation/` with a full `ARCHIVE_RECEIPT.md` documenting what each covered and where its durable value now lives. Browse the receipt if you need to know whether a past framing was considered or what replaced it.
 
 ### `plans/archive/`
-- `2026-04-28-codified/` subdir with 21 extracted research briefs + extraction receipts
-- Don't restore from archive without a written reason
+
+- `2026-04-28-codified/` — 21 research briefs codified into code (Sessions 1-5)
+- `2026-05-15-session-10-curation/` — 9 plans superseded or codified (Sessions 8-10)
+- Both directories have `ARCHIVE_RECEIPT.md` files documenting what was extracted before archival.
+- Don't restore from archive without a written reason. Write fresh plans from current understanding instead.
+
+> **Local-only.** Per the `.gitignore` `plans/` rule, the archive directories are local to each contributor's machine. Contributors who clone fresh see only the active plans + this index + the refactor plan + plans/README.md. That's intentional — historical context is per-machine memory.
 
 **Conventions:**
 - New active plan ranked above existing plans = explicit decision; record in brain.db.
