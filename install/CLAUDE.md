@@ -2,9 +2,23 @@
 
 **Role:** Beta-friendly install/update/uninstall + the authoritative release procedure for Adze.
 **Status:** Single canonical doc. Do not split this into multiple .md files; that's how sessions 8-10 happened.
-**Last updated:** 2026-05-14 (session 10)
+**Last updated:** 2026-05-15 (session 10 close) | **Procedure validated** end-to-end with `2705E9D5...` DLL hash.
 
 This file replaces the old `README.md` + `RELEASE-AND-TESTING.md`. One file, auto-loaded by the agent, lives next to the scripts it documents.
+
+---
+
+## Why this doc reads "defensive"
+
+Sessions 8-10 burned multiple rounds debugging a stale-DLL bug that the procedure below would have caught at step 2. Three machines, three "looks identical" reports, all because a `-SkipBuild` flag silently reused stale Release binaries while source edits got committed but never compiled. Decision #28 + validator Check 3 closed the gap. Session 10 verified end-to-end:
+
+| Stage | Hash check |
+|---|---|
+| `src/Adze.Host/bin/Release/Adze.Host.dll` (after clean rebuild) | `2705E9D5F6670F21...` |
+| `install/adze-v1.1.0.0.zip` contents (after `package-release.ps1`) | `2705E9D5F6670F21...` ✓ |
+| `%LOCALAPPDATA%\Adze\bin\Adze.Host.dll` (after `install-adze.ps1`) | `2705E9D5F6670F21...` ✓ |
+
+The procedure works **when followed**. The freshness gate enforces it.
 
 ---
 

@@ -70,6 +70,8 @@ TestResult.xml
 # Release artifacts
 install/dist/
 install/*.zip
+install/adze-v*/
+# stray extracts when someone double-clicks the zip in Explorer; deletable, not committable
 
 # NuGet
 packages/
