@@ -33,13 +33,13 @@ This document was built from four parallel folder audits and is the answer to "I
 | `Adze.Contracts` | Library | 20 | (none) | Shared models, enums, tool names, abstractions, write contracts | ✓ |
 | `Adze.Mesh` | Library | 16 | (none) | Mesh I/O + analysis + primitive plane fitting (Phase 11). Pure managed, no SW interop. | ✓ |
 | `Adze.Trace` | Library | 13 | Contracts | Trace/progression/recipe/snapshot JSON persistence | ✓ |
-| `Adze.Index` | Library | 5 | Contracts | Closed-file OLE Structured Storage indexer | ✗ |
+| `Adze.Index` | Library | 5 | Contracts | Closed-file OLE Structured Storage indexer | ✓ |
 | `Adze.Tools` | Library | 35 | Contracts, Index, Mesh | Read tools (Grounding/), compute tools (Compute/), mesh tools (Mesh/), write tools (Write/) | ✓ |
 | `Adze.Broker` | Library | 42 | Contracts, Tools, Index | Prompt formatting, OpenAI/Anthropic clients, hybrid broker turn layer, agent loop | ✓ |
-| `Adze.UI` | Library | 8 | Contracts, Broker, Trace | Native WinForms sidebar v2 (NativeTaskPaneControl + supporting controls). No SW interop. | ✗ |
+| `Adze.UI` | Library | 8 | Contracts, Broker, Trace | Native WinForms sidebar v2 (NativeTaskPaneControl + supporting controls). No SW interop. | ✓ |
 | `Adze.Host` | Library (COM) | 22 | Contracts, Tools, Trace, Broker, UI | SW add-in lifecycle, Task Pane, ribbon, context capture, COM shims | ✓ |
-| `Adze.Manager` | WinExe | 7 | Broker | 4-tab control panel (Logs / Settings / Agent Profile / Status) | ✗ |
-| `Adze.UiHarness` | WinExe | 5 | Contracts, Trace, UI | Out-of-SW dev shell — mounts `NativeTaskPaneControl` against `StubHostState` for hot iteration | ✗ |
+| `Adze.Manager` | WinExe | 7 | Broker | 4-tab control panel (Logs / Settings / Agent Profile / Status) | ✓ |
+| `Adze.UiHarness` | WinExe | 5 | Contracts, Trace, UI | Out-of-SW dev shell — mounts `NativeTaskPaneControl` against `StubHostState` for hot iteration | ✓ |
 
 **Dependency direction:** Contracts at the bottom, Host at the top. Mesh, Index are leaf libraries (no Adze dependencies). Broker references Tools and Index. Host orchestrates everything. UI is a pure presentation layer with no SW interop.
 
@@ -246,20 +246,22 @@ node .ava/dal.mjs handoff latest # most recent handoff YAML
 
 These came out of the audits and are NOT blockers for current work — they're the punch list for `plans/refactor-and-cleanup.md` to drain.
 
-### Documentation
-- **14 plans/ files not linked from root `CLAUDE.md`.** Some are historical (archive), some are active (link). This index closes the gap; future-proof by referencing `plans/project-index.md` from `CLAUDE.md`.
-- **`plans/README.md` is outdated.** Should be either removed or a thin pointer to this index.
-- **4 src/ projects have no README.md**: `Adze.UiHarness`, `Adze.UI`, `Adze.Index`, `Adze.Manager`. UiHarness and Manager are minor (exe shells); Adze.UI and Adze.Index are real shippable libraries and deserve READMEs.
-- **`schemas/context/` has no README** but contains the load-bearing `session-context.schema.json`. Add a one-paragraph README explaining the slices.
+### Documentation (CLOSED in session 10)
+- ✅ **14 plans/ files not linked from root `CLAUDE.md`.** Closed via this index's §5; root CLAUDE.md Docs Map now starts with `project-index.md`.
+- ✅ **`plans/README.md` outdated.** Replaced with a thin pointer to this index.
+- ✅ **4 src/ projects had no README.md** (`Adze.UiHarness`, `Adze.UI`, `Adze.Index`, `Adze.Manager`). All written session 10.
+- ✅ **`schemas/context/` had no README.** Written session 10 — documents the 12 SessionContext slices.
 
-### Code
-- **`Adze.UiHarness` AssemblyVersion = 0.1.0.0** while every other project is 1.1.0.0. Version drift. Bump to 1.1.0.0 for consistency.
-- **`register-host-addin.ps1` duplicates registration logic from `install-adze.ps1`.** Two implementations diverged in subtle ways. Consolidate during refactor session (Track B).
+### Code (CLOSED in session 10)
+- ✅ **`Adze.UiHarness` AssemblyVersion = 0.1.0.0** drift fixed — now 1.1.0.0 matching the rest.
+
+### Code (deferred to next session — refactor Track B)
+- **`register-host-addin.ps1` duplicates registration logic from `install-adze.ps1`.** Two implementations diverged in subtle ways. Consolidate during refactor session.
 - **7 orphan scripts in `scripts/setup/`** (zero references anywhere): `check-solidworks-host-readiness.ps1`, `wait-for-solidworks-host-readiness.ps1`, `find-custom-property-fixtures.ps1`, `find-dimension-fixtures.ps1`, `find-reference-graph-fixtures.ps1`, `inspect-annotation-types.ps1`, `enable-github-pages.ps1`, `update-repo-meta.ps1`. Audit per refactor plan Track B — some are one-time setup tools (keep + document), some are likely deletable.
 
 ### Process
 - **Benchmarks haven't been run in ~30 days.** Not a regression if no breaking changes happened — but verify before the next release tag.
-- **`.gitignore` blanket rules** (`CLAUDE.md`, `plans/`, `sessions/`) caused force-add gymnastics this session. The refactor plan flags this for policy review.
+- ✅ **`.gitignore` blanket rules.** Root `CLAUDE.md` tracked session 10 (Decision #30); plans/ files force-added as needed. `sessions/` remains gitignored (local narrative).
 
 ---
 
