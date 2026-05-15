@@ -61,11 +61,12 @@ This directory contains the active developer scripts for build, registration, la
 
 **Why this exists.** The install script (`install/install-adze.ps1`) and the packager (`install/package-release.ps1`) both hardcode a `$requiredDlls` array listing every DLL that ships with the add-in. When a new `src/Adze.*` project lands, that array must be updated in BOTH scripts or the install will silently skip the new DLL while the zip still claims to package the full set. This bit Session 4 (`Adze.UI.dll`) and Session 7 (`Adze.Mesh.dll`).
 
-**What it checks** (all hermetic — no SOLIDWORKS, no build output required):
+**What it checks:**
 
-1. **Project-vs-list coverage.** Every `src/Adze.*/*.csproj` that produces a runtime DLL (library projects only; excludes `Adze.Manager`/`Adze.UiHarness`/`Adze.Tests`) must appear in both `$requiredDlls` arrays.
-2. **List symmetry.** The two arrays must be identical — drift between them is by definition a bug.
-3. **Exclusion sanity.** Test / harness / exe projects must NOT appear in either list (they're not runtime DLLs).
+1. **Project-vs-list coverage** (hermetic). Every `src/Adze.*/*.csproj` that produces a runtime DLL (library projects only; excludes `Adze.Manager`/`Adze.UiHarness`/`Adze.Tests`) must appear in both `$requiredDlls` arrays.
+2. **List symmetry** (hermetic). The two arrays must be identical — drift between them is by definition a bug.
+3. **Release build freshness.** For each shippable project, compares `LastWriteTime` of the most recent `.cs`/`.csproj` in the source dir against `src/Adze.Host/bin/Release/Adze.Whatever.dll`. If source is newer than the DLL, fails. Catches the **stale-build-silently-shipped class of bug** that bit session 8: `-SkipBuild` reused stale `bin/Release` output, the probe-loosening fix never made it into the DLL, every "test" was theater on the old DLL. Skipped cleanly when no Release output exists yet.
+4. **Exclusion sanity** (hermetic). Test / harness / exe projects must NOT appear in either list.
 
 **Usage.**
 

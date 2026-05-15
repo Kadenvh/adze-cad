@@ -232,9 +232,52 @@ if ($onlyInstall.Count -eq 0 -and $onlyPackage.Count -eq 0) {
     }
 }
 
-# Check 3: exclusion sanity — test/harness/exe projects MUST NOT be listed
+# Check 3: stale Release build detection — has any source file changed since
+# the Release DLL was built? This is the bug that made session 8's probe
+# fix "ship" without actually shipping: -SkipBuild silently reused stale
+# bin/Release output, the DLL never changed, the install never had the fix.
 Write-Step ""
-Write-Step "=== Check 3: exclusion sanity ==="
+Write-Step "=== Check 3: Release build freshness ==="
+
+$releaseDir = Join-Path $repoRoot 'src\Adze.Host\bin\Release'
+if (-not (Test-Path $releaseDir)) {
+    Write-OK "No Release output yet — skipping (run a full Release build to populate)."
+} else {
+    foreach ($p in $shippable) {
+        $projDir = Join-Path $srcDir $p.Project
+        $dllPath = Join-Path $releaseDir $p.Dll
+        if (-not (Test-Path $dllPath)) {
+            $failures.Add("Release DLL missing: $($p.Dll). Run a full Release build.")
+            Write-Fail "MISSING Release DLL: $($p.Dll)"
+            continue
+        }
+        $dllTime = (Get-Item $dllPath).LastWriteTime
+        # Walk every .cs and .csproj under this project, find the newest. Exclude
+        # obj/ and bin/ because those are build output that's allowed to be
+        # newer than the DLL (it's the same build).
+        $sourceFiles = Get-ChildItem $projDir -Recurse -File -Include *.cs, *.csproj -ErrorAction SilentlyContinue |
+                       Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
+        if ($sourceFiles.Count -eq 0) { continue }
+        $newest = $sourceFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($newest.LastWriteTime -gt $dllTime) {
+            $delta = ($newest.LastWriteTime - $dllTime)
+            $deltaText = if ($delta.TotalHours -ge 1) {
+                "{0:N1}h newer" -f $delta.TotalHours
+            } else {
+                "{0:N1}m newer" -f $delta.TotalMinutes
+            }
+            $failures.Add("STALE Release DLL: $($p.Dll) ($($dllTime.ToString('yyyy-MM-dd HH:mm:ss')); source $($newest.Name) is $deltaText). Rebuild before packaging.")
+            Write-Fail "STALE: $($p.Dll) ($dllTime). Source $($newest.Name) is $deltaText."
+        }
+    }
+    if ($failures.Count -eq 0) {
+        Write-OK "Release DLLs are at least as fresh as their source files."
+    }
+}
+
+# Check 4: exclusion sanity — test/harness/exe projects MUST NOT be listed
+Write-Step ""
+Write-Step "=== Check 4: exclusion sanity ==="
 $forbidden = @('Adze.Tests.dll', 'Adze.UiHarness.dll', 'Adze.UiHarness.exe', 'Adze.Manager.dll')
 $violations = $false
 foreach ($d in $forbidden) {
