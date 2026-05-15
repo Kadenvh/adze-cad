@@ -1,8 +1,10 @@
 # Install Assets
 
 **Version:** 0.1.0
-**Last Updated:** 2026-03-15
+**Last Updated:** 2026-05-14
 **Role:** Beta-friendly install, update, and uninstall workflow for Adze
+
+> **Building or testing a release? Read [`RELEASE-AND-TESTING.md`](RELEASE-AND-TESTING.md) first.** It's the authoritative end-to-end procedure (build → validate → package → install → verify) and it exists because we burned three sessions on a stale-DLL bug that following it would have prevented. Do not skip the validator. Do not pass `-SkipBuild` without checking timestamps.
 
 ## Quick Start (Beta Tester)
 
@@ -41,9 +43,12 @@ This builds the solution in Release, stages the DLLs and install scripts into `i
 
 | File | Purpose |
 |------|---------|
+| `RELEASE-AND-TESTING.md` | **Authoritative runbook for build / package / install / verify cycle. Follow every time.** |
 | `install-adze.ps1` | Standalone installer — pre-flight checks, DLL copy, COM + add-in registration |
+| `install-adze.bat` | Double-click wrapper around `install-adze.ps1` |
 | `uninstall-adze.ps1` | Standalone uninstaller — stops SOLIDWORKS, removes registration + binaries |
-| `package-release.ps1` | Developer-side — builds Release, stages artifacts, creates distribution zip |
+| `uninstall-adze.bat` | Double-click wrapper around `uninstall-adze.ps1` |
+| `package-release.ps1` | Developer-side — builds Release, validates contract, stages artifacts, creates distribution zip |
 | `README.md` | This file |
 | `dist/` | Staging directory created by `package-release.ps1` (not checked in) |
 
