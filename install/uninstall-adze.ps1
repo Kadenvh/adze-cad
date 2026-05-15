@@ -36,6 +36,20 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ---------------------------------------------------------------------------
+# Uninstall transcript — tee everything to a timestamped log file. Mirrors
+# the pattern in install-adze.ps1 so we have full install + uninstall
+# history readable without Manager.exe running.
+# ---------------------------------------------------------------------------
+$adzeLogDir = Join-Path $env:LOCALAPPDATA "Adze\logs"
+if (-not (Test-Path $adzeLogDir)) {
+    New-Item -ItemType Directory -Force -Path $adzeLogDir | Out-Null
+}
+$uninstallLogPath = Join-Path $adzeLogDir ("uninstall-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + ".log")
+try { Stop-Transcript | Out-Null } catch { }
+Start-Transcript -Path $uninstallLogPath -Force | Out-Null
+Write-Host "[Adze] Uninstall transcript: $uninstallLogPath"
+
+# ---------------------------------------------------------------------------
 # 1. Stop SOLIDWORKS processes (process cleanup checklist)
 # ---------------------------------------------------------------------------
 # When 3DX wants to apply a SOLIDWORKS update it refuses to launch if any
@@ -281,3 +295,7 @@ if ($RemoveUserData) {
 Write-Host ""
 Write-Host "=== Adze uninstall complete ===" -ForegroundColor Green
 Write-Host ""
+Write-Host "  Uninstall log : $uninstallLogPath"
+Write-Host ""
+
+try { Stop-Transcript | Out-Null } catch { }

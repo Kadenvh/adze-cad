@@ -59,6 +59,22 @@ if ($Uninstall) {
 }
 
 # ---------------------------------------------------------------------------
+# Install transcript — tee everything (including errors before the first
+# Write-Host) to a timestamped file under %LOCALAPPDATA%\Adze\logs\. Manager
+# and diagnose-install.ps1 read these to reconstruct install history without
+# requiring the Manager to be running. Started AFTER the -Uninstall delegate
+# block above so we don't double-transcript (uninstall-adze.ps1 owns its own).
+# ---------------------------------------------------------------------------
+$adzeLogDir = Join-Path $env:LOCALAPPDATA "Adze\logs"
+if (-not (Test-Path $adzeLogDir)) {
+    New-Item -ItemType Directory -Force -Path $adzeLogDir | Out-Null
+}
+$installLogPath = Join-Path $adzeLogDir ("install-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + ".log")
+try { Stop-Transcript | Out-Null } catch { }  # idempotent — clear any stale transcript
+Start-Transcript -Path $installLogPath -Force | Out-Null
+Write-Host "[Adze] Install transcript: $installLogPath"
+
+# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 $requiredDlls = @(
@@ -355,3 +371,7 @@ Write-Host "    3. If not: Tools > Add-Ins > enable 'Adze for SOLIDWORKS'"
 Write-Host ""
 Write-Host "  To uninstall: powershell.exe -NoProfile -File install\install-adze.ps1 -Uninstall"
 Write-Host ""
+Write-Host "  Install log : $installLogPath"
+Write-Host ""
+
+try { Stop-Transcript | Out-Null } catch { }
