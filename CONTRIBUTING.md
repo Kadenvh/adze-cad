@@ -38,7 +38,8 @@ See [SETUP.md](SETUP.md) for detailed configuration and troubleshooting.
 |-----------|---------------|
 | `src/Adze.Host` | SOLIDWORKS add-in lifecycle, Task Pane UI, COM access; hosts both legacy `TaskPaneControl` and the v1.1 `NativeTaskPaneControlShim` |
 | `src/Adze.Broker` | AI orchestration, provider clients, prompt composition, feature gates, UI preferences |
-| `src/Adze.Tools` | Tool implementations (10 read + 1 retrieval + 7 write) |
+| `src/Adze.Tools` | Tool implementations (10 grounding + 2 compute + 1 retrieval + 2 mesh + 12 write = 27 total) |
+| `src/Adze.Mesh` | STL I/O + analysis library (Phase 11) — no SOLIDWORKS interop, runs anywhere WinForms / netfx runs |
 | `src/Adze.Trace` | Trace persistence, snapshot serialization (`ModelJsonMapper`), recipes, progression |
 | `src/Adze.Index` | Closed-file OLE indexer (no COM dependency) |
 | `src/Adze.Contracts` | Shared types, enums, tool contracts, `ITaskPaneHost` interface |

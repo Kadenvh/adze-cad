@@ -54,25 +54,27 @@ Reduce points of failure across the install / deploy / dev-loop surface to one c
   - **Benchmarks + fixtures:** as-is
 - ☐ Make `scripts/setup/README.md` the navigation source of truth for dev scripts (it already mostly is).
 
-### Track C — Plans/
+### Track C — Plans/ ✅ (session 11)
 
 - ✅ Audit complete (session 10 parallel-explore pass). Classification documented in `plans/project-index.md` §5.
 - ✅ 9 historical plans archived to `plans/archive/2026-05-15-session-10-curation/` with `ARCHIVE_RECEIPT.md`: phase10-ui-expansion, polish-and-v1-path, crash-investigation-20260419, discovery-clarification-ui, documentation-structure, github-labels, TESTING-MANUAL-USER, TESTING-PROCEDURE-AUTOMATED, release-process.
-- ☐ `plans/tasks/TASK-INDEX.md` is 60+ tasks — likely stale. Audit for what's actually next vs already shipped vs deprioritized. **Still open.**
-- ☐ 3 research briefs remain in `plans/` (design-mcp-server, research-openclaw-feasibility, research-solidworks-ai-ecosystem). `research-openclaw-feasibility.md` is a strong archive candidate now that `Adze.Mesh` shipped. **Defer to next session.**
+- ✅ `plans/tasks/TASK-INDEX.md` rewritten as current-state snapshot (session 11). Was 415 lines stale at 2026-03-23; now compact ledger with open items called out at the top, Phase 11 + v1.1 UI rebuild + cross-cutting sections current.
+- ✅ 3 research briefs classified (session 11): `design-mcp-server.md` KEEP + freshness note (tool count drift 19 → 27); `research-openclaw-feasibility.md` + `research-solidworks-ai-ecosystem.md` ARCHIVED with extraction receipts.
 
-### Track D — Docs / brain.db / memory
+### Track D — Docs / brain.db / memory (partial ✅ session 11)
 
-- ☐ Audit root-level docs: `README.md`, `CHANGELOG.md`, `SETUP.md`, `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`. Verify each is current and non-overlapping.
-- ☐ brain.db identity entries: verify `project.version` matches what's actually in csproj. Old entries that no longer reflect reality get updated or removed.
-- ☐ Memory directory (`.claude/memory/`) — audit for stale feedback memories.
-- ☐ brain.db notes — sweep open notes; many of the "improvement" notes have been addressed and aren't closed.
+- ✅ Root-level doc sweep (session 11). Tool counts brought current across `README.md` (architecture diagram + project table + Test Coverage section), `SETUP.md` (intro + Feature Gates table now includes `SOLIDWORKS_AI_MESH_IMPORT`), `CONTRIBUTING.md` (project structure table). `CHANGELOG.md` Phase 11 entry already current. `LICENSE`/`SECURITY.md`/`PRIVACY.md` had no count drift.
+- ☐ brain.db identity entries: verify `project.version` matches what's actually in csproj. Old entries that no longer reflect reality get updated or removed. **Open.**
+- ☐ Memory directory (`.claude/memory/`) — audit for stale feedback memories. **Open.**
+- ☐ brain.db notes — sweep open notes; many of the "improvement" notes have been addressed and aren't closed. **Open.**
 
-### Track E — Observability for external testers (new capability)
+### Track E — Observability for external testers (design landed session 11)
 
 > *Founder asked:* "for external testing/users, should there be a place in settings where I/they can connect to the 'log/debug' server so we recieve them?"
 
-**Yes. Design + ship.**
+**Yes. Design landed. Implementation deferred to a dedicated session.**
+
+📄 **Design brief:** [`plans/research-opt-in-telemetry.md`](research-opt-in-telemetry.md) (session 11). Covers: allowed-events whitelist + hard-exclusion list + threat model for why messages/stack traces aren't sent; opt-in mechanic via `Adze.Manager` Settings tab with confirmation dialog; backend recommendation (Cloudflare Workers + R2) with cost/complexity trade-off table; revocation path; 6 open questions blocking implementation. Updates to `PRIVACY.md` and `SECURITY.md` are required at ship time.
 
 - ☐ Define what we want telemetry to capture:
   - Install attempt outcomes (success / specific failure mode)

@@ -10,7 +10,7 @@ Not a developer? This is the fast lane.
 4. Launch SOLIDWORKS.
 5. The **Adze** panel appears in the right sidebar. Type any question about your active document and click **Run assistant**.
 
-That's it. Adze runs locally with a built-in deterministic broker that reads the document via its 11 read tools. AI provider keys (OpenAI, Anthropic, Ollama, LM Studio) are optional — configure them from the in-app Settings panel when you're ready.
+That's it. Adze runs locally with a built-in deterministic broker that reads the document via its 10 grounding + 2 compute + 1 retrieval + 2 mesh tools (15 read-side total) and offers 12 governed write tools. AI provider keys (OpenAI, Anthropic, Ollama, LM Studio) are optional — configure them from the in-app Settings panel when you're ready.
 
 To uninstall: double-click **`uninstall-adze.bat`** (opens the Manager pre-armed to uninstall), or use the Manager's **Uninstall** button directly.
 
@@ -153,6 +153,7 @@ All gates are environment variables. The value `true`, `1`, `yes`, or `on` enabl
 | `SOLIDWORKS_AI_TOAST` | Tray balloon notifications on run completion (suppressed when SOLIDWORKS is foreground) |
 | `SOLIDWORKS_AI_PMP_WRITES` | PropertyManager Page confirmations for write operations (v0.1.2: `set_dimension_value` only) |
 | `SOLIDWORKS_AI_NATIVE_SIDEBAR` | v1.1 native WinForms sidebar in place of the legacy WebBrowser-based Task Pane (see below) |
+| `SOLIDWORKS_AI_MESH_IMPORT` | Phase 11 mesh tools (`analyze_mesh_file`, `import_mesh`) and the `Import Mesh` ribbon button. **Default ON.** |
 
 Gates fail safely: turning a gate on never breaks the add-in if the feature cannot initialize (the Task Pane stays fully functional either way).
 

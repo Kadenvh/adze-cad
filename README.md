@@ -180,11 +180,12 @@ See [SETUP.md](SETUP.md) for all provider options, feature gates, and environmen
 
 ```
 SOLIDWORKS (host process)
-  └── Adze.Host (COM add-in, Task Pane UI, native sidebar shim)
+  └── Adze.Host (COM add-in, Task Pane UI, native sidebar shim, ribbon buttons)
         ├── Adze.Broker (AI orchestration, provider routing, agentic loop)
-        ├── Adze.Tools (18 typed tool implementations)
+        ├── Adze.Tools (27 typed tools — 10 grounding + 2 compute + 1 retrieval + 2 mesh + 12 write)
         ├── Adze.Trace (traces, recipes, progression, memory)
         ├── Adze.Index (closed-file OLE indexer, no COM dependency)
+        ├── Adze.Mesh (STL I/O + analysis, no SOLIDWORKS interop — Phase 11)
         ├── Adze.Contracts (shared types, schemas, tool contracts, ITaskPaneHost)
         └── Adze.UI (native WinForms sidebar v2 — gated behind SOLIDWORKS_AI_NATIVE_SIDEBAR)
 
@@ -195,24 +196,25 @@ Standalone tooling:
 
 | Project | Role |
 |---------|------|
-| **Adze.Host** | SOLIDWORKS lifecycle, Task Pane, COM context capture, write UI; hosts `NativeTaskPaneControlShim` for v1.1 sidebar |
+| **Adze.Host** | SOLIDWORKS lifecycle, Task Pane, COM context capture, write UI, ribbon buttons; hosts `NativeTaskPaneControlShim` for v1.1 sidebar |
 | **Adze.Broker** | Prompt composition, OpenAI/Anthropic/local clients, agentic loop runner |
-| **Adze.Tools** | Read and write tool implementations, dependency analyzer |
+| **Adze.Tools** | Read, compute, mesh, retrieval, and write tool implementations; dependency analyzer |
 | **Adze.Trace** | JSON persistence for traces, snapshots, recipes, achievements |
 | **Adze.Index** | OLE Structured Storage file indexer — reads SOLIDWORKS files without COM |
-| **Adze.Contracts** | Shared models, enums, tool names, write contracts, `ITaskPaneHost` |
+| **Adze.Mesh** | STL I/O + analysis library (Phase 11) — no SOLIDWORKS interop, runs anywhere |
+| **Adze.Contracts** | Shared models, enums, tool names, write contracts, `ITaskPaneHost`, `IComputeTool<T>` |
 | **Adze.Manager** | Standalone WinForms control panel (`Adze.Manager.exe`) — 4 tabs, install/uninstall/eject orchestration |
 | **Adze.UiHarness** | Out-of-SOLIDWORKS dev shell — mounts `NativeTaskPaneControl` against a stub host for hot iteration |
-| **Adze.UI** | Native WinForms sidebar v2 (`NativeTaskPaneControl` + `ChatMessageView` + `WriteCardView` + `QuickActionsBar` + `MarkdownToRichText`) — runtime UI library, no SOLIDWORKS interop |
+| **Adze.UI** | Native WinForms sidebar v2 (`NativeTaskPaneControl` + `ChatMessageView` + `WriteCardView` + `QuickActionsBar` + `RefinementPanel` + `MarkdownToRichText`) — runtime UI library, no SOLIDWORKS interop |
 
 ---
 
 ## Test Coverage
 
-767 NUnit unit tests across all layers:
+823 NUnit unit tests across all layers (817 passed + 6 inconclusive smoke):
 
 - Broker orchestration, model response parsing, prompt composition
-- All 11 read tools and all 7 write tools
+- All 10 grounding tools, 2 compute tools, 2 mesh tools, 1 retrieval tool, all 12 write tools
 - Write execution coordinator, snapshot/diff/verification
 - Agent loop runner, tool dispatcher, capability gate probing
 - Learning system (trust tiers, recipe capture, achievements)
@@ -221,6 +223,8 @@ Standalone tooling:
 - Session telemetry, error classifier, dependency analyzer
 - AgentPolicyEngine (trust-gated tool access, 27 tests)
 - SSE streaming, rate limiting, tool result truncation
+- Adze.Mesh — STL reader, mesh stats, mesh analyzer, primitive fitter (24 tests)
+- v1.1 UI — HostStateAdapter, ModelJsonMapper round-trip, MarkdownToRichText, TaskPaneHost contract, QuickActionsBar
 - 6 live provider smoke tests (skip gracefully without API key)
 
 ---

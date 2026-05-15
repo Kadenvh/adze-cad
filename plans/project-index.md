@@ -250,6 +250,12 @@ These came out of the audits and are NOT blockers for current work — they're t
 - ✅ **4 src/ projects had no README.md** (`Adze.UiHarness`, `Adze.UI`, `Adze.Index`, `Adze.Manager`). All written session 10.
 - ✅ **`schemas/context/` had no README.** Written session 10 — documents the 12 SessionContext slices.
 
+### Documentation (CLOSED in session 11)
+- ✅ **`plans/tasks/TASK-INDEX.md` was stale at 2026-03-23 (Phase 11 missing).** Rewritten as compact current-state snapshot with open-items table at the top.
+- ✅ **3 residual research briefs classified.** `design-mcp-server.md` KEEP + freshness banner. `research-openclaw-feasibility.md` + `research-solidworks-ai-ecosystem.md` ARCHIVED with extraction receipts.
+- ✅ **Root docs tool-count drift.** `README.md`, `SETUP.md`, `CONTRIBUTING.md` updated to reflect 27 tools / 823 tests / `Adze.Mesh` project.
+- ✅ **Telemetry design.** `plans/research-opt-in-telemetry.md` lands the opt-in privacy model so Track E has a concrete spec to implement against later.
+
 ### Code (CLOSED in session 10)
 - ✅ **`Adze.UiHarness` AssemblyVersion = 0.1.0.0** drift fixed — now 1.1.0.0 matching the rest.
 
