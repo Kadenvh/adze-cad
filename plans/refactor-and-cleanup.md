@@ -31,7 +31,7 @@ Reduce points of failure across the install / deploy / dev-loop surface to one c
 - ✅ Single source of truth: `install/CLAUDE.md` (auto-loaded by agent).
 - ✅ Old `install/README.md` + `install/RELEASE-AND-TESTING.md` deleted.
 - ✅ Install logging — both scripts tee output via `Start-Transcript` to `%LOCALAPPDATA%\Adze\logs\install-<ts>.log` / `uninstall-<ts>.log`. No Manager required.
-- ☐ **Move `install/package-release.ps1` → `scripts/setup/package-release.ps1`.** It's a dev tool, not a user artifact; living in `install/` next to the zip is confusing. Update `install/CLAUDE.md` paths after the move.
+- ✅ **Moved `install/package-release.ps1` → `scripts/setup/package-release.ps1`** (session 10, Decision #29). Path computations updated (2-level repoRoot + `$installDir` for sibling refs), all 5 doc references migrated, validator reference updated, zip rebuilt clean from new location.
 - ☐ **Hide loose `.ps1` from the documented surface.** `install-adze.bat` and `uninstall-adze.bat` are the only user-facing entry points. Both invoke the sibling `.ps1`. Consider:
   - Option 1: rename `.ps1` to `_install-impl.ps1` / `_uninstall-impl.ps1` (underscore prefix as the "internal" convention).
   - Option 2: move to `install/internal/` and update `.bat` paths.

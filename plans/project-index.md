@@ -113,7 +113,7 @@ pwsh -NoProfile -File scripts\setup\validate-json-schemas.ps1
 ### `install/` — End-user surface
 - `install-adze.bat` / `uninstall-adze.bat` — **canonical end-user entry points** (double-click)
 - `install-adze.ps1` / `uninstall-adze.ps1` — implementation invoked by the `.bat` wrappers
-- `package-release.ps1` — dev-only build + validate + zip pipeline. **Will move to `scripts/setup/` next session** (Track A of `plans/refactor-and-cleanup.md`)
+- The packaging pipeline (`package-release.ps1`) lives in `scripts/setup/` (moved session 10, Decision #29). It writes the zip into `install/`.
 - `adze-v*.zip` — shippable artifacts (gitignored)
 - `dist/` — staging dir, recreated each package run (gitignored)
 - `CLAUDE.md` — **authoritative release procedure**

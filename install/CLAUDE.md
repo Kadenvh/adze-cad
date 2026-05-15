@@ -48,8 +48,7 @@ That is the user-facing surface. Everything below is for the dev + agent who mai
 | `CLAUDE.md` | This file | dev + agent |
 | `install-adze.ps1` | Install implementation (the `.bat` invokes it) | dev (implementation detail) |
 | `uninstall-adze.ps1` | Uninstall implementation | dev |
-| `package-release.ps1` | Build + validate + package + smoke-test pipeline | dev only — never ships in the zip |
-| `dist/` | Staging dir, recreated by `package-release.ps1`, gitignored | build output |
+| `dist/` | Staging dir, recreated by `scripts/setup/package-release.ps1`, gitignored | build output |
 
 The `.ps1` files are *next to* the `.bat` files because the install must run from an extracted zip with everything in one folder; splitting them across directories is what dual-mode-bug territory looks like. Documenting them as "implementation detail" keeps user docs simple while preserving the better tooling for ourselves.
 
@@ -107,7 +106,7 @@ Four hermetic checks (see `scripts/setup/README.md` for full descriptions):
 ## 3. Package
 
 ```powershell
-pwsh -NoProfile -File install\package-release.ps1
+pwsh -NoProfile -File scripts\setup\package-release.ps1
 ```
 
 | Step | Purpose | Failure |

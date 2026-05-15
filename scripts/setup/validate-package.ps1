@@ -10,7 +10,7 @@
       1. PROJECT-VS-LIST COVERAGE
          Every src/Adze.*/*.csproj that produces a redistributable DLL
          (i.e. excluding test/harness/exe projects) must have its DLL listed
-         in BOTH install/install-adze.ps1 AND install/package-release.ps1
+         in BOTH install/install-adze.ps1 AND scripts/setup/package-release.ps1
          $requiredDlls arrays. The exact regression that bit Session 7:
          Adze.Mesh.dll was packaged but not copied by the installer,
          because the installer's hardcoded list didn't know about it.
@@ -50,7 +50,7 @@
     # Auto-add missing Adze.*.dll entries to both $requiredDlls arrays.
 
 .NOTES
-    Wired into install/package-release.ps1 Step 0.5 — packaging fails fast
+    Wired into scripts/setup/package-release.ps1 Step 0.5 — packaging fails fast
     if this script reports drift. Run standalone any time you want to
     audit the deploy contract; it is safe to run repeatedly.
 #>
@@ -65,7 +65,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $srcDir   = Join-Path $repoRoot 'src'
 $installPs1 = Join-Path $repoRoot 'install\install-adze.ps1'
-$packagePs1 = Join-Path $repoRoot 'install\package-release.ps1'
+$packagePs1 = Join-Path $repoRoot 'scripts\setup\package-release.ps1'
 
 function Write-Info([string]$msg) { if (-not $Quiet) { Write-Host $msg } }
 function Write-Step([string]$msg) { if (-not $Quiet) { Write-Host $msg -ForegroundColor Cyan } }

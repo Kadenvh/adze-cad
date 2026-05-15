@@ -77,7 +77,9 @@ install/adze-v*/
 packages/
 
 # Local internal tooling/docs (not public)
-CLAUDE.md
+# CLAUDE.md was previously gitignored — now tracked as shared project knowledge.
+# Per-contributor agent overrides go in .claude/settings.local.json instead.
+# Removed 2026-05-15 (session 10), see brain.db Decision #30.
 SYSTEM-OVERVIEW.md
 .claude/
 

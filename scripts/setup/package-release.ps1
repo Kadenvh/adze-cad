@@ -35,12 +35,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot      = Split-Path -Parent $PSScriptRoot
+# Script lives at scripts/setup/package-release.ps1 (moved from install/ in
+# session 10 — Decision #29, refactor Track A). Repo root is 2 levels up;
+# the install/ tree we package FROM and write the zip INTO is a sibling.
+$repoRoot      = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$installDir    = Join-Path $repoRoot 'install'
 $msbuild       = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
 $solution      = Join-Path $repoRoot 'Adze.sln'
 $releaseDir    = Join-Path $repoRoot 'src\Adze.Host\bin\Release'
 $managerDir    = Join-Path $repoRoot 'src\Adze.Manager\bin\Release'
-$distDir       = Join-Path $repoRoot 'install\dist'
+$distDir       = Join-Path $installDir 'dist'
 
 # --- Step 0: Validate install/package contract -------------------------------
 # Hermetic check that every src/Adze.*/*.csproj that produces a runtime DLL
@@ -142,7 +146,7 @@ if (-not (Test-Path $managerExe)) {
 
 # Install scripts from install/
 foreach ($script in $requiredScripts) {
-    $path = Join-Path $PSScriptRoot $script
+    $path = Join-Path $installDir $script
     if (-not (Test-Path $path)) { $missing += "install\$script" }
 }
 
@@ -169,7 +173,7 @@ foreach ($dll in $requiredDlls) {
 }
 Copy-Item $managerExe -Destination $distDir
 foreach ($script in $requiredScripts) {
-    Copy-Item (Join-Path $PSScriptRoot $script) -Destination $distDir
+    Copy-Item (Join-Path $installDir $script) -Destination $distDir
 }
 Write-Host "  Staged $($requiredDlls.Count + 1 + $requiredScripts.Count) files." -ForegroundColor Green
 
@@ -208,7 +212,7 @@ Write-Host ""
 Write-Host "=== Step 5: Compress ===" -ForegroundColor Cyan
 
 $zipName = "adze-v$version.zip"
-$zipPath = Join-Path $PSScriptRoot $zipName
+$zipPath = Join-Path $installDir $zipName
 
 if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force
@@ -258,7 +262,7 @@ try {
 
     # Also verify install-adze.ps1 in zip matches install/install-adze.ps1
     # (the actual regression that motivated this gate — Session 6).
-    $sourcePs1 = Join-Path $PSScriptRoot 'install-adze.ps1'
+    $sourcePs1 = Join-Path $installDir 'install-adze.ps1'
     $zipPs1    = Join-Path $smokeDir   'install-adze.ps1'
     $sourceHash = (Get-FileHash $sourcePs1 -Algorithm SHA256).Hash
     $zipHash    = (Get-FileHash $zipPs1    -Algorithm SHA256).Hash

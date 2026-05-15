@@ -14,8 +14,10 @@ This directory contains the active developer scripts for build, registration, la
 ### Package + deploy
 | File | Purpose |
 |------|---------|
-| **`validate-package.ps1`** | **Pre-package contract validation. Asserts every `src/Adze.*/*.csproj` runtime DLL appears in BOTH `install-adze.ps1` and `package-release.ps1` `$requiredDlls` arrays. Wired into `package-release.ps1` Step 0. See "Package validation" below.** |
-| **`deploy-to-test.ps1`** | **One-command build + scp + remote install onto a second Windows machine that runs SOLIDWORKS. Eliminates same-device dev/test contamination (DLL MMAP, launcher zombies, accumulated state). See "Cross-device deploy" below.** |
+| **`package-release.ps1`** | **6-step packaging pipeline (build → validate → stage → manifest → compress → smoke-test). Outputs `install/adze-v{version}.zip`. Moved here from `install/` in session 10 — it's a dev tool, not a user artifact.** |
+| **`validate-package.ps1`** | **Pre-package contract validation. 4 checks: DLL list coverage in both `install-adze.ps1` and `package-release.ps1`; list symmetry; Release build freshness; exclusion sanity. Wired into `package-release.ps1` Step 0.** |
+| **`deploy-to-test.ps1`** | **One-command build + scp + remote install onto a second Windows machine that runs SOLIDWORKS. Eliminates same-device dev/test contamination (DLL MMAP, launcher zombies, accumulated state).** |
+| **`diagnose-install.ps1`** | **One-shot diagnostic dump for "install looks identical / didn't take effect" reports. Captures install state, registry, host.log pattern hits, install/uninstall transcripts, lingering SW processes.** |
 | `validate-json-schemas.ps1` | Validate all JSON schemas under `schemas/` |
 
 ### Host registration + launch
@@ -59,7 +61,7 @@ This directory contains the active developer scripts for build, registration, la
 
 ## Package validation — `validate-package.ps1`
 
-**Why this exists.** The install script (`install/install-adze.ps1`) and the packager (`install/package-release.ps1`) both hardcode a `$requiredDlls` array listing every DLL that ships with the add-in. When a new `src/Adze.*` project lands, that array must be updated in BOTH scripts or the install will silently skip the new DLL while the zip still claims to package the full set. This bit Session 4 (`Adze.UI.dll`) and Session 7 (`Adze.Mesh.dll`).
+**Why this exists.** The install script (`install/install-adze.ps1`) and the packager (`scripts/setup/package-release.ps1`) both hardcode a `$requiredDlls` array listing every DLL that ships with the add-in. When a new `src/Adze.*` project lands, that array must be updated in BOTH scripts or the install will silently skip the new DLL while the zip still claims to package the full set. This bit Session 4 (`Adze.UI.dll`) and Session 7 (`Adze.Mesh.dll`).
 
 **What it checks:**
 
@@ -81,7 +83,7 @@ pwsh -NoProfile -File scripts\setup\validate-package.ps1 -Fix
 pwsh -NoProfile -File scripts\setup\validate-package.ps1 -Quiet
 ```
 
-**Wired into packaging.** `install/package-release.ps1` invokes this as Step 0 and refuses to package if it fails. To bypass (don't), delete the Step 0 block — but the regression class it catches is silent at customer install time, so think twice.
+**Wired into packaging.** `scripts/setup/package-release.ps1` invokes this as Step 0 and refuses to package if it fails. To bypass (don't), delete the Step 0 block — but the regression class it catches is silent at customer install time, so think twice.
 
 **Adding a new project.** When you add `src/Adze.Whatever/Adze.Whatever.csproj`, just run `validate-package.ps1 -Fix` once. It will append `Adze.Whatever.dll` to both arrays in the canonical formatting. Then commit.
 

@@ -80,7 +80,7 @@ Launch SOLIDWORKS. The `Adze for SOLIDWORKS` tab should appear in the right side
 To package a release zip for distribution:
 
 ```powershell
-pwsh -NoProfile -File install\package-release.ps1
+pwsh -NoProfile -File scripts\setup\package-release.ps1
 ```
 
 If a `Login | 3DEXPERIENCE ID | Dassault Systèmes` window or a `3DEXPERIENCE Update` window appears, complete it first. Those launcher-managed windows can block SOLIDWORKS from loading far enough to start the add-in.
