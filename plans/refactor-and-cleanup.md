@@ -56,10 +56,10 @@ Reduce points of failure across the install / deploy / dev-loop surface to one c
 
 ### Track C — Plans/
 
-- ☐ Audit every file in `plans/` against: "is this active strategy I'd act on tomorrow, or historical context I extracted value from already?"
-- ☐ Active strategy stays. Files like `plans/phase11-embedded-ai.md`, `plans/ui-rebuild-v1.1.md`, this one — active.
-- ☐ Research briefs that have been codified into code (`plans/research-streaming-ux-patterns.md` etc.) should move to `plans/archive/` with an `ARCHIVE_RECEIPT.md` noting what was extracted and where.
-- ☐ `plans/tasks/TASK-INDEX.md` is 60+ tasks — most likely stale. Audit for what's actually next vs what's already shipped vs what's deprioritized. If still load-bearing, keep; if not, archive.
+- ✅ Audit complete (session 10 parallel-explore pass). Classification documented in `plans/project-index.md` §5.
+- ✅ 9 historical plans archived to `plans/archive/2026-05-15-session-10-curation/` with `ARCHIVE_RECEIPT.md`: phase10-ui-expansion, polish-and-v1-path, crash-investigation-20260419, discovery-clarification-ui, documentation-structure, github-labels, TESTING-MANUAL-USER, TESTING-PROCEDURE-AUTOMATED, release-process.
+- ☐ `plans/tasks/TASK-INDEX.md` is 60+ tasks — likely stale. Audit for what's actually next vs already shipped vs deprioritized. **Still open.**
+- ☐ 3 research briefs remain in `plans/` (design-mcp-server, research-openclaw-feasibility, research-solidworks-ai-ecosystem). `research-openclaw-feasibility.md` is a strong archive candidate now that `Adze.Mesh` shipped. **Defer to next session.**
 
 ### Track D — Docs / brain.db / memory
 
