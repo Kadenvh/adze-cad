@@ -29,7 +29,7 @@
 
 ## Quick Reference
 
-Native desktop AI tool embedded in SOLIDWORKS — founder framing as of 2026-05-10 is "AI does CAD work, not a chat panel that talks about it" (memory: `feedback_mission_embedded_not_chat`). Chat sidebar is implementation scaffolding; the product is direct-action ribbon buttons + agent-callable tools that execute real geometry / dimension / drawing / mesh operations. The current repo contains a working raw add-in host, typed contracts and schemas, **27 typed tools** (10 grounding + 2 compute + 1 retrieval + 2 mesh + 12 write), trace/progression storage, a hybrid broker turn layer with structured status and recovery output, provider-routed model-backed answer synthesis with deterministic fallback, the new **`Adze.Mesh` library** (STL I/O + analysis + plane fitting, no SW interop), the **`Adze.UI` runtime library** (native WinForms sidebar), the **`Adze.Manager` 4-tab control panel**, the **`Adze.UiHarness` out-of-SOLIDWORKS dev shell**, and script-based validation harnesses. Two ribbon buttons (`Import Mesh`, `Auto-Drawing`) execute their flows directly without opening the chat panel.
+Native desktop AI tool embedded in SOLIDWORKS — founder framing as of 2026-05-10 is "AI does CAD work, not a chat panel that talks about it" (memory: `feedback_mission_embedded_not_chat`). Chat sidebar is implementation scaffolding; the product is direct-action ribbon buttons + agent-callable tools that execute real geometry / dimension / drawing / mesh operations. The current repo contains a working raw add-in host, typed contracts and schemas, **29 typed tools** (10 grounding + 2 compute + 1 retrieval + 2 mesh + 14 write), trace/progression storage, a hybrid broker turn layer with structured status and recovery output, provider-routed model-backed answer synthesis with deterministic fallback, the new **`Adze.Mesh` library** (STL I/O + analysis + plane fitting, no SW interop), the **`Adze.UI` runtime library** (native WinForms sidebar), the **`Adze.Manager` 4-tab control panel**, the **`Adze.UiHarness` out-of-SOLIDWORKS dev shell**, and script-based validation harnesses. Two ribbon buttons (`Import Mesh`, `Auto-Drawing`) execute their flows directly without opening the chat panel.
 
 **Build:** `pwsh -NoProfile -File scripts\setup\build-all.ps1 -StopSolidWorks`
 **Unit Tests:** `pwsh -NoProfile -File scripts\setup\run-tests.ps1`
@@ -353,7 +353,7 @@ node .ava/dal.mjs session-export session "summary"
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **adze-cad** (4545 symbols, 17588 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **adze-cad** (4599 symbols, 17904 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
