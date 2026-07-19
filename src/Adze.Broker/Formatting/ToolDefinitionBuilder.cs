@@ -178,7 +178,24 @@ public static class ToolDefinitionBuilder
                 ObjectSchema(
                     Optional("model_path", "string", "Path to the .sldprt or .sldasm to draw. Empty = active document."),
                     Optional("template_path", "string", "Override drawing template path. Empty = SW default template."),
-                    Optional("include_standard_views", "boolean", "Auto-add front/top/right/iso views. Default true.")))
+                    Optional("include_standard_views", "boolean", "Auto-add front/top/right/iso views. Default true."))),
+
+            Build(ToolNames.CreateExtrude,
+                "Extrudes a sketch into a solid boss. Turns 2D sketch geometry into 3D — e.g. sketch a circle then extrude it to make a cylinder. Part documents only. Elevated operation requiring confirmation.",
+                ObjectSchema(
+                    Required("depth_mm", "number", "Extrusion depth in mm. Ignored when end_condition is 'through_all'."),
+                    Optional("sketch_name", "string", "Sketch to extrude (e.g. 'Sketch1'). Empty = active sketch."),
+                    Optional("end_condition", "string", "End condition: 'blind' (default), 'through_all', or 'mid_plane'."),
+                    Optional("reverse", "boolean", "Flip the extrusion direction. Default false."),
+                    Optional("feature_name", "string", "Optional name for the new feature."))),
+
+            Build(ToolNames.CreateRevolve,
+                "Revolves a sketch profile around an axis into a solid. The axis must be a reference axis ('Axis1') or a sketch line ('Line1@Sketch1'). Part documents only. Elevated operation requiring confirmation.",
+                ObjectSchema(
+                    Required("axis_name", "string", "Axis of revolution: reference axis name or sketch line name (e.g. 'Line1@Sketch1')."),
+                    Optional("sketch_name", "string", "Profile sketch to revolve. Empty = active sketch."),
+                    Optional("angle_degrees", "number", "Revolve angle in degrees, in (0, 360]. Default 360."),
+                    Optional("feature_name", "string", "Optional name for the new feature.")))
         };
     }
 

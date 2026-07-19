@@ -158,6 +158,12 @@ public sealed class AgentToolDispatcher : IToolExecutor
             case ToolNames.CreateDrawingDocument:
                 return DispatchWritePreview(new CreateDrawingDocumentTool(), DeserializeCreateDrawingDocumentParams(arguments), session);
 
+            case ToolNames.CreateExtrude:
+                return DispatchWritePreview(new CreateExtrudeTool(), DeserializeCreateExtrudeParams(arguments), session);
+
+            case ToolNames.CreateRevolve:
+                return DispatchWritePreview(new CreateRevolveTool(), DeserializeCreateRevolveParams(arguments), session);
+
             default:
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
         }
@@ -500,6 +506,36 @@ public sealed class AgentToolDispatcher : IToolExecutor
             parameters.TemplatePath = templatePath;
         if (TryGetBool(args, "include_standard_views", out bool includeViews))
             parameters.IncludeStandardViews = includeViews;
+        return parameters;
+    }
+
+    private static CreateExtrudeParameters DeserializeCreateExtrudeParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateExtrudeParameters();
+        if (TryGetString(args, "sketch_name", out string? sketchName))
+            parameters.SketchName = sketchName;
+        if (TryGetDouble(args, "depth_mm", out double depth))
+            parameters.DepthMm = depth;
+        if (TryGetString(args, "end_condition", out string? endCondition) && !string.IsNullOrWhiteSpace(endCondition))
+            parameters.EndCondition = endCondition!;
+        if (TryGetBool(args, "reverse", out bool reverse))
+            parameters.Reverse = reverse;
+        if (TryGetString(args, "feature_name", out string? featureName))
+            parameters.FeatureName = featureName;
+        return parameters;
+    }
+
+    private static CreateRevolveParameters DeserializeCreateRevolveParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateRevolveParameters();
+        if (TryGetString(args, "sketch_name", out string? sketchName))
+            parameters.SketchName = sketchName;
+        if (TryGetString(args, "axis_name", out string? axisName))
+            parameters.AxisName = axisName!;
+        if (TryGetDouble(args, "angle_degrees", out double angle))
+            parameters.AngleDegrees = angle;
+        if (TryGetString(args, "feature_name", out string? featureName))
+            parameters.FeatureName = featureName;
         return parameters;
     }
 

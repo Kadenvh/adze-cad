@@ -486,10 +486,11 @@ public class WriteToolDefinitionBuilderTests
         // 7 first-wave (set_custom_property, set_dimension_value, suppress_feature,
         // unsuppress_feature, rename_object, insert_component, create_drawing_view)
         // + 5 Phase 11 (create_sketch, add_sketch_line/circle/dimension,
-        // create_drawing_document) = 12.
+        // create_drawing_document)
+        // + 2 Wave 2 feature creation (create_extrude, create_revolve) = 14.
         var definitions = Adze.Broker.Formatting.ToolDefinitionBuilder.BuildWriteToolDefinitions();
 
-        Assert.AreEqual(12, definitions.Count);
+        Assert.AreEqual(14, definitions.Count);
     }
 
     [Test]
@@ -507,11 +508,12 @@ public class WriteToolDefinitionBuilderTests
     [Test]
     public void BuildAllToolDefinitions_DefaultCount()
     {
-        // 12 read (10 grounding + 2 compute) + 12 write (7 first-wave + 5 Phase 11 sketch/drawing) = 24.
+        // 12 read (10 grounding + 2 compute) + 14 write (7 first-wave + 5 Phase 11
+        // sketch/drawing + 2 Wave 2 feature creation) = 26.
         // Retrieval and mesh tools are opt-in via includeRetrieval / includeMesh.
         var definitions = Adze.Broker.Formatting.ToolDefinitionBuilder.BuildAllToolDefinitions();
 
-        Assert.AreEqual(24, definitions.Count);
+        Assert.AreEqual(26, definitions.Count);
     }
 
     [Test]

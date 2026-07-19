@@ -153,6 +153,7 @@
     <Compile Include="Tools\CreateDrawingDocumentToolTests.cs" />
     <Compile Include="Tools\GetMassPropertiesToolTests.cs" />
     <Compile Include="Tools\MeasureDistanceToolTests.cs" />
+    <Compile Include="Tools\FeatureToolTests.cs" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(IncludeHostTests)' != 'false' ">

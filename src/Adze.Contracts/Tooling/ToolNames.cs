@@ -41,4 +41,8 @@ public static class ToolNames
 
     // Drawing creation (Phase 11 — STL → drawing flow + general drawing automation)
     public const string CreateDrawingDocument = "create_drawing_document";
+
+    // Feature creation primitives (Phase 11 Wave 2 — AI creates 3D geometry)
+    public const string CreateExtrude = "create_extrude";
+    public const string CreateRevolve = "create_revolve";
 }

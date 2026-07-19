@@ -89,6 +89,9 @@
     <Compile Include="Write\AddSketchCircleTool.cs" />
     <Compile Include="Write\AddSketchDimensionTool.cs" />
     <Compile Include="Write\CreateDrawingDocumentTool.cs" />
+    <Compile Include="Write\FeatureToolHelpers.cs" />
+    <Compile Include="Write\CreateExtrudeTool.cs" />
+    <Compile Include="Write\CreateRevolveTool.cs" />
     <Compile Include="Mesh\AnalyzeMeshFileTool.cs" />
     <Compile Include="Compute\GetMassPropertiesTool.cs" />
     <Compile Include="Compute\MeasureDistanceTool.cs" />

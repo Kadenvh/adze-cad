@@ -23,7 +23,10 @@ public sealed class AgentPolicyEngine : IAgentPolicyEngine
         ToolNames.GetMates,
         ToolNames.GetRebuildDiagnostics,
         ToolNames.GetReferenceGraph,
-        ToolNames.SearchProjectFiles
+        ToolNames.SearchProjectFiles,
+        ToolNames.AnalyzeMeshFile,
+        ToolNames.GetMassProperties,
+        ToolNames.MeasureDistance
     };
 
     private static readonly HashSet<string> FirstWaveWriteTools = new HashSet<string>
@@ -32,13 +35,21 @@ public sealed class AgentPolicyEngine : IAgentPolicyEngine
         ToolNames.SetDimensionValue,
         ToolNames.SuppressFeature,
         ToolNames.UnsuppressFeature,
-        ToolNames.RenameObject
+        ToolNames.RenameObject,
+        ToolNames.AddSketchLine,
+        ToolNames.AddSketchCircle,
+        ToolNames.AddSketchDimension
     };
 
     private static readonly HashSet<string> AdvancedWriteTools = new HashSet<string>
     {
         ToolNames.InsertComponent,
-        ToolNames.CreateDrawingView
+        ToolNames.CreateDrawingView,
+        ToolNames.ImportMesh,
+        ToolNames.CreateSketch,
+        ToolNames.CreateDrawingDocument,
+        ToolNames.CreateExtrude,
+        ToolNames.CreateRevolve
     };
 
     public AgentPolicyEngine(ITrustService trustService)

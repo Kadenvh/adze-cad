@@ -1013,6 +1013,12 @@ internal static class HostState
             case Contracts.Tooling.ToolNames.AddSketchDimension:
                 return ApplyAddSketchDimensionDirect(application, action);
 
+            case Contracts.Tooling.ToolNames.CreateExtrude:
+                return ApplyCreateExtrudeDirect(application, action);
+
+            case Contracts.Tooling.ToolNames.CreateRevolve:
+                return ApplyCreateRevolveDirect(application, action);
+
             default:
                 return "Unknown write tool: " + action.ToolName;
         }
@@ -1078,6 +1084,45 @@ internal static class HostState
         if (!result.Success) return result.ErrorMessage ?? "Create sketch failed.";
         result.AppliedValues.TryGetValue("sketch_name", out string? name);
         return "Sketch '" + (name ?? "(new)") + "' created on '" + parameters.ReferenceName + "'.";
+    }
+
+    private static string ApplyCreateExtrudeDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreateExtrudeParameters
+        {
+            SketchName = action.Arguments.TryGetValue("sketch_name", out var sn) ? sn?.ToString() : null,
+            DepthMm = action.Arguments.TryGetValue("depth_mm", out var dm) && dm != null
+                && double.TryParse(dm.ToString(), out double depth) ? depth : 10.0,
+            EndCondition = action.Arguments.TryGetValue("end_condition", out var ec) ? ec?.ToString() ?? "blind" : "blind",
+            Reverse = action.Arguments.TryGetValue("reverse", out var rv) && rv != null
+                && bool.TryParse(rv.ToString(), out bool reverse) && reverse,
+            FeatureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() : null
+        };
+
+        var tool = new Adze.Tools.Write.CreateExtrudeTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success) return result.ErrorMessage ?? "Create extrude failed.";
+        result.AppliedValues.TryGetValue("feature_name", out string? name);
+        return "Extruded feature '" + (name ?? "(new)") + "' created ("
+            + parameters.EndCondition + ", " + parameters.DepthMm + " mm).";
+    }
+
+    private static string ApplyCreateRevolveDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreateRevolveParameters
+        {
+            SketchName = action.Arguments.TryGetValue("sketch_name", out var sn) ? sn?.ToString() : null,
+            AxisName = action.Arguments.TryGetValue("axis_name", out var ax) ? ax?.ToString() ?? "" : "",
+            AngleDegrees = action.Arguments.TryGetValue("angle_degrees", out var ad) && ad != null
+                && double.TryParse(ad.ToString(), out double angle) ? angle : 360.0,
+            FeatureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() : null
+        };
+
+        var tool = new Adze.Tools.Write.CreateRevolveTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success) return result.ErrorMessage ?? "Create revolve failed.";
+        result.AppliedValues.TryGetValue("feature_name", out string? name);
+        return "Revolved feature '" + (name ?? "(new)") + "' created around '" + parameters.AxisName + "'.";
     }
 
     private static string ApplyAddSketchLineDirect(ISldWorks application, PendingWriteAction action)
@@ -1882,7 +1927,9 @@ internal static class HostState
             Contracts.Tooling.ToolNames.AddSketchLine,
             Contracts.Tooling.ToolNames.AddSketchCircle,
             Contracts.Tooling.ToolNames.AddSketchDimension,
-            Contracts.Tooling.ToolNames.CreateDrawingDocument
+            Contracts.Tooling.ToolNames.CreateDrawingDocument,
+            Contracts.Tooling.ToolNames.CreateExtrude,
+            Contracts.Tooling.ToolNames.CreateRevolve
         };
 
         // Class 3 (HardWriteAdvanced) tools require elevated confirmation
@@ -1892,7 +1939,9 @@ internal static class HostState
             Contracts.Tooling.ToolNames.CreateDrawingView,
             Contracts.Tooling.ToolNames.ImportMesh,
             Contracts.Tooling.ToolNames.CreateSketch,
-            Contracts.Tooling.ToolNames.CreateDrawingDocument
+            Contracts.Tooling.ToolNames.CreateDrawingDocument,
+            Contracts.Tooling.ToolNames.CreateExtrude,
+            Contracts.Tooling.ToolNames.CreateRevolve
         };
 
         private readonly IToolExecutor _inner;

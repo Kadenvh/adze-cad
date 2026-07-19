@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_revolve.request.schema.json",
+  "title": "create_revolve request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_revolve" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis_name"],
+      "properties": {
+        "sketch_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Profile sketch to revolve. Null/empty = active sketch."
+        },
+        "axis_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Axis of revolution: reference axis ('Axis1') or sketch line ('Line1@Sketch1')."
+        },
+        "angle_degrees": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 360,
+          "default": 360,
+          "description": "Revolve angle in degrees."
+        },
+        "feature_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional name for the new feature."
+        }
+      }
+    }
+  }
+}

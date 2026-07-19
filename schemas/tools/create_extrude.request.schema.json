@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_extrude.request.schema.json",
+  "title": "create_extrude request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_extrude" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["depth_mm"],
+      "properties": {
+        "sketch_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Sketch to extrude (e.g. 'Sketch1'). Null/empty = active sketch."
+        },
+        "depth_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Extrusion depth in mm. Ignored when end_condition is 'through_all'."
+        },
+        "end_condition": {
+          "type": "string",
+          "enum": ["blind", "through_all", "mid_plane"],
+          "default": "blind"
+        },
+        "reverse": {
+          "type": "boolean",
+          "default": false,
+          "description": "Flip the extrusion direction."
+        },
+        "feature_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional name for the new feature."
+        }
+      }
+    }
+  }
+}

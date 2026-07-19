@@ -317,6 +317,51 @@ public sealed class CreateDrawingDocumentParameters
     public bool IncludeStandardViews { get; set; } = true;
 }
 
+// ── Feature creation primitives (Phase 11 Wave 2) ──
+
+public sealed class CreateExtrudeParameters
+{
+    /// <summary>
+    /// Name of the sketch to extrude (e.g. <c>Sketch1</c>). Empty = the
+    /// currently active sketch, which is the common case immediately after
+    /// the sketch authoring tools have run.
+    /// </summary>
+    public string? SketchName { get; set; }
+
+    /// <summary>Extrusion depth in mm. Ignored for <c>through_all</c>.</summary>
+    public double DepthMm { get; set; } = 10.0;
+
+    /// <summary>
+    /// End condition: <c>blind</c> (default), <c>through_all</c>, or
+    /// <c>mid_plane</c>.
+    /// </summary>
+    public string EndCondition { get; set; } = "blind";
+
+    /// <summary>Flip the extrusion direction.</summary>
+    public bool Reverse { get; set; }
+
+    /// <summary>Optional name to assign the new feature (default: SW's, e.g. <c>Boss-Extrude1</c>).</summary>
+    public string? FeatureName { get; set; }
+}
+
+public sealed class CreateRevolveParameters
+{
+    /// <summary>Name of the profile sketch to revolve. Empty = the active sketch.</summary>
+    public string? SketchName { get; set; }
+
+    /// <summary>
+    /// Axis to revolve around: a reference axis (<c>Axis1</c>) or a sketch
+    /// line (<c>Line1@Sketch1</c>). Required — SW cannot infer the axis.
+    /// </summary>
+    public string AxisName { get; set; } = string.Empty;
+
+    /// <summary>Revolve angle in degrees (default 360).</summary>
+    public double AngleDegrees { get; set; } = 360.0;
+
+    /// <summary>Optional name to assign the new feature (default: SW's, e.g. <c>Revolve1</c>).</summary>
+    public string? FeatureName { get; set; }
+}
+
 public static class ToolRequests
 {
     public static ToolRequest<EmptyParameters> ActiveDocument() => new()

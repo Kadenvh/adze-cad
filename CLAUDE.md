@@ -1,6 +1,6 @@
 # Adze
 
-**Version:** 0.1.1 shipped · v1.0.0 PAUSED (Decision #22) · v1.1 UI rebuild + Phase 11 embedded surfaces = primary track (Decision #21) | **Status:** Phase 11 in flight — **27 typed tools** (was 18), new `Adze.Mesh` project, new `IComputeTool` category, 5 new write tools (`create_sketch`, `add_sketch_line/circle/dimension`, `create_drawing_document`, `import_mesh`) + 2 compute tools (`get_mass_properties`, `measure_distance`) + read-only `analyze_mesh_file`. Two new direct-action ribbon buttons (`Import Mesh`, `Auto-Drawing`) bypass the chat sidebar entirely — first concrete examples of the "embedded AI tool, not chatbot" mission framing (memory `feedback_mission_embedded_not_chat` saved 2026-05-10). v1.1 UI rebuild Chunks 1+2+3 + Round 2 all landed; native sidebar gated behind `SOLIDWORKS_AI_NATIVE_SIDEBAR` (default OFF) until founder verifies live. Indigo `#4F46E5` visual refresh, `UiPalette` Light/Dark/System tokens, owner-drawn tabs, Claude-style chat bubbles. **823 tests green** (817 passed + 6 inconclusive smoke). **11 projects in `Adze.sln`** (10 production + 1 test). 0 open CodeQL alerts. **All 27 typed tools have JSON request schemas.** v1.1.0.0 release zip built (`install/adze-v1.1.0.0.zip`, 14 files, smoke-tested). | **Updated:** 2026-05-10 (Sessions 7+8)
+**Version:** 0.1.1 shipped · v1.0.0 PAUSED (Decision #22) · v1.1 UI rebuild + Phase 11 embedded surfaces = primary track (Decision #21) | **Status:** Phase 11 Wave 2 started — **29 typed tools** (was 27): session 12 added the first two feature creation primitives `create_extrude` + `create_revolve` (Class 3, shared `FeatureToolHelpers` COM glue), closing the "Make cylinder → I can only analyze" gap observed in the 2026-05-15 live host.log. Session 12 also fixed a latent `AgentPolicyEngine` gap — all Phase 11 tools (sketch, mesh, compute, drawing-document) were missing from the policy registry and fell through to "Unknown tool — deny". Two direct-action ribbon buttons (`Import Mesh`, `Auto-Drawing`) bypass the chat sidebar entirely (mission framing: memory `feedback_mission_embedded_not_chat`). v1.1 UI rebuild Chunks 1+2+3 + Round 2 all landed; native sidebar gated behind `SOLIDWORKS_AI_NATIVE_SIDEBAR` (default OFF) — a 2026-05-15 host.log shows it mounted and ran live with 3 successful OpenRouter assistant runs; founder confirmation of that run still unrecorded. **843 tests green** (837 passed + 6 inconclusive smoke). **11 projects in `Adze.sln`** (10 production + 1 test). **All 29 typed tools have JSON request schemas.** v1.1.0.0 release zip built (`install/adze-v1.1.0.0.zip`, smoke-tested — predates Wave 2 tools). | **Updated:** 2026-07-19 (Session 12)
 
 ---
 
@@ -248,6 +248,10 @@ Native desktop AI tool embedded in SOLIDWORKS — founder framing as of 2026-05-
 25. `add_sketch_circle` — sketch-plane local mm
 26. `add_sketch_dimension` — drives sketch entity to target value
 27. `create_drawing_document` — Class 3 elevated, new drawing with optional standard views
+
+### Write Tools — Phase 11 Wave 2 feature creation (gated behind `SOLIDWORKS_AI_FIRST_WAVE_WRITES`)
+28. `create_extrude` — Class 3 elevated, extrudes a sketch into a solid (blind / through_all / mid_plane), part docs only
+29. `create_revolve` — Class 3 elevated, revolves a sketch around a named axis (reference axis or sketch line), part docs only
 
 ### Learning and Progression Artifacts
 - `schemas/traces/trace-event.schema.json`
