@@ -164,6 +164,18 @@ public sealed class AgentToolDispatcher : IToolExecutor
             case ToolNames.CreateRevolve:
                 return DispatchWritePreview(new CreateRevolveTool(), DeserializeCreateRevolveParams(arguments), session);
 
+            case ToolNames.CreateFillet:
+                return DispatchWritePreview(new CreateFilletTool(), DeserializeCreateFilletParams(arguments), session);
+
+            case ToolNames.CreateChamfer:
+                return DispatchWritePreview(new CreateChamferTool(), DeserializeCreateChamferParams(arguments), session);
+
+            case ToolNames.CreatePatternLinear:
+                return DispatchWritePreview(new CreatePatternLinearTool(), DeserializeCreatePatternLinearParams(arguments), session);
+
+            case ToolNames.CreateReferencePlane:
+                return DispatchWritePreview(new CreateReferencePlaneTool(), DeserializeCreateReferencePlaneParams(arguments), session);
+
             default:
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
         }
@@ -539,7 +551,102 @@ public sealed class AgentToolDispatcher : IToolExecutor
         return parameters;
     }
 
+    private static CreateFilletParameters DeserializeCreateFilletParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateFilletParameters();
+        if (TryGetStringList(args, "entity_names", out List<string> entities))
+            parameters.EntityNames = entities;
+        if (TryGetDouble(args, "radius_mm", out double radius))
+            parameters.RadiusMm = radius;
+        if (TryGetString(args, "feature_name", out string? featureName))
+            parameters.FeatureName = featureName;
+        return parameters;
+    }
+
+    private static CreateChamferParameters DeserializeCreateChamferParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateChamferParameters();
+        if (TryGetStringList(args, "entity_names", out List<string> entities))
+            parameters.EntityNames = entities;
+        if (TryGetDouble(args, "distance_mm", out double distance))
+            parameters.DistanceMm = distance;
+        if (TryGetDouble(args, "angle_degrees", out double angle))
+            parameters.AngleDegrees = angle;
+        if (TryGetString(args, "feature_name", out string? featureName))
+            parameters.FeatureName = featureName;
+        return parameters;
+    }
+
+    private static CreatePatternLinearParameters DeserializeCreatePatternLinearParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreatePatternLinearParameters();
+        if (TryGetString(args, "feature_name", out string? featureName))
+            parameters.FeatureName = featureName!;
+        if (TryGetString(args, "direction_1_reference", out string? dir1))
+            parameters.Direction1Reference = dir1!;
+        if (TryGetInt(args, "count_1", out int count1))
+            parameters.Count1 = count1;
+        if (TryGetDouble(args, "spacing_1_mm", out double spacing1))
+            parameters.Spacing1Mm = spacing1;
+        if (TryGetBool(args, "flip_direction_1", out bool flip1))
+            parameters.FlipDirection1 = flip1;
+        if (TryGetString(args, "direction_2_reference", out string? dir2))
+            parameters.Direction2Reference = dir2;
+        if (TryGetInt(args, "count_2", out int count2))
+            parameters.Count2 = count2;
+        if (TryGetDouble(args, "spacing_2_mm", out double spacing2))
+            parameters.Spacing2Mm = spacing2;
+        if (TryGetBool(args, "flip_direction_2", out bool flip2))
+            parameters.FlipDirection2 = flip2;
+        if (TryGetString(args, "pattern_name", out string? patternName))
+            parameters.PatternName = patternName;
+        return parameters;
+    }
+
+    private static CreateReferencePlaneParameters DeserializeCreateReferencePlaneParams(Dictionary<string, object?> args)
+    {
+        var parameters = new CreateReferencePlaneParameters();
+        if (TryGetString(args, "base_reference", out string? baseRef))
+            parameters.BaseReference = baseRef!;
+        if (TryGetDouble(args, "offset_mm", out double offset))
+            parameters.OffsetMm = offset;
+        if (TryGetBool(args, "flip", out bool flip))
+            parameters.Flip = flip;
+        if (TryGetString(args, "plane_name", out string? planeName))
+            parameters.PlaneName = planeName;
+        return parameters;
+    }
+
     // --- Argument extraction helpers ---
+
+    private static bool TryGetStringList(Dictionary<string, object?> args, string key, out List<string> value)
+    {
+        value = new List<string>();
+        if (!args.TryGetValue(key, out object? raw) || raw == null)
+            return false;
+
+        // JavaScriptSerializer produces object[]; other JSON layers may hand
+        // us ArrayList or List<object>. A bare string is treated as a
+        // single-element list for agent-friendliness.
+        if (raw is System.Collections.IEnumerable enumerable && raw is not string)
+        {
+            foreach (object? item in enumerable)
+            {
+                string? text = item?.ToString();
+                if (!string.IsNullOrWhiteSpace(text))
+                    value.Add(text!);
+            }
+            return value.Count > 0;
+        }
+
+        if (raw is string single && !string.IsNullOrWhiteSpace(single))
+        {
+            value.Add(single);
+            return true;
+        }
+
+        return false;
+    }
 
     private static bool TryGetBool(Dictionary<string, object?> args, string key, out bool value)
     {

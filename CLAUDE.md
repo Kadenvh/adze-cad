@@ -1,6 +1,6 @@
 # Adze
 
-**Version:** 0.1.1 shipped · v1.0.0 PAUSED (Decision #22) · v1.1 UI rebuild + Phase 11 embedded surfaces = primary track (Decision #21) | **Status:** Phase 11 Wave 2 started — **29 typed tools** (was 27): session 12 added the first two feature creation primitives `create_extrude` + `create_revolve` (Class 3, shared `FeatureToolHelpers` COM glue), closing the "Make cylinder → I can only analyze" gap observed in the 2026-05-15 live host.log. Session 12 also fixed a latent `AgentPolicyEngine` gap — all Phase 11 tools (sketch, mesh, compute, drawing-document) were missing from the policy registry and fell through to "Unknown tool — deny". Two direct-action ribbon buttons (`Import Mesh`, `Auto-Drawing`) bypass the chat sidebar entirely (mission framing: memory `feedback_mission_embedded_not_chat`). v1.1 UI rebuild Chunks 1+2+3 + Round 2 all landed; native sidebar gated behind `SOLIDWORKS_AI_NATIVE_SIDEBAR` (default OFF) — a 2026-05-15 host.log shows it mounted and ran live with 3 successful OpenRouter assistant runs; founder confirmation of that run still unrecorded. **843 tests green** (837 passed + 6 inconclusive smoke). **11 projects in `Adze.sln`** (10 production + 1 test). **All 29 typed tools have JSON request schemas.** v1.1.0.0 release zip built (`install/adze-v1.1.0.0.zip`, smoke-tested — predates Wave 2 tools). | **Updated:** 2026-07-19 (Session 12)
+**Version:** 0.1.1 shipped · v1.0.0 PAUSED (Decision #22) · v1.1 UI rebuild + Phase 11 embedded surfaces = primary track (Decision #21) | **Status:** Phase 11 Wave 2 COMPLETE (tool surface) — **33 typed tools** (was 29): session 13 added the remaining four feature creation primitives `create_fillet`, `create_chamfer`, `create_pattern_linear`, `create_reference_plane` (all Class 3, shared `FeatureToolHelpers` COM glue incl. new multi-entity selection helper). Session 12 had added `create_extrude` + `create_revolve` and fixed the latent `AgentPolicyEngine` registry gap. **Live-SW validation of all six Wave 2 COM apply paths is still pending.** Two direct-action ribbon buttons (`Import Mesh`, `Auto-Drawing`) bypass the chat sidebar entirely (mission framing: memory `feedback_mission_embedded_not_chat`). v1.1 UI rebuild Chunks 1+2+3 + Round 2 all landed; native sidebar gated behind `SOLIDWORKS_AI_NATIVE_SIDEBAR` (default OFF) — a 2026-05-15 host.log shows it mounted and ran live with 3 successful OpenRouter assistant runs; founder confirmation of that run still unrecorded. **857 tests green** (851 passed + 6 inconclusive smoke). **11 projects in `Adze.sln`** (10 production + 1 test). **All 33 typed tools have JSON request schemas.** v1.1.0.0 release zip built (`install/adze-v1.1.0.0.zip`, smoke-tested — predates Wave 2 tools). | **Updated:** 2026-07-25 (Session 13)
 
 ---
 
@@ -29,7 +29,7 @@
 
 ## Quick Reference
 
-Native desktop AI tool embedded in SOLIDWORKS — founder framing as of 2026-05-10 is "AI does CAD work, not a chat panel that talks about it" (memory: `feedback_mission_embedded_not_chat`). Chat sidebar is implementation scaffolding; the product is direct-action ribbon buttons + agent-callable tools that execute real geometry / dimension / drawing / mesh operations. The current repo contains a working raw add-in host, typed contracts and schemas, **29 typed tools** (10 grounding + 2 compute + 1 retrieval + 2 mesh + 14 write), trace/progression storage, a hybrid broker turn layer with structured status and recovery output, provider-routed model-backed answer synthesis with deterministic fallback, the new **`Adze.Mesh` library** (STL I/O + analysis + plane fitting, no SW interop), the **`Adze.UI` runtime library** (native WinForms sidebar), the **`Adze.Manager` 4-tab control panel**, the **`Adze.UiHarness` out-of-SOLIDWORKS dev shell**, and script-based validation harnesses. Two ribbon buttons (`Import Mesh`, `Auto-Drawing`) execute their flows directly without opening the chat panel.
+Native desktop AI tool embedded in SOLIDWORKS — founder framing as of 2026-05-10 is "AI does CAD work, not a chat panel that talks about it" (memory: `feedback_mission_embedded_not_chat`). Chat sidebar is implementation scaffolding; the product is direct-action ribbon buttons + agent-callable tools that execute real geometry / dimension / drawing / mesh operations. The current repo contains a working raw add-in host, typed contracts and schemas, **33 typed tools** (10 grounding + 2 compute + 1 retrieval + 2 mesh + 18 write), trace/progression storage, a hybrid broker turn layer with structured status and recovery output, provider-routed model-backed answer synthesis with deterministic fallback, the new **`Adze.Mesh` library** (STL I/O + analysis + plane fitting, no SW interop), the **`Adze.UI` runtime library** (native WinForms sidebar), the **`Adze.Manager` 4-tab control panel**, the **`Adze.UiHarness` out-of-SOLIDWORKS dev shell**, and script-based validation harnesses. Two ribbon buttons (`Import Mesh`, `Auto-Drawing`) execute their flows directly without opening the chat panel.
 
 **Build:** `pwsh -NoProfile -File scripts\setup\build-all.ps1 -StopSolidWorks`
 **Unit Tests:** `pwsh -NoProfile -File scripts\setup\run-tests.ps1`
@@ -252,6 +252,10 @@ Native desktop AI tool embedded in SOLIDWORKS — founder framing as of 2026-05-
 ### Write Tools — Phase 11 Wave 2 feature creation (gated behind `SOLIDWORKS_AI_FIRST_WAVE_WRITES`)
 28. `create_extrude` — Class 3 elevated, extrudes a sketch into a solid (blind / through_all / mid_plane), part docs only
 29. `create_revolve` — Class 3 elevated, revolves a sketch around a named axis (reference axis or sketch line), part docs only
+30. `create_fillet` — Class 3 elevated, constant-radius fillet on named edges/faces, part docs only
+31. `create_chamfer` — Class 3 elevated, distance-angle chamfer on named edges/faces, part docs only
+32. `create_pattern_linear` — Class 3 elevated, 1- or 2-directional linear pattern of a feature, part docs only
+33. `create_reference_plane` — Class 3 elevated, offset plane from plane/planar face (offset mode only)
 
 ### Learning and Progression Artifacts
 - `schemas/traces/trace-event.schema.json`
@@ -353,7 +357,7 @@ node .ava/dal.mjs session-export session "summary"
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **adze-cad** (4599 symbols, 17904 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **adze-cad** (4603 symbols, 17904 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

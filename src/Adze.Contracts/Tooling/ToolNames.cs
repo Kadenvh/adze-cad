@@ -45,4 +45,8 @@ public static class ToolNames
     // Feature creation primitives (Phase 11 Wave 2 — AI creates 3D geometry)
     public const string CreateExtrude = "create_extrude";
     public const string CreateRevolve = "create_revolve";
+    public const string CreateFillet = "create_fillet";
+    public const string CreateChamfer = "create_chamfer";
+    public const string CreatePatternLinear = "create_pattern_linear";
+    public const string CreateReferencePlane = "create_reference_plane";
 }

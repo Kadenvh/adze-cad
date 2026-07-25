@@ -49,7 +49,11 @@ public sealed class AgentPolicyEngine : IAgentPolicyEngine
         ToolNames.CreateSketch,
         ToolNames.CreateDrawingDocument,
         ToolNames.CreateExtrude,
-        ToolNames.CreateRevolve
+        ToolNames.CreateRevolve,
+        ToolNames.CreateFillet,
+        ToolNames.CreateChamfer,
+        ToolNames.CreatePatternLinear,
+        ToolNames.CreateReferencePlane
     };
 
     public AgentPolicyEngine(ITrustService trustService)

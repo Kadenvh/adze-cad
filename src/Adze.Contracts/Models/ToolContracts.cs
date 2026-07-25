@@ -362,6 +362,96 @@ public sealed class CreateRevolveParameters
     public string? FeatureName { get; set; }
 }
 
+public sealed class CreateFilletParameters
+{
+    /// <summary>
+    /// SelectByID2-compatible names of the edges or faces to fillet
+    /// (e.g. <c>Edge&lt;1&gt;@Boss-Extrude1</c> or a face name). Selecting a
+    /// face fillets all of its edges. At least one entry is required.
+    /// </summary>
+    public List<string> EntityNames { get; set; } = new();
+
+    /// <summary>Fillet radius in mm. Must be positive.</summary>
+    public double RadiusMm { get; set; } = 1.0;
+
+    /// <summary>Optional name to assign the new feature (default: SW's, e.g. <c>Fillet1</c>).</summary>
+    public string? FeatureName { get; set; }
+}
+
+public sealed class CreateChamferParameters
+{
+    /// <summary>
+    /// SelectByID2-compatible names of the edges or faces to chamfer.
+    /// At least one entry is required.
+    /// </summary>
+    public List<string> EntityNames { get; set; } = new();
+
+    /// <summary>Chamfer distance in mm. Must be positive.</summary>
+    public double DistanceMm { get; set; } = 1.0;
+
+    /// <summary>Chamfer angle in degrees, in (0, 90). Default 45.</summary>
+    public double AngleDegrees { get; set; } = 45.0;
+
+    /// <summary>Optional name to assign the new feature (default: SW's, e.g. <c>Chamfer1</c>).</summary>
+    public string? FeatureName { get; set; }
+}
+
+public sealed class CreatePatternLinearParameters
+{
+    /// <summary>Name of the feature to pattern (e.g. <c>Boss-Extrude1</c>). Required.</summary>
+    public string FeatureName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Direction 1 reference: a linear edge, reference axis, or sketch line
+    /// (e.g. <c>Axis1</c>, <c>Line1@Sketch1</c>). Required.
+    /// </summary>
+    public string Direction1Reference { get; set; } = string.Empty;
+
+    /// <summary>Instance count along direction 1 (including the seed). Must be ≥ 2.</summary>
+    public int Count1 { get; set; } = 2;
+
+    /// <summary>Spacing between instances along direction 1 in mm.</summary>
+    public double Spacing1Mm { get; set; } = 10.0;
+
+    /// <summary>Flip direction 1.</summary>
+    public bool FlipDirection1 { get; set; }
+
+    /// <summary>Optional direction 2 reference for a two-directional pattern.</summary>
+    public string? Direction2Reference { get; set; }
+
+    /// <summary>Instance count along direction 2. Only used when Direction2Reference is set.</summary>
+    public int Count2 { get; set; } = 1;
+
+    /// <summary>Spacing along direction 2 in mm. Only used when Direction2Reference is set.</summary>
+    public double Spacing2Mm { get; set; } = 10.0;
+
+    /// <summary>Flip direction 2.</summary>
+    public bool FlipDirection2 { get; set; }
+
+    /// <summary>Optional name to assign the new pattern feature (default: SW's, e.g. <c>LPattern1</c>).</summary>
+    public string? PatternName { get; set; }
+}
+
+public sealed class CreateReferencePlaneParameters
+{
+    /// <summary>
+    /// Base plane or planar face to offset from (e.g. <c>Front Plane</c> or
+    /// <c>Face1@Boss-Extrude1</c>). Required. Offset-distance is the only
+    /// creation mode currently implemented; 3-point and normal-to-edge modes
+    /// are deferred.
+    /// </summary>
+    public string BaseReference { get; set; } = string.Empty;
+
+    /// <summary>Offset distance in mm. Must be positive; use Flip to offset the other way.</summary>
+    public double OffsetMm { get; set; } = 10.0;
+
+    /// <summary>Offset in the opposite direction.</summary>
+    public bool Flip { get; set; }
+
+    /// <summary>Optional name to assign the new plane (default: SW's, e.g. <c>Plane1</c>).</summary>
+    public string? PlaneName { get; set; }
+}
+
 public static class ToolRequests
 {
     public static ToolRequest<EmptyParameters> ActiveDocument() => new()

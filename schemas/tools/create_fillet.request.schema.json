@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_fillet.request.schema.json",
+  "title": "create_fillet request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_fillet" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_names", "radius_mm"],
+      "properties": {
+        "entity_names": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Edges or faces to fillet. Selecting a face fillets all of its edges."
+        },
+        "radius_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Fillet radius in mm."
+        },
+        "feature_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional name for the new feature."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_reference_plane.request.schema.json",
+  "title": "create_reference_plane request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_reference_plane" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_reference", "offset_mm"],
+      "properties": {
+        "base_reference": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Plane (e.g. 'Front Plane') or planar face to offset from."
+        },
+        "offset_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Offset distance in mm. Use flip to offset the other way."
+        },
+        "flip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Offset in the opposite direction."
+        },
+        "plane_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional name for the new plane."
+        }
+      }
+    }
+  }
+}

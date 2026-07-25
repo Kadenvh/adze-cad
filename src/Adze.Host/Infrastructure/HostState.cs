@@ -1019,6 +1019,18 @@ internal static class HostState
             case Contracts.Tooling.ToolNames.CreateRevolve:
                 return ApplyCreateRevolveDirect(application, action);
 
+            case Contracts.Tooling.ToolNames.CreateFillet:
+                return ApplyCreateFilletDirect(application, action);
+
+            case Contracts.Tooling.ToolNames.CreateChamfer:
+                return ApplyCreateChamferDirect(application, action);
+
+            case Contracts.Tooling.ToolNames.CreatePatternLinear:
+                return ApplyCreatePatternLinearDirect(application, action);
+
+            case Contracts.Tooling.ToolNames.CreateReferencePlane:
+                return ApplyCreateReferencePlaneDirect(application, action);
+
             default:
                 return "Unknown write tool: " + action.ToolName;
         }
@@ -1123,6 +1135,111 @@ internal static class HostState
         if (!result.Success) return result.ErrorMessage ?? "Create revolve failed.";
         result.AppliedValues.TryGetValue("feature_name", out string? name);
         return "Revolved feature '" + (name ?? "(new)") + "' created around '" + parameters.AxisName + "'.";
+    }
+
+    private static string ApplyCreateFilletDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreateFilletParameters
+        {
+            EntityNames = ReadStringListArg(action, "entity_names"),
+            RadiusMm = ReadDoubleArg(action, "radius_mm"),
+            FeatureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() : null
+        };
+
+        var tool = new Adze.Tools.Write.CreateFilletTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success) return result.ErrorMessage ?? "Create fillet failed.";
+        result.AppliedValues.TryGetValue("feature_name", out string? name);
+        return "Fillet '" + (name ?? "(new)") + "' created (r=" + parameters.RadiusMm + " mm).";
+    }
+
+    private static string ApplyCreateChamferDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreateChamferParameters
+        {
+            EntityNames = ReadStringListArg(action, "entity_names"),
+            DistanceMm = ReadDoubleArg(action, "distance_mm"),
+            AngleDegrees = action.Arguments.TryGetValue("angle_degrees", out var ad) && ad != null
+                && double.TryParse(ad.ToString(), out double angle) ? angle : 45.0,
+            FeatureName = action.Arguments.TryGetValue("feature_name", out var fn) ? fn?.ToString() : null
+        };
+
+        var tool = new Adze.Tools.Write.CreateChamferTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success) return result.ErrorMessage ?? "Create chamfer failed.";
+        result.AppliedValues.TryGetValue("feature_name", out string? name);
+        return "Chamfer '" + (name ?? "(new)") + "' created ("
+            + parameters.DistanceMm + " mm × " + parameters.AngleDegrees + "°).";
+    }
+
+    private static string ApplyCreatePatternLinearDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreatePatternLinearParameters
+        {
+            FeatureName = action.Arguments.TryGetValue("feature_name", out var fname) ? fname?.ToString() ?? "" : "",
+            Direction1Reference = action.Arguments.TryGetValue("direction_1_reference", out var d1) ? d1?.ToString() ?? "" : "",
+            Count1 = action.Arguments.TryGetValue("count_1", out var c1) && c1 != null
+                && int.TryParse(c1.ToString(), out int count1) ? count1 : 2,
+            Spacing1Mm = ReadDoubleArg(action, "spacing_1_mm"),
+            FlipDirection1 = action.Arguments.TryGetValue("flip_direction_1", out var f1) && f1 != null
+                && bool.TryParse(f1.ToString(), out bool flip1) && flip1,
+            Direction2Reference = action.Arguments.TryGetValue("direction_2_reference", out var d2) ? d2?.ToString() : null,
+            Count2 = action.Arguments.TryGetValue("count_2", out var c2) && c2 != null
+                && int.TryParse(c2.ToString(), out int count2) ? count2 : 1,
+            Spacing2Mm = action.Arguments.TryGetValue("spacing_2_mm", out var s2) && s2 != null
+                && double.TryParse(s2.ToString(), out double spacing2) ? spacing2 : 10.0,
+            FlipDirection2 = action.Arguments.TryGetValue("flip_direction_2", out var f2) && f2 != null
+                && bool.TryParse(f2.ToString(), out bool flip2) && flip2,
+            PatternName = action.Arguments.TryGetValue("pattern_name", out var pn) ? pn?.ToString() : null
+        };
+
+        var tool = new Adze.Tools.Write.CreatePatternLinearTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success) return result.ErrorMessage ?? "Create linear pattern failed.";
+        result.AppliedValues.TryGetValue("feature_name", out string? name);
+        return "Linear pattern '" + (name ?? "(new)") + "' of '" + parameters.FeatureName + "' created ("
+            + parameters.Count1 + "×).";
+    }
+
+    private static string ApplyCreateReferencePlaneDirect(ISldWorks application, PendingWriteAction action)
+    {
+        var parameters = new CreateReferencePlaneParameters
+        {
+            BaseReference = action.Arguments.TryGetValue("base_reference", out var br) ? br?.ToString() ?? "" : "",
+            OffsetMm = ReadDoubleArg(action, "offset_mm"),
+            Flip = action.Arguments.TryGetValue("flip", out var fl) && fl != null
+                && bool.TryParse(fl.ToString(), out bool flip) && flip,
+            PlaneName = action.Arguments.TryGetValue("plane_name", out var pn) ? pn?.ToString() : null
+        };
+
+        var tool = new Adze.Tools.Write.CreateReferencePlaneTool();
+        WriteApplyResult result = tool.Apply(application, parameters);
+        if (!result.Success) return result.ErrorMessage ?? "Create reference plane failed.";
+        result.AppliedValues.TryGetValue("feature_name", out string? name);
+        return "Reference plane '" + (name ?? "(new)") + "' created offset "
+            + parameters.OffsetMm + " mm from '" + parameters.BaseReference + "'.";
+    }
+
+    private static System.Collections.Generic.List<string> ReadStringListArg(PendingWriteAction action, string key)
+    {
+        var list = new System.Collections.Generic.List<string>();
+        if (!action.Arguments.TryGetValue(key, out object? raw) || raw == null)
+            return list;
+
+        if (raw is System.Collections.IEnumerable enumerable && raw is not string)
+        {
+            foreach (object? item in enumerable)
+            {
+                string? text = item?.ToString();
+                if (!string.IsNullOrWhiteSpace(text))
+                    list.Add(text!);
+            }
+            return list;
+        }
+
+        if (raw is string single && !string.IsNullOrWhiteSpace(single))
+            list.Add(single);
+        return list;
     }
 
     private static string ApplyAddSketchLineDirect(ISldWorks application, PendingWriteAction action)
@@ -1929,7 +2046,11 @@ internal static class HostState
             Contracts.Tooling.ToolNames.AddSketchDimension,
             Contracts.Tooling.ToolNames.CreateDrawingDocument,
             Contracts.Tooling.ToolNames.CreateExtrude,
-            Contracts.Tooling.ToolNames.CreateRevolve
+            Contracts.Tooling.ToolNames.CreateRevolve,
+            Contracts.Tooling.ToolNames.CreateFillet,
+            Contracts.Tooling.ToolNames.CreateChamfer,
+            Contracts.Tooling.ToolNames.CreatePatternLinear,
+            Contracts.Tooling.ToolNames.CreateReferencePlane
         };
 
         // Class 3 (HardWriteAdvanced) tools require elevated confirmation
@@ -1941,7 +2062,11 @@ internal static class HostState
             Contracts.Tooling.ToolNames.CreateSketch,
             Contracts.Tooling.ToolNames.CreateDrawingDocument,
             Contracts.Tooling.ToolNames.CreateExtrude,
-            Contracts.Tooling.ToolNames.CreateRevolve
+            Contracts.Tooling.ToolNames.CreateRevolve,
+            Contracts.Tooling.ToolNames.CreateFillet,
+            Contracts.Tooling.ToolNames.CreateChamfer,
+            Contracts.Tooling.ToolNames.CreatePatternLinear,
+            Contracts.Tooling.ToolNames.CreateReferencePlane
         };
 
         private readonly IToolExecutor _inner;

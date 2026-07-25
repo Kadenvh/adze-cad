@@ -90,6 +90,39 @@ internal static class FeatureToolHelpers
     }
 
     /// <summary>
+    /// Appends the named edges/faces to the current selection, trying the
+    /// given SelectByID2 type hints in order per entity. Returns the count
+    /// of entities that selected successfully.
+    /// </summary>
+    public static int SelectEntities(dynamic modelDoc, IEnumerable<string> entityNames, string[] typesToTry, int mark)
+    {
+        int selected = 0;
+        foreach (string name in entityNames)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            foreach (string swType in typesToTry)
+            {
+                try
+                {
+                    bool ok = (bool)modelDoc.Extension.SelectByID2(
+                        name, swType, 0, 0, 0, true, mark, null, 0);
+                    if (ok)
+                    {
+                        selected++;
+                        break;
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+        return selected;
+    }
+
+    /// <summary>
     /// Spot-checks the refreshed feature tree for the applied feature name.
     /// Same tolerance as the sketch tools: an unconfirmed change is not a
     /// loud failure because the refreshed snapshot may race the apply.

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adze.dev/schemas/tools/create_pattern_linear.request.schema.json",
+  "title": "create_pattern_linear request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_name", "action_class", "parameters"],
+  "properties": {
+    "tool_name": { "const": "create_pattern_linear" },
+    "action_class": { "const": "red" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_name", "direction_1_reference", "count_1", "spacing_1_mm"],
+      "properties": {
+        "feature_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Feature to pattern (e.g. 'Boss-Extrude1')."
+        },
+        "direction_1_reference": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Direction 1: linear edge, reference axis, or sketch line."
+        },
+        "count_1": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Instance count along direction 1 (includes the seed)."
+        },
+        "spacing_1_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Spacing between instances along direction 1 in mm."
+        },
+        "flip_direction_1": {
+          "type": "boolean",
+          "default": false
+        },
+        "direction_2_reference": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional direction 2 for a two-directional pattern."
+        },
+        "count_2": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Instance count along direction 2. Required when direction_2_reference is set."
+        },
+        "spacing_2_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Spacing along direction 2 in mm. Required when direction_2_reference is set."
+        },
+        "flip_direction_2": {
+          "type": "boolean",
+          "default": false
+        },
+        "pattern_name": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional name for the new pattern feature."
+        }
+      }
+    }
+  }
+}

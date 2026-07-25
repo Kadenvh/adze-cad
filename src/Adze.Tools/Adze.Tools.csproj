@@ -92,6 +92,10 @@
     <Compile Include="Write\FeatureToolHelpers.cs" />
     <Compile Include="Write\CreateExtrudeTool.cs" />
     <Compile Include="Write\CreateRevolveTool.cs" />
+    <Compile Include="Write\CreateFilletTool.cs" />
+    <Compile Include="Write\CreateChamferTool.cs" />
+    <Compile Include="Write\CreatePatternLinearTool.cs" />
+    <Compile Include="Write\CreateReferencePlaneTool.cs" />
     <Compile Include="Mesh\AnalyzeMeshFileTool.cs" />
     <Compile Include="Compute\GetMassPropertiesTool.cs" />
     <Compile Include="Compute\MeasureDistanceTool.cs" />

@@ -195,7 +195,44 @@ public static class ToolDefinitionBuilder
                     Required("axis_name", "string", "Axis of revolution: reference axis name or sketch line name (e.g. 'Line1@Sketch1')."),
                     Optional("sketch_name", "string", "Profile sketch to revolve. Empty = active sketch."),
                     Optional("angle_degrees", "number", "Revolve angle in degrees, in (0, 360]. Default 360."),
-                    Optional("feature_name", "string", "Optional name for the new feature.")))
+                    Optional("feature_name", "string", "Optional name for the new feature."))),
+
+            Build(ToolNames.CreateFillet,
+                "Applies a constant-radius fillet (rounded edge) to named edges or faces. Selecting a face fillets all of its edges. Part documents only. Elevated operation requiring confirmation.",
+                ObjectSchema(
+                    RequiredStringArray("entity_names", "Edges or faces to fillet (SelectByID2-compatible names)."),
+                    Required("radius_mm", "number", "Fillet radius in mm (must be > 0)."),
+                    Optional("feature_name", "string", "Optional name for the new feature."))),
+
+            Build(ToolNames.CreateChamfer,
+                "Applies a distance-angle chamfer (beveled edge) to named edges or faces. Part documents only. Elevated operation requiring confirmation.",
+                ObjectSchema(
+                    RequiredStringArray("entity_names", "Edges or faces to chamfer (SelectByID2-compatible names)."),
+                    Required("distance_mm", "number", "Chamfer distance in mm (must be > 0)."),
+                    Optional("angle_degrees", "number", "Chamfer angle in degrees, in (0, 90). Default 45."),
+                    Optional("feature_name", "string", "Optional name for the new feature."))),
+
+            Build(ToolNames.CreatePatternLinear,
+                "Creates a linear pattern of an existing feature along one or two directions. Direction references must be linear edges, reference axes, or sketch lines. Part documents only. Elevated operation requiring confirmation.",
+                ObjectSchema(
+                    Required("feature_name", "string", "Feature to pattern (e.g. 'Boss-Extrude1')."),
+                    Required("direction_1_reference", "string", "Direction 1: linear edge, reference axis, or sketch line."),
+                    Required("count_1", "integer", "Instance count along direction 1, including the seed (>= 2)."),
+                    Required("spacing_1_mm", "number", "Spacing between instances along direction 1 in mm."),
+                    Optional("flip_direction_1", "boolean", "Flip direction 1. Default false."),
+                    Optional("direction_2_reference", "string", "Optional direction 2 for a two-directional pattern."),
+                    Optional("count_2", "integer", "Instance count along direction 2 (>= 2 when direction 2 is set)."),
+                    Optional("spacing_2_mm", "number", "Spacing along direction 2 in mm."),
+                    Optional("flip_direction_2", "boolean", "Flip direction 2. Default false."),
+                    Optional("pattern_name", "string", "Optional name for the new pattern feature."))),
+
+            Build(ToolNames.CreateReferencePlane,
+                "Creates a reference plane offset from an existing plane or planar face. Offset-distance mode only. Elevated operation requiring confirmation.",
+                ObjectSchema(
+                    Required("base_reference", "string", "Plane (e.g. 'Front Plane') or planar face to offset from."),
+                    Required("offset_mm", "number", "Offset distance in mm (must be > 0)."),
+                    Optional("flip", "boolean", "Offset in the opposite direction. Default false."),
+                    Optional("plane_name", "string", "Optional name for the new plane.")))
         };
     }
 
@@ -317,6 +354,18 @@ public static class ToolDefinitionBuilder
         {
             ["_name"] = name,
             ["type"] = type,
+            ["description"] = description
+        };
+    }
+
+    private static Dictionary<string, object?> RequiredStringArray(string name, string description)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["_name"] = name,
+            ["_required"] = true,
+            ["type"] = "array",
+            ["items"] = new Dictionary<string, object?> { ["type"] = "string" },
             ["description"] = description
         };
     }

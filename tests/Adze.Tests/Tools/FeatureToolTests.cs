@@ -181,6 +181,203 @@ public sealed class FeatureToolTests
         Assert.IsTrue(verification.ChangeConfirmed);
     }
 
+    // --- create_fillet ---
+
+    [Test]
+    public void CreateFillet_NoEntities_SurfacesWarning()
+    {
+        var tool = new CreateFilletTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateFilletParameters { RadiusMm = 2 });
+        Assert.That(preview.Warnings, Has.Some.Contains("entity_names"));
+    }
+
+    [Test]
+    public void CreateFillet_NonPositiveRadius_SurfacesWarning()
+    {
+        var tool = new CreateFilletTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateFilletParameters { EntityNames = { "Edge<1>" }, RadiusMm = 0 });
+        Assert.That(preview.Warnings, Has.Some.Contains("radius_mm"));
+    }
+
+    [Test]
+    public void CreateFillet_DrawingDoc_SurfacesWarning()
+    {
+        var tool = new CreateFilletTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithDrawing(),
+            new CreateFilletParameters { EntityNames = { "Edge<1>" }, RadiusMm = 2 });
+        Assert.That(preview.Warnings, Has.Some.Contains("does not support fillets"));
+    }
+
+    [Test]
+    public void CreateFillet_PartWithEntities_BuildsPreview()
+    {
+        var tool = new CreateFilletTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateFilletParameters { EntityNames = { "Edge<1>", "Edge<2>" }, RadiusMm = 2.5 });
+
+        Assert.That(preview.ToolName, Is.EqualTo(ToolNames.CreateFillet));
+        Assert.That(preview.Summary, Does.Contain("2 entities"));
+        Assert.That(preview.Summary, Does.Contain("2.5"));
+        Assert.That(preview.Warnings, Is.Empty);
+    }
+
+    // --- create_chamfer ---
+
+    [Test]
+    public void CreateChamfer_NoEntities_SurfacesWarning()
+    {
+        var tool = new CreateChamferTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateChamferParameters { DistanceMm = 1 });
+        Assert.That(preview.Warnings, Has.Some.Contains("entity_names"));
+    }
+
+    [Test]
+    public void CreateChamfer_InvalidAngle_SurfacesWarning()
+    {
+        var tool = new CreateChamferTool();
+
+        WritePreview tooLarge = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateChamferParameters { EntityNames = { "Edge<1>" }, DistanceMm = 1, AngleDegrees = 90 });
+        Assert.That(tooLarge.Warnings, Has.Some.Contains("angle_degrees"));
+
+        WritePreview zero = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateChamferParameters { EntityNames = { "Edge<1>" }, DistanceMm = 1, AngleDegrees = 0 });
+        Assert.That(zero.Warnings, Has.Some.Contains("angle_degrees"));
+    }
+
+    [Test]
+    public void CreateChamfer_PartWithEntities_BuildsPreview()
+    {
+        var tool = new CreateChamferTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateChamferParameters { EntityNames = { "Edge<1>" }, DistanceMm = 1.5, AngleDegrees = 30 });
+
+        Assert.That(preview.ToolName, Is.EqualTo(ToolNames.CreateChamfer));
+        Assert.That(preview.Summary, Does.Contain("1.5"));
+        Assert.That(preview.Summary, Does.Contain("30"));
+        Assert.That(preview.Warnings, Is.Empty);
+    }
+
+    // --- create_pattern_linear ---
+
+    [Test]
+    public void CreatePatternLinear_MissingInputs_SurfacesWarnings()
+    {
+        var tool = new CreatePatternLinearTool();
+
+        WritePreview noFeature = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreatePatternLinearParameters { Direction1Reference = "Axis1" });
+        Assert.That(noFeature.Warnings, Has.Some.Contains("feature_name"));
+
+        WritePreview noDirection = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreatePatternLinearParameters { FeatureName = "Boss-Extrude1" });
+        Assert.That(noDirection.Warnings, Has.Some.Contains("direction_1_reference"));
+    }
+
+    [Test]
+    public void CreatePatternLinear_CountBelowTwo_SurfacesWarning()
+    {
+        var tool = new CreatePatternLinearTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreatePatternLinearParameters
+            {
+                FeatureName = "Boss-Extrude1",
+                Direction1Reference = "Axis1",
+                Count1 = 1
+            });
+        Assert.That(preview.Warnings, Has.Some.Contains("count_1"));
+    }
+
+    [Test]
+    public void CreatePatternLinear_TwoDirectional_PreviewsTotalInstances()
+    {
+        var tool = new CreatePatternLinearTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreatePatternLinearParameters
+            {
+                FeatureName = "Boss-Extrude1",
+                Direction1Reference = "Axis1",
+                Count1 = 3,
+                Spacing1Mm = 20,
+                Direction2Reference = "Axis2",
+                Count2 = 4,
+                Spacing2Mm = 15
+            });
+
+        Assert.That(preview.ToolName, Is.EqualTo(ToolNames.CreatePatternLinear));
+        Assert.That(preview.Warnings, Is.Empty);
+        // 3 × 4 = 12 total instances shown in the changes list.
+        Assert.That(preview.Changes, Has.Some.Matches<WriteChangeItem>(c => c.AfterValue == "12"));
+    }
+
+    // --- create_reference_plane ---
+
+    [Test]
+    public void CreateReferencePlane_MissingBase_SurfacesWarning()
+    {
+        var tool = new CreateReferencePlaneTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateReferencePlaneParameters { BaseReference = string.Empty });
+        Assert.That(preview.Warnings, Has.Some.Contains("base_reference"));
+    }
+
+    [Test]
+    public void CreateReferencePlane_NonPositiveOffset_SurfacesWarning()
+    {
+        var tool = new CreateReferencePlaneTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateReferencePlaneParameters { BaseReference = "Front Plane", OffsetMm = 0 });
+        Assert.That(preview.Warnings, Has.Some.Contains("offset_mm"));
+    }
+
+    [Test]
+    public void CreateReferencePlane_ValidOffset_BuildsPreview()
+    {
+        var tool = new CreateReferencePlaneTool();
+        WritePreview preview = tool.Preview(
+            SessionContextFactory.CreateWithPart(),
+            new CreateReferencePlaneParameters { BaseReference = "Front Plane", OffsetMm = 25, Flip = true });
+
+        Assert.That(preview.ToolName, Is.EqualTo(ToolNames.CreateReferencePlane));
+        Assert.That(preview.Summary, Does.Contain("Front Plane"));
+        Assert.That(preview.Summary, Does.Contain("25"));
+        Assert.That(preview.Summary, Does.Contain("flipped"));
+        Assert.That(preview.Warnings, Is.Empty);
+    }
+
+    [Test]
+    public void CreateReferencePlane_Verify_ConfirmsFeatureInTree()
+    {
+        var context = SessionContextFactory.CreateWithPart();
+        context.FeatureTree.Features.Add(new FeatureNode { Name = "Plane1", Kind = "RefPlane" });
+
+        var applyResult = new WriteApplyResult
+        {
+            Success = true,
+            AppliedValues = { ["feature_name"] = "Plane1" }
+        };
+
+        WriteVerification verification = new CreateReferencePlaneTool().Verify(context, applyResult);
+        Assert.IsTrue(verification.ChangeConfirmed);
+    }
+
     [Test]
     public void BuildUndoLabel_FeatureTools_AreInformative()
     {
@@ -190,5 +387,13 @@ public sealed class FeatureToolTests
             Does.Contain("active sketch"));
         Assert.That(new CreateRevolveTool().BuildUndoLabel(new CreateRevolveParameters { AxisName = "Axis1" }),
             Does.Contain("Axis1"));
+        Assert.That(new CreateFilletTool().BuildUndoLabel(new CreateFilletParameters { RadiusMm = 3 }),
+            Does.Contain("3"));
+        Assert.That(new CreateChamferTool().BuildUndoLabel(new CreateChamferParameters { DistanceMm = 2, AngleDegrees = 45 }),
+            Does.Contain("45"));
+        Assert.That(new CreatePatternLinearTool().BuildUndoLabel(new CreatePatternLinearParameters { FeatureName = "Boss-Extrude1" }),
+            Does.Contain("Boss-Extrude1"));
+        Assert.That(new CreateReferencePlaneTool().BuildUndoLabel(new CreateReferencePlaneParameters { BaseReference = "Top Plane" }),
+            Does.Contain("Top Plane"));
     }
 }
