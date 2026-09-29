@@ -1,0 +1,156 @@
+Adze install diagnostic dump
+Generated: 2026-05-15T05:55:20.3073557-05:00
+Host: ZOE (user: Kaden)
+Working directory: C:\adze-cad
+
+
+==============================================================================
+  A. Environment
+==============================================================================
+
+--- Windows + PowerShell ---
+OS: Microsoft Windows 11 Pro (10.0.26200)
+PowerShell: 7.6.1 (Core)
+pwsh path: C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.1.0_x64__8wekyb3d8bbwe\pwsh.exe
+powershell path: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe
+
+--- .NET Framework 4.8 ---
+.NET 4.8 PRESENT (release=533509)
+
+--- ExecutionPolicy (all scopes) ---
+  MachinePolicy        Undefined
+  UserPolicy           Undefined
+  Process              Undefined
+  CurrentUser          Undefined
+  LocalMachine         RemoteSigned
+
+--- SOLIDWORKS install ---
+HKLM\SOFTWARE\SolidWorks\Setup\SolidWorks Folder NOT found — SW install dir unknown
+Found fallback candidate: C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x
+
+--- Windows Defender — Adze-scoped quarantine + exclusions ---
+No Defender exclusions reference Adze.
+
+
+==============================================================================
+  B. Install state on disk
+==============================================================================
+
+--- %LOCALAPPDATA%\Adze\bin contents ---
+Path: C:\Users\Kaden\AppData\Local\Adze\bin
+File count: 9
+
+  Name                             Size  SHA256 (first 16)
+  ----------------------------------------------------------------------
+  Adze.Broker.dll               179,712  20D7318588C3F3A8
+  Adze.Contracts.dll             64,000  40FA5DF1472693B4
+  Adze.Host.dll                 205,312  2705E9D5F6670F21
+  Adze.Index.dll                 15,360  6A4C1D6FB8EACB40
+  Adze.Mesh.dll                  24,576  AB64ECB31D4587C1
+  Adze.Tools.dll                106,496  4A494ED46C3EE414
+  Adze.Trace.dll                 47,616  700DE9791E762ABC
+  Adze.UI.dll                    70,144  D3DAD3A4DB01162F
+  OpenMcdf.dll                   62,976  F72AD59456132C82
+
+Missing expected DLLs:
+  (none — all expected DLLs present)
+
+--- Adze.Mesh.dll presence (session-7 regression canary) ---
+PRESENT: C:\Users\Kaden\AppData\Local\Adze\bin\Adze.Mesh.dll
+  Size: 24576 bytes
+  LastWriteTime: 05/10/2026 09:08:04
+  AssemblyVersion: 1.1.0.0
+
+
+==============================================================================
+  C. Registry state
+==============================================================================
+
+--- COM ProgID registrations (HKCU\Software\Classes) ---
+MISSING: HKCU:\Software\Classes\Adze.Host.AddIn
+MISSING: HKCU:\Software\Classes\Adze.Host.TaskPaneControl
+MISSING: HKCU:\Software\Classes\Adze.Host.NativeTaskPaneControl
+
+--- SOLIDWORKS add-in registration ---
+
+AddIns key (descriptor):
+  MISSING: HKCU:\Software\SolidWorks\AddIns\{A2E09EE4-BB43-4A0C-945F-14711F792EFA}
+  Without this key, SW will not see Adze as an installed add-in at all.
+
+AddInsStartup key (active state — Decision #23 invariant):
+  MISSING: HKCU:\Software\SolidWorks\AddInsStartup\{A2E09EE4-BB43-4A0C-945F-14711F792EFA}
+  Without this key, SW will not enable the add-in even if AddIns key is present.
+
+--- SOLIDWORKS_AI_* env vars (HKCU\Environment) ---
+  SOLIDWORKS_AI_NATIVE_SIDEBAR             = true
+
+
+==============================================================================
+  D. host.log analysis
+==============================================================================
+
+--- File presence ---
+PRESENT: C:\Users\Kaden\AppData\Local\Adze\logs\host.log
+  Size: 496229 bytes
+  LastWriteTime: 05/15/2026 05:54:46
+
+--- Last 40 lines ---
+  [2026-05-15 10:51:34Z] INFO Compatibility probe failed at step 'create-command-group'. Ribbon and context-menu registration will be skipped. CreateCommandGroup2 returned null or error=1.
+  [2026-05-15 10:51:34Z] INFO Task Pane mounting sidebar=v1.1-native progId=Adze.Host.NativeTaskPaneControl
+  [2026-05-15 10:51:34Z] INFO NativeTaskPaneControlShim mounted v1.1 sidebar.
+  [2026-05-15 10:51:34Z] INFO Task Pane created. AddControl returned: ControlAxSourcingSite [Adze.Host.UI.NativeTaskPaneControlShim].
+  [2026-05-15 10:51:34Z] INFO Ribbon: probe returned GracefulRefusal at step 'create-command-group' — attempting real registration anyway.
+  [2026-05-15 10:51:34Z] INFO RibbonTab: registered successfully across part/assembly/drawing contexts.
+  [2026-05-15 10:51:34Z] INFO Context-menu gate SOLIDWORKS_AI_CONTEXT_MENU is off; skipping.
+  [2026-05-15 10:51:35Z] INFO Snapshot: reason=Initial context snapshot tool_count=10 achievements=14 recipes_review_ready=24 trace=4f6143d2efba4914ab20c66701c4740c tier=Reviewed exploration=100.0
+  [2026-05-15 10:51:35Z] INFO ConnectToSW completed.
+  [2026-05-15 10:51:50Z] INFO Snapshot: reason=ActiveDocChangeNotify tool_count=10 achievements=14 recipes_review_ready=24 trace=ea17e901daca4bdcbf107bdd333514ef tier=Reviewed exploration=100.0
+  [2026-05-15 10:51:50Z] INFO Snapshot: reason=ActiveModelDocChangeNotify tool_count=10 achievements=14 recipes_review_ready=24 trace=c4b4016eeb2b4b81adadb72a2d9becb3 tier=Reviewed exploration=100.0
+  [2026-05-15 10:51:50Z] INFO Snapshot: reason=PartDoc ClearSelectionsNotify tool_count=10 achievements=14 recipes_review_ready=24 trace=2aed56f689fd4e8d8f9c8f00cc573365 tier=Reviewed exploration=100.0
+  [2026-05-15 10:52:15Z] INFO Snapshot: reason=PartDoc ClearSelectionsNotify tool_count=10 achievements=14 recipes_review_ready=24 trace=455ffd3c51134834bda0e3c6af4cb3e2 tier=Reviewed exploration=100.0
+  [2026-05-15 10:52:51Z] INFO UserQuery: "List all mates with status" (length=26)
+  [2026-05-15 10:52:54Z] INFO UserQuery: "Show all custom properties" (length=26)
+  [2026-05-15 10:52:55Z] INFO Plan model outcome: ok — provider=openrouter model=anthropic/claude-sonnet-4 model_tools=2
+  [2026-05-15 10:52:55Z] INFO Plan: intent=list_mates_with_status turn_status=attention_needed source=model_openrouter planned_tools=2 [get_mates, get_active_document]
+  [2026-05-15 10:52:55Z] INFO Tool get_mates ok duration=4µs result_keys=4 summary="Mate inspection is only available on assembly documents."
+  [2026-05-15 10:52:55Z] INFO Tool get_active_document ok duration=3µs result_keys=6 summary="Read the active document."
+  [2026-05-15 10:52:57Z] INFO Plan model outcome: ok — provider=openrouter model=anthropic/claude-sonnet-4 model_tools=1
+  [2026-05-15 10:52:57Z] INFO Plan: intent=show_custom_properties turn_status=attention_needed source=model_openrouter planned_tools=1 [get_custom_properties]
+  [2026-05-15 10:52:57Z] INFO Tool get_custom_properties ok duration=7µs result_keys=6 summary="No custom properties found on this document."
+  [2026-05-15 10:52:58Z] INFO Assistant run completed. trace=6913afe95b404a729241176f39a02392 answer_source=OpenRouter (anthropic/claude-sonnet-4) tokens=1337 tool_count=2 synthesis_fallback=False
+  [2026-05-15 10:52:58Z] INFO Stats: run=1 session_tokens=1337 (prompt=1227 completion=110) pending_writes=0
+  [2026-05-15 10:52:58Z] INFO Answer: "There are no mates to list because this is a part document. Mates are only available in assembly documents where multiple components are joined together with relationships like coincident, parallel, or distance constraints.  The current document "Part1" is a part file with 0 mates, which is expected since parts contain features and geometry but not assembly relationships.  To view mates with their status information, you would need to open an assembly document (.sldasm) that contains assembled c…" (length=547)
+  [2026-05-15 10:52:59Z] INFO Assistant run completed. trace=25e14b3d3afa4283a0bef6ab9c5386ee answer_source=OpenRouter (anthropic/claude-sonnet-4) tokens=1179 tool_count=1 synthesis_fallback=False
+  [2026-05-15 10:52:59Z] INFO Stats: run=2 session_tokens=2516 (prompt=2333 completion=183) pending_writes=0
+  [2026-05-15 10:52:59Z] INFO Answer: "The active document (Part1) does not have any custom properties defined. Both document-level and configuration-level custom properties are empty.  Note that this document has not been saved yet, so it doesn't have a file path. If you want to add custom properties or need file-path-aware functionality, consider saving the document first." (length=338)
+  [2026-05-15 10:53:07Z] INFO UserQuery: "Make cyclinder" (length=14)
+  [2026-05-15 10:53:13Z] INFO Plan model outcome: ok — provider=openrouter model=anthropic/claude-sonnet-4 model_tools=2
+  [2026-05-15 10:53:13Z] INFO Plan: intent=create_cylinder_feature turn_status=attention_needed source=model_openrouter planned_tools=2 [get_feature_tree_slice, get_document_summary]
+  [2026-05-15 10:53:13Z] INFO Tool get_feature_tree_slice ok duration=11µs result_keys=4 summary="Read the feature tree."
+  [2026-05-15 10:53:13Z] INFO Tool get_document_summary ok duration=4µs result_keys=10 summary="Read the document overview."
+  [2026-05-15 10:53:18Z] INFO Assistant run completed. trace=4065b6621dc4404981d4477ec44e2532 answer_source=OpenRouter (anthropic/claude-sonnet-4) tokens=1846 tool_count=2 synthesis_fallback=False
+  [2026-05-15 10:53:18Z] INFO Stats: run=3 session_tokens=4362 (prompt=3982 completion=380) pending_writes=0
+  [2026-05-15 10:53:18Z] INFO Answer: "I cannot create a cylinder for you because I only have analysis capabilities - I cannot create new geometry or features in SOLIDWORKS.   Currently, you have an empty Part1 document open with no modeled features. The feature tree shows only the default folders (Comments, Favorites, History, etc.) but no actual geometry features like sketches, extrudes, or revolves.  To create a cylinder in SOLIDWORKS, you would need to use the modeling tools directly:  1. **Extrude method**: Create a circular ske…" (length=843)
+  [2026-05-15 10:54:46Z] INFO Snapshot: reason=PartDoc ClearSelectionsNotify tool_count=10 achievements=14 recipes_review_ready=24 trace=30d4188df28b49729158a8fbc9ac7893 tier=Reviewed exploration=100.0
+  [2026-05-15 10:54:46Z] INFO DisconnectFromSW starting.
+  [2026-05-15 10:54:46Z] INFO Task Pane deleted.
+  [2026-05-15 10:54:46Z] INFO DisconnectFromSW completed.
+
+--- Pattern hits (most recent occurrence of each) ---
+  NativeTaskPaneControlShim mounted        (line 2589) [2026-05-15 10:51:34Z] INFO NativeTaskPaneControlShim mounted v1.1 sidebar.
+  ContextMenu registered                   NOT FOUND
+  RibbonTab attempt                        (line 2591) [2026-05-15 10:51:34Z] INFO Ribbon: probe returned GracefulRefusal at step 'create-command-group' — attempting real registration anyway.
+  CompatibilityProbe GracefulRefusal       (line 2591) [2026-05-15 10:51:34Z] INFO Ribbon: probe returned GracefulRefusal at step 'create-command-group' — attempting real registration anyway.
+  ERROR lines                              (line 2587) [2026-05-15 10:51:34Z] INFO Compatibility probe failed at step 'create-command-group'. Ribbon and context-menu registration will be skipped. CreateCommandGroup2 returned null or error=1.
+  ConnectToSW starting                     (line 2585) [2026-05-15 10:51:34Z] INFO ConnectToSW starting.
+  DisconnectFromSW                         (line 2626) [2026-05-15 10:54:46Z] INFO DisconnectFromSW completed.
+  RibbonTab failure                        NOT FOUND
+  RibbonTab registered                     (line 2592) [2026-05-15 10:51:34Z] INFO RibbonTab: registered successfully across part/assembly/drawing contexts.
+  CompatibilityProbe failed (legacy)       (line 2587) [2026-05-15 10:51:34Z] INFO Compatibility probe failed at step 'create-command-group'. Ribbon and context-menu registration will be skipped. CreateCommandGroup2 returned null or error=1.
+  CompatibilityProbe: OK                   NOT FOUND
+
+
+==============================================================================
+  E. Process state
+==============================================================================
+No SW or launcher processes running. Good.

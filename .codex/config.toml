@@ -1,0 +1,43 @@
+[mcp_servers.ava-docs]
+command = "cmd"
+args = [
+    "/c",
+    "npx",
+    "-y",
+    "mcp-remote",
+    "http://ava.tailc179f5.ts.net:4173/mcp/ava-docs",
+    "--allow-http",
+]
+
+[mcp_servers.dal]
+command = "node"
+args = ['C:\adze-cad\.ava\mcp-server.mjs']
+
+[mcp_servers.github]
+command = "cmd"
+args = [
+    "/c",
+    "npx",
+    "-y",
+    "@modelcontextprotocol/server-github",
+]
+
+[mcp_servers.gitnexus]
+command = "cmd"
+args = [
+    "/c",
+    "gitnexus",
+    "mcp",
+]
+
+[mcp_servers.sequential-thinking]
+command = "cmd"
+args = [
+    "/c",
+    "npx",
+    "@modelcontextprotocol/server-sequential-thinking",
+]
+
+[mcp_servers.windows]
+command = 'C:\Users\Kaden\AppData\Local\Programs\Python\Python312\Scripts\uvx.exe'
+args = ["windows-mcp"]
